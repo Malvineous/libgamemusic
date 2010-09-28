@@ -1,0 +1,62 @@
+Camoto: Classic-game Modding Tools
+Copyright 2010 Adam Nielsen <malvineous@shikadi.net>
+http://www.shikadi.net/camoto/
+
+Camoto is a collection of utilities for editing (modding) "classic games",
+those from the early to mid 1990s.
+
+This is libgamemusic, one component of the Camoto suite.  libgamemusic is a
+library that can read and write many different music file formats, with a focus
+on formats used by DOS games.
+
+The library exposes each file format as a long list of "events", such as
+note-on, tempo change, pitch bend, and so on.  This event list can then be
+manipulated if required, and then written out to a music file in the same or
+another format.
+
+An instrument list is also provided, which allows manipulation of each
+instrument used in the song.  Current instrument types are General MIDI (patch
+numbers), OPL register values (used by Adlib songs) and sampled instruments
+(as used by mod/tracker formats.)
+
+Metadata is available from each format handler to indicate whether it can
+support all the events and instrument types, or whether saving in a particular
+format will result in some loss of accuracy.
+
+This library is still in the preliminary stages, so only music formats from
+these games have been implemented:
+
+  * Bio Menace (.imf)
+  * Blake Stone (.wlf)
+  * Commander Keen (.imf)
+  * Cosmo's Cosmic Adventures (.imf)
+  * Duke Nukem II (.imf)
+  * Duke Nukem 3D (.mid)
+  * Kiloblaster (.cmf)
+  * Jill of the Jungle (.cmf)
+  * Major Stryker (.imf)
+  * Monster Bash (.imf)
+  * Shadow Warrior (.mid) [shareware only]
+  * Wacky Wheels (.mid)
+  * Wolfenstein 3-D (.wlf)
+
+Many more formats are planned.
+
+The library is compiled and installed in the usual way:
+
+  ./configure && make
+  sudo make install
+  sudo ldconfig
+
+If you downloaded the git release, run ./autogen.sh before the commands above.
+
+This distribution includes an example program "gamemus" which serves as both
+a command-line interface to the library as well as an example of how to use
+the library.  This program is installed as part of the "make install" process.
+See "man gamemus" for full details (note the manpage is currently documenting
+intended behaviour, but not everything has been implemented yet.)
+
+All supported music file formats are fully documented on the ModdingWiki - see
+http://www.shikadi.net/moddingwiki/
+
+This library is released under the GPLv3 license.
