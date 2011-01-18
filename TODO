@@ -1,0 +1,12 @@
+Outstanding tasks
+~~~~~~~~~~~~~~~~~
+ - Add parameter to generic OPL writer to blacklist channels, so the IMF writer
+   can reserve channel 0 so it remains available for sound effects.
+
+ - Normally it is assumed all OPL registers will be zero at the start of the
+   output, so zero values aren't sent.  Add an option to set *all* registers
+   before they are used for the benefit of songs which loop, so any changed
+   instruments don't go funny when the song repeats.
+
+ - Add a velocity value to the NoteOnEvent and use the OPL's volume register
+   for this value (removing it from the instrument settings...maybe.)

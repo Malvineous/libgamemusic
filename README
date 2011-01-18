@@ -40,6 +40,11 @@ these games have been implemented:
   * Wacky Wheels (.mid)
   * Wolfenstein 3-D (.wlf)
 
+These auxiliary file formats have also been implemented:
+
+  * DOSBox raw OPL (.dro)
+  * RDOS raw OPL (.raw)
+
 Many more formats are planned.
 
 The library is compiled and installed in the usual way:
@@ -48,7 +53,9 @@ The library is compiled and installed in the usual way:
   sudo make install
   sudo ldconfig
 
-If you downloaded the git release, run ./autogen.sh before the commands above.
+You will need libgamecommon installed first.  If you downloaded the git
+release, run ./autogen.sh before the commands above.  You can also run
+"make check" to compile and run the tests.
 
 This distribution includes an example program "gamemus" which serves as both
 a command-line interface to the library as well as an example of how to use

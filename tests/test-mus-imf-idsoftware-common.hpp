@@ -1,0 +1,39 @@
+/**
+ * @file   test-mus-imf-idsoftware-common.hpp
+ * @brief  Test code shared between both types of id Software IMF files.
+ *
+ * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+#define INITIAL_TEMPO 1785
+
+// F-num 577 is 440.2Hz in block 4 (w/ conversion constant of 50,000)
+// F-num 580 is 439.9Hz in block 4 (w/ conversion constant of 49,716)
+#define imf_noteonoff \
+	"\x00\x00" "\x00\x00" \
+	"\xA0\x44" "\x00\x00" \
+	"\xB0\x32" "\x10\x00" \
+	"\xB0\x12" "\x00\x00"
+
+#define imf_rhythm_hihat \
+	"\x00\x00\x00\x00" \
+	"\x31\xae" "\x00\x00" \
+	"\x51\x7f" "\x00\x00" \
+	"\x71\xed" "\x00\x00" \
+	"\x91\xcb" "\x00\x00" \
+	"\xf1\x06" "\x00\x00" \
+	"\xbd\x21" "\x10\x00" \
+	"\xbd\x20" "\x00\x00"

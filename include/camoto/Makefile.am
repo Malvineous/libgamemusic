@@ -1,0 +1,11 @@
+library_includedir = $(includedir)/@camoto_release@/camoto/
+nobase_library_include_HEADERS = gamemusic.hpp
+nobase_library_include_HEADERS += gamemusic/manager.hpp
+nobase_library_include_HEADERS += gamemusic/events.hpp
+nobase_library_include_HEADERS += gamemusic/musictype.hpp
+nobase_library_include_HEADERS += gamemusic/music.hpp
+nobase_library_include_HEADERS += gamemusic/patch.hpp
+nobase_library_include_HEADERS += gamemusic/patch-opl.hpp
+nobase_library_include_HEADERS += gamemusic/patchbank.hpp
+nobase_library_include_HEADERS += gamemusic/patchbank-singletype.hpp
+nobase_library_include_HEADERS += gamemusic/patchbank-opl.hpp
