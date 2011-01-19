@@ -28,16 +28,6 @@
 
 using namespace camoto::gamemusic;
 
-std::vector<std::string> MusicType_IMF_Common::getFileExtensions() const
-	throw ()
-{
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("imf");
-	vcExtensions.push_back("wlf");
-	vcExtensions.push_back("mni");
-	return vcExtensions;
-}
-
 E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int imfType) const
 	throw (std::ios::failure)
 {
@@ -126,7 +116,16 @@ std::string MusicType_IMF_Type0::getCode() const
 std::string MusicType_IMF_Type0::getFriendlyName() const
 	throw ()
 {
-	return "id Software Music Format (type-0)";
+	return "id Software Music Format (type-0, 560Hz)";
+}
+
+std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
+	throw ()
+{
+	std::vector<std::string> vcExtensions;
+	vcExtensions.push_back("imf");
+	vcExtensions.push_back("mni");
+	return vcExtensions;
 }
 
 E_CERTAINTY MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
@@ -138,14 +137,15 @@ E_CERTAINTY MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
 MusicWriterPtr MusicType_IMF_Type0::create(ostream_sptr output, MP_SUPPDATA& suppData) const
 	throw (std::ios::failure)
 {
-	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 560)); // TODO: 280/560/700
+	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 560));
 }
 
 MusicReaderPtr MusicType_IMF_Type0::open(istream_sptr input, MP_SUPPDATA& suppData) const
 	throw (std::ios::failure)
 {
-	return MusicReaderPtr(new MusicReader_IMF(input, 0));
+	return MusicReaderPtr(new MusicReader_IMF(input, 0, 560));
 }
+
 
 std::string MusicType_IMF_Type1::getCode() const
 	throw ()
@@ -156,7 +156,16 @@ std::string MusicType_IMF_Type1::getCode() const
 std::string MusicType_IMF_Type1::getFriendlyName() const
 	throw ()
 {
-	return "id Software Music Format (type-1)";
+	return "id Software Music Format (type-1, 560Hz)";
+}
+
+std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
+	throw ()
+{
+	std::vector<std::string> vcExtensions;
+	vcExtensions.push_back("imf");
+	vcExtensions.push_back("mni");
+	return vcExtensions;
 }
 
 E_CERTAINTY MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
@@ -168,16 +177,134 @@ E_CERTAINTY MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
 MusicWriterPtr MusicType_IMF_Type1::create(ostream_sptr output, MP_SUPPDATA& suppData) const
 	throw (std::ios::failure)
 {
-	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 560)); // TODO: 280/560/700
+	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 560));
 }
 
 MusicReaderPtr MusicType_IMF_Type1::open(istream_sptr input, MP_SUPPDATA& suppData) const
 	throw (std::ios::failure)
 {
-	return MusicReaderPtr(new MusicReader_IMF(input, 1));
+	return MusicReaderPtr(new MusicReader_IMF(input, 1, 560));
 }
 
-MusicReader_IMF::MusicReader_IMF(istream_sptr input, int imfType)
+
+std::string MusicType_WLF_Type0::getCode() const
+	throw ()
+{
+	return "wlf-idsoftware-type0";
+}
+
+std::string MusicType_WLF_Type0::getFriendlyName() const
+	throw ()
+{
+	return "id Software Music Format (type-0, 700Hz)";
+}
+
+std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
+	throw ()
+{
+	std::vector<std::string> vcExtensions;
+	vcExtensions.push_back("wlf");
+	return vcExtensions;
+}
+
+E_CERTAINTY MusicType_WLF_Type0::isInstance(istream_sptr psMusic) const
+	throw (std::ios::failure)
+{
+	return this->genericIsInstance(psMusic, 0);
+}
+
+MusicWriterPtr MusicType_WLF_Type0::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 700));
+}
+
+MusicReaderPtr MusicType_WLF_Type0::open(istream_sptr input, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicReaderPtr(new MusicReader_IMF(input, 0, 700));
+}
+
+
+std::string MusicType_WLF_Type1::getCode() const
+	throw ()
+{
+	return "wlf-idsoftware-type1";
+}
+
+std::string MusicType_WLF_Type1::getFriendlyName() const
+	throw ()
+{
+	return "id Software Music Format (type-1, 700Hz)";
+}
+
+std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
+	throw ()
+{
+	std::vector<std::string> vcExtensions;
+	vcExtensions.push_back("wlf");
+	return vcExtensions;
+}
+
+E_CERTAINTY MusicType_WLF_Type1::isInstance(istream_sptr psMusic) const
+	throw (std::ios::failure)
+{
+	return this->genericIsInstance(psMusic, 1);
+}
+
+MusicWriterPtr MusicType_WLF_Type1::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 700));
+}
+
+MusicReaderPtr MusicType_WLF_Type1::open(istream_sptr input, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicReaderPtr(new MusicReader_IMF(input, 1, 700));
+}
+
+
+std::string MusicType_IMF_Duke2::getCode() const
+	throw ()
+{
+	return "imf-idsoftware-duke2";
+}
+
+std::string MusicType_IMF_Duke2::getFriendlyName() const
+	throw ()
+{
+	return "id Software Music Format (type-0, 280Hz)";
+}
+
+std::vector<std::string> MusicType_IMF_Duke2::getFileExtensions() const
+	throw ()
+{
+	std::vector<std::string> vcExtensions;
+	vcExtensions.push_back("imf");
+	return vcExtensions;
+}
+
+E_CERTAINTY MusicType_IMF_Duke2::isInstance(istream_sptr psMusic) const
+	throw (std::ios::failure)
+{
+	return this->genericIsInstance(psMusic, 0);
+}
+
+MusicWriterPtr MusicType_IMF_Duke2::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 280));
+}
+
+MusicReaderPtr MusicType_IMF_Duke2::open(istream_sptr input, MP_SUPPDATA& suppData) const
+	throw (std::ios::failure)
+{
+	return MusicReaderPtr(new MusicReader_IMF(input, 0, 280));
+}
+
+
+MusicReader_IMF::MusicReader_IMF(istream_sptr input, int imfType, int hzSpeed)
 	throw (std::ios::failure) :
 		MusicReader_GenericOPL(DelayIsPostData),
 		input(input),
@@ -189,7 +316,7 @@ MusicReader_IMF::MusicReader_IMF(istream_sptr input, int imfType)
 	} else {
 		this->lenData = 0; // read until EOF
 	}
-	this->changeSpeed(1000000/560); // 560Hz (TODO: 700Hz)
+	this->changeSpeed(1000000 / hzSpeed);
 }
 
 MusicReader_IMF::~MusicReader_IMF()
