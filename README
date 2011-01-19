@@ -3,7 +3,7 @@ Copyright 2010 Adam Nielsen <malvineous@shikadi.net>
 http://www.shikadi.net/camoto/
 
 Camoto is a collection of utilities for editing (modding) "classic games",
-those from the early to mid 1990s.
+those from the early to mid 1990s running under DOS.
 
 This is libgamemusic, one component of the Camoto suite.  libgamemusic is a
 library that can read and write many different music file formats, with a focus
@@ -31,18 +31,14 @@ these games have been implemented:
   * Commander Keen (.imf)
   * Cosmo's Cosmic Adventures (.imf)
   * Duke Nukem II (.imf)
-  * Duke Nukem 3D (.mid)
-  * Kiloblaster (.cmf)
-  * Jill of the Jungle (.cmf)
-  * Major Stryker (.imf)
+  * Major Stryker (.wlf)
   * Monster Bash (.imf)
-  * Shadow Warrior (.mid) [shareware only]
-  * Wacky Wheels (.mid)
+  * Operation Body Count (.wlf)
   * Wolfenstein 3-D (.wlf)
 
 These auxiliary file formats have also been implemented:
 
-  * DOSBox raw OPL (.dro)
+  * DOSBox raw OPL (.dro) [version 1 only]
   * RDOS raw OPL (.raw)
 
 Many more formats are planned.
@@ -60,8 +56,7 @@ release, run ./autogen.sh before the commands above.  You can also run
 This distribution includes an example program "gamemus" which serves as both
 a command-line interface to the library as well as an example of how to use
 the library.  This program is installed as part of the "make install" process.
-See "man gamemus" for full details (note the manpage is currently documenting
-intended behaviour, but not everything has been implemented yet.)
+See "man gamemus" for full details.
 
 All supported music file formats are fully documented on the ModdingWiki - see
 http://www.shikadi.net/moddingwiki/
