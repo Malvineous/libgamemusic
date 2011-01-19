@@ -101,6 +101,31 @@ std::string PitchbendEvent::getContent() const
 	return ss.str();
 }
 
+EChannelMismatch::EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
+	throw () :
+		instIndex(instIndex),
+		targetChannel(targetChannel),
+		reason(reason)
+{
+}
+
+EChannelMismatch::~EChannelMismatch()
+	throw ()
+{
+}
+
+const char *EChannelMismatch::what() const
+	throw ()
+{
+	if (this->msg.empty()) {
+		std::stringstream ss;
+		ss << "Instrument #" << this->instIndex << " cannot be played on "
+			"channel #" << (this->targetChannel + 1) << ": " << this->reason;
+		this->msg = ss.str();
+	}
+	return this->msg.c_str();
+}
+
 void PitchbendEvent::processEvent(EventHandler *handler)
 	throw (std::ios::failure)
 {

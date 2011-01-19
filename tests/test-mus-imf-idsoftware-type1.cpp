@@ -30,6 +30,22 @@
 	"\x20\x00" \
 	imf_rhythm_hihat
 
+#define testdata_rhythm_cymbal \
+	"\x20\x00" \
+	imf_rhythm_cymbal
+
+#define testdata_rhythm_tom \
+	"\x28\x00" \
+	imf_rhythm_tom
+
+#define testdata_rhythm_snare \
+	"\x28\x00" \
+	imf_rhythm_snare
+
+#define testdata_rhythm_bassdrum \
+	"\x3c\x00" \
+	imf_rhythm_bassdrum
+
 #define MUSIC_CLASS fmt_mus_imf_idsoftware_type1
 #define MUSIC_TYPE  "imf-idsoftware-type1"
 #include "test-musicreader.hpp"

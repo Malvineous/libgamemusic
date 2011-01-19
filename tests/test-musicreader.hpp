@@ -102,6 +102,79 @@ struct FIXTURE_NAME: public default_sample {
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
 	}
 
+	/// Test a rhythm-mode instrument
+	/**
+	 * @param rhythm
+	 *   Rhythm instrument (1 == hihat, etc.)
+	 *
+	 * @param opIndex
+	 *   Operator index (0 == mod, 1 == car, 2 == both)
+	 */
+	void testRhythm(int rhythm, int opIndex)
+	{
+		gm::EventPtr evOn = this->music->readNextEvent();
+		BOOST_REQUIRE_MESSAGE(evOn, "Test data contains no events!");
+
+		gm::NoteOnEvent *pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
+
+		if (!pevNoteOn) {
+			// First event wasn't note-on, keep reading until we reach one.  This
+			// allows extra initial events (like tempo) to be ignored.
+			do {
+				evOn = this->music->readNextEvent();
+				pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
+			} while ((evOn) && (!pevNoteOn));
+		}
+
+		BOOST_REQUIRE_MESSAGE(pevNoteOn, "No note-on events found");
+
+		// Note must play immediately at start of song
+		BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
+
+		gm::PatchBankPtr bank = this->music->getPatchBank();
+		gm::OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<gm::OPLPatchBank>(bank);
+		BOOST_REQUIRE_MESSAGE(instruments, "Test fault: Tried to run OPL test for "
+			"music format that doesn't have OPL instruments");
+
+		gm::OPLPatchPtr inst = instruments->getTypedPatch(0);
+		// Make sure instrument is the correct rhythm-mode one
+		BOOST_REQUIRE_EQUAL(inst->rhythm, rhythm);
+
+		// Make sure the correct parameters have been set
+		gm::OPLOperator *op;
+checkInstrumentAgain:
+		if (opIndex == 0) op = &inst->m;
+		else op = &inst->c;
+		BOOST_REQUIRE_EQUAL(op->enableTremolo, true);
+		BOOST_REQUIRE_EQUAL(op->enableVibrato, false);
+		BOOST_REQUIRE_EQUAL(op->enableSustain, true);
+		BOOST_REQUIRE_EQUAL(op->enableKSR, false);
+		BOOST_REQUIRE_EQUAL(op->freqMult, 14);
+		BOOST_REQUIRE_EQUAL(op->scaleLevel, 1);
+		BOOST_REQUIRE_EQUAL(op->outputLevel, 63);
+		BOOST_REQUIRE_EQUAL(op->attackRate, 14);
+		BOOST_REQUIRE_EQUAL(op->decayRate, 13);
+		BOOST_REQUIRE_EQUAL(op->sustainRate, 12);
+		BOOST_REQUIRE_EQUAL(op->releaseRate, 11);
+		BOOST_REQUIRE_EQUAL(op->waveSelect, 6);
+		if (opIndex == 2) {
+			opIndex = 0;
+			goto checkInstrumentAgain;
+		}
+
+		gm::EventPtr evOff = this->music->readNextEvent();
+		BOOST_REQUIRE_MESSAGE(evOff,
+			"Test data didn't contain an event following the note-on!");
+
+		gm::NoteOffEvent *pevNoteOff = dynamic_cast<gm::NoteOffEvent *>(evOff.get());
+		BOOST_REQUIRE_MESSAGE(pevNoteOff,
+			"Event following note-on was not a note-off");
+
+		BOOST_REQUIRE_EQUAL(pevNoteOff->channel, pevNoteOn->channel);
+		// Note must be of a particular length.
+		BOOST_REQUIRE_EQUAL(pevNoteOff->absTime, 0x10);
+	}
+
 };
 
 BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
@@ -222,49 +295,60 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(rhythm_hihat))
 
 	this->init(makeString(testdata_rhythm_hihat));
 
-	gm::EventPtr evOn = this->music->readNextEvent();
-	BOOST_REQUIRE_MESSAGE(evOn, "Test data contains no events!");
+	this->testRhythm(
+		1, // hihat
+		0  // modulator
+	);
+}
 
-	gm::NoteOnEvent *pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
+BOOST_AUTO_TEST_CASE(TEST_NAME(rhythm_cymbal))
+{
+	BOOST_TEST_MESSAGE("Testing top cymbal rhythm instrument");
 
-	if (!pevNoteOn) {
-		// First event wasn't note-on, keep reading until we reach one.  This
-		// allows extra initial events (like tempo) to be ignored.
-		do {
-			evOn = this->music->readNextEvent();
-			pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
-		} while ((evOn) && (!pevNoteOn));
-	}
+	this->init(makeString(testdata_rhythm_cymbal));
 
-	BOOST_REQUIRE_MESSAGE(pevNoteOn, "No note-on events found");
+	this->testRhythm(
+		2, // top cymbal
+		1  // carrier
+	);
+}
 
-	// Note must play immediately at start of song.
-	BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
+BOOST_AUTO_TEST_CASE(TEST_NAME(rhythm_tom))
+{
+	BOOST_TEST_MESSAGE("Testing tomtom rhythm instrument");
 
-	gm::PatchBankPtr bank = this->music->getPatchBank();
-	gm::OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<gm::OPLPatchBank>(bank);
-	BOOST_REQUIRE_MESSAGE(instruments, "Test fault: Tried to run OPL test for "
-		"music format that doesn't have OPL instruments");
+	this->init(makeString(testdata_rhythm_tom));
 
-	gm::OPLPatchPtr inst = instruments->getTypedPatch(0);
-	// Make sure instrument is a rhythm-mode hihat
-	BOOST_REQUIRE_EQUAL(inst->rhythm, 1);
+	this->testRhythm(
+		3, // tomtom
+		0  // modulator
+	);
+}
 
+BOOST_AUTO_TEST_CASE(TEST_NAME(rhythm_snare))
+{
+	BOOST_TEST_MESSAGE("Testing snare rhythm instrument");
 
-	gm::EventPtr evOff = this->music->readNextEvent();
-	BOOST_REQUIRE_MESSAGE(evOff,
-		"Test data didn't contain an event following the note-on!");
+	this->init(makeString(testdata_rhythm_snare));
 
-	gm::NoteOffEvent *pevNoteOff = dynamic_cast<gm::NoteOffEvent *>(evOff.get());
-	BOOST_REQUIRE_MESSAGE(pevNoteOff,
-		"Event following note-on was not a note-off");
+	this->testRhythm(
+		4, // snare drum
+		1  // carrier
+	);
+}
 
-	BOOST_REQUIRE_EQUAL(pevNoteOff->channel, pevNoteOn->channel);
-	// Note must be of a particular length.
-	BOOST_REQUIRE_EQUAL(pevNoteOff->absTime, 0x10);
+BOOST_AUTO_TEST_CASE(TEST_NAME(rhythm_bassdrum))
+{
+	BOOST_TEST_MESSAGE("Testing bass drum rhythm instrument");
+
+	this->init(makeString(testdata_rhythm_bassdrum));
+
+	this->testRhythm(
+		5, // bass drum
+		2  // modulator + carrier
+	);
 }
 #endif
-
 
 BOOST_AUTO_TEST_SUITE_END()
 

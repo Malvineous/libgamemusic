@@ -28,6 +28,18 @@
 #define testdata_rhythm_hihat \
 	imf_rhythm_hihat
 
+#define testdata_rhythm_cymbal \
+	imf_rhythm_cymbal
+
+#define testdata_rhythm_tom \
+	imf_rhythm_tom
+
+#define testdata_rhythm_snare \
+	imf_rhythm_snare
+
+#define testdata_rhythm_bassdrum \
+	imf_rhythm_bassdrum
+
 #define MUSIC_CLASS fmt_mus_imf_idsoftware_type0
 #define MUSIC_TYPE  "imf-idsoftware-type0"
 #include "test-musicreader.hpp"

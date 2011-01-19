@@ -130,6 +130,60 @@ struct FIXTURE_NAME: public default_sample {
 		return this->default_sample::is_equal(strExpected, this->suppBase[type]->str());
 	}
 
+	/// Test a rhythm-mode instrument
+	/**
+	 * @param rhythm
+	 *   Rhythm instrument (1 == hihat, etc.)
+	 *
+	 * @param opIndex
+	 *   Operator index (0 == mod, 1 == car, 2 == both)
+	 */
+	void testRhythm(int rhythm, int opIndex)
+	{
+		gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
+		instruments->setPatchCount(1);
+		gm::OPLPatchPtr newInst(new gm::OPLPatch);
+		newInst->rhythm = rhythm;
+		gm::OPLOperator *op;
+setInstrumentAgain:
+		if (opIndex == 0) op = &newInst->m;
+		else op = &newInst->c;
+		op->enableTremolo = true;
+		op->enableVibrato = false;
+		op->enableSustain = true;
+		op->enableKSR = false;
+		op->freqMult = 14;
+		op->scaleLevel = 1;
+		op->outputLevel = 63;
+		op->attackRate = 14;
+		op->decayRate = 13;
+		op->sustainRate = 12;
+		op->releaseRate = 11;
+		op->waveSelect = 6;
+		if (opIndex == 2) {
+			opIndex = 0;
+			goto setInstrumentAgain;
+		}
+		instruments->setPatch(0, newInst);
+		this->music->setPatchBank(instruments);
+
+		this->init(false); // set tempo but not instruments
+
+		gm::NoteOnEvent *pevOn = new gm::NoteOnEvent();
+		gm::EventPtr evOn(pevOn);
+		pevOn->centiHertz = 44000;
+		pevOn->absTime = 0;
+		pevOn->channel = 8 + rhythm;
+		pevOn->instrument = 0;
+		evOn->processEvent(this->music.get());
+
+		gm::NoteOffEvent *pevOff = new gm::NoteOffEvent();
+		gm::EventPtr evOff(pevOff);
+		pevOff->absTime = 0x10;
+		pevOff->channel = 8 + rhythm;
+		evOff->processEvent(this->music.get());
+	}
+
 };
 
 BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
@@ -165,45 +219,74 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(write_rhythm_hihat))
 {
 	BOOST_TEST_MESSAGE("Testing write of hihat rhythm instrument");
 
-	gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
-	instruments->setPatchCount(1);
-	gm::OPLPatchPtr newInst(new gm::OPLPatch);
-	newInst->rhythm = 1; // hihat
-	gm::OPLOperator *op = &newInst->m; // hihat uses modulator only
-	op->enableTremolo = true;
-	op->enableVibrato = false;
-	op->enableSustain = true;
-	op->enableKSR = false;
-	op->freqMult = 14;
-	op->scaleLevel = 1;
-	op->outputLevel = 63;
-	op->attackRate = 14;
-	op->decayRate = 13;
-	op->sustainRate = 12;
-	op->releaseRate = 11;
-	op->waveSelect = 6;
-	instruments->setPatch(0, newInst);
-	this->music->setPatchBank(instruments);
-
-	this->init(false); // set tempo but not instruments
-
-	gm::NoteOnEvent *pevOn = new gm::NoteOnEvent();
-	gm::EventPtr evOn(pevOn);
-	pevOn->centiHertz = 44000;
-	pevOn->absTime = 0;
-	pevOn->channel = 9; // TEMP
-	pevOn->instrument = 0;
-	evOn->processEvent(this->music.get());
-
-	gm::NoteOffEvent *pevOff = new gm::NoteOffEvent();
-	gm::EventPtr evOff(pevOff);
-	pevOff->absTime = 0x10;
-	pevOff->channel = 9;  // TEMP
-	evOff->processEvent(this->music.get());
+	this->testRhythm(
+		1, // hihat
+		0  // modulator
+	);
 
 	BOOST_CHECK_MESSAGE(
 		is_equal(makeString(TEST_RESULT(rhythm_hihat))),
-		"Error generating rhythm hihat on/off event"
+		"Error generating hihat rhythm on/off event"
+	);
+}
+
+BOOST_AUTO_TEST_CASE(TEST_NAME(write_rhythm_cymbal))
+{
+	BOOST_TEST_MESSAGE("Testing write of top cymbal rhythm instrument");
+
+	this->testRhythm(
+		2, // cymbal
+		1  // carrier
+	);
+
+	BOOST_CHECK_MESSAGE(
+		is_equal(makeString(TEST_RESULT(rhythm_cymbal))),
+		"Error generating top cymbal rhythm on/off event"
+	);
+}
+
+BOOST_AUTO_TEST_CASE(TEST_NAME(write_rhythm_tom))
+{
+	BOOST_TEST_MESSAGE("Testing write of tomtom rhythm instrument");
+
+	this->testRhythm(
+		3, // tomtom
+		0  // modulator
+	);
+
+	BOOST_CHECK_MESSAGE(
+		is_equal(makeString(TEST_RESULT(rhythm_tom))),
+		"Error generating tomtom rhythm on/off event"
+	);
+}
+
+BOOST_AUTO_TEST_CASE(TEST_NAME(write_rhythm_snare))
+{
+	BOOST_TEST_MESSAGE("Testing write of snare drum rhythm instrument");
+
+	this->testRhythm(
+		4, // snare drum
+		1  // carrier
+	);
+
+	BOOST_CHECK_MESSAGE(
+		is_equal(makeString(TEST_RESULT(rhythm_snare))),
+		"Error generating snare drum rhythm on/off event"
+	);
+}
+
+BOOST_AUTO_TEST_CASE(TEST_NAME(write_rhythm_bassdrum))
+{
+	BOOST_TEST_MESSAGE("Testing write of bassdrum rhythm instrument");
+
+	this->testRhythm(
+		5, // bass drum
+		2  // modulator + carrier
+	);
+
+	BOOST_CHECK_MESSAGE(
+		is_equal(makeString(TEST_RESULT(rhythm_bassdrum))),
+		"Error generating bass drum rhythm on/off event"
 	);
 }
 #endif

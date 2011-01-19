@@ -49,6 +49,20 @@
 /// mode requires a different formula.
 #define OPL_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
 
+/// Convert the OPLPatch::rhythm value into text for error messages.
+const char *rhythmToText(int rhythm)
+{
+	switch (rhythm) {
+		case 0: return "normal (non-rhythm) instrument";
+		case 1: return "hi-hat";
+		case 2: return "top cymbal";
+		case 3: return "tom tom";
+		case 4: return "snare drum";
+		case 5: return "bass drum";
+		default: return "[unknown instrument type]";
+	}
+}
+
 using namespace camoto::gamemusic;
 
 MusicReader_GenericOPL::MusicReader_GenericOPL(DelayType delayType)
@@ -496,7 +510,7 @@ void MusicWriter_GenericOPL::handleEvent(TempoEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
-	throw (std::ios::failure)
+	throw (std::ios::failure, EChannelMismatch)
 {
 	assert(this->inst);
 
@@ -520,6 +534,16 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 	if (oplChannel > 8) {
 		// Rhythm-mode instrument
 		rhythm = oplChannel - 8;
+
+		// Make sure the correct rhythm channel is in use
+		if (i->rhythm != rhythm) {
+			std::stringstream ss;
+			ss << "Instrument type mismatch - patch was for "
+				<< rhythmToText(i->rhythm) << " but channel can only be used for "
+				<< rhythmToText(rhythm);
+			throw EChannelMismatch(ev->instrument, oplChannel, ss.str());
+		}
+
 		switch (rhythm) {
 			case 1:
 				oplChannel = 7;
@@ -543,7 +567,15 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 				this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
 				break; // both, bassdrum
 		}
+
 	} else { // normal instrument, write both operators
+		if (i->rhythm != 0) {
+			std::stringstream ss;
+			ss << "Instrument type mismatch - patch was for rhythm instrument ("
+				<< rhythmToText(i->rhythm) << ") but channel can only be used for "
+					"normal (non-rhythm) instruments";
+			throw EChannelMismatch(ev->instrument, oplChannel, ss.str());
+		}
 		this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
 		this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
 	}

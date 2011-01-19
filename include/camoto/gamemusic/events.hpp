@@ -138,6 +138,37 @@ struct PitchbendEvent: virtual public Event
 		throw (std::ios::failure);
 };
 
+/// Exception thrown when playing a note on an invalid channel
+/**
+ * Certain formats have limits on which types of instruments can be played on
+ * which channels (e.g. OPL rhythm mode instruments must be played on special
+ * rhythm channels.)  This exception is thrown when a mismatch occurs.  The
+ * what() function will return a reason suitable for display to the user.
+ */
+class EChannelMismatch: virtual public std::exception {
+	protected:
+		int instIndex;      ///< Instrument ID (starting at 0)
+		int targetChannel;  ///< Target channel (starting at 0, but +1 for messages)
+		std::string reason; ///< User-readable reason for mismatch
+
+		/// Message displayed to use.
+		/**
+		 * This is declared mutable as it will be populated by the first call to
+		 * the const function what(), then the cached value will be returned on
+		 * subsequent calls.
+		 */
+		mutable std::string msg;
+
+	public:
+		EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
+			throw ();
+
+		~EChannelMismatch()
+			throw ();
+
+		virtual const char *what() const
+			throw ();
+};
 
 /// Callback interface
 /**
@@ -152,7 +183,7 @@ class EventHandler
 			throw (std::ios::failure) = 0;
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure) = 0;
+			throw (std::ios::failure, EChannelMismatch) = 0;
 
 		virtual void handleEvent(NoteOffEvent *ev)
 			throw (std::ios::failure) = 0;

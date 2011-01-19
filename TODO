@@ -10,3 +10,5 @@ Outstanding tasks
 
  - Add a velocity value to the NoteOnEvent and use the OPL's volume register
    for this value (removing it from the instrument settings...maybe.)
+
+ - Global OPL settings (tremolo/vibrato depth) currently cannot be set.

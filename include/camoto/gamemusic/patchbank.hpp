@@ -31,7 +31,9 @@
 /// Exception thrown when adding a patch to a bank that doesn't support that
 /// patch type (e.g. adding a sampled patch to an OPL bank)
 class EBadPatchType: public std::exception {
-	// TODO: override what()
+	public:
+		virtual const char *what() const
+			throw ();
 };
 
 namespace camoto {
