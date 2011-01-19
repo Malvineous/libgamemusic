@@ -139,8 +139,24 @@ int main(int iArgC, char *cArgV[])
 					std::string code = nextType->getCode();
 					std::cout << code;
 					int len = code.length();
-					if (len < 20) std::cout << std::string(20-code.length(), ' ');
-					std::cout << ' ' << nextType->getFriendlyName() << '\n';
+					if (len < 20) std::cout << std::string(20-len, ' ');
+					std::string desc = nextType->getFriendlyName();
+					std::cout << ' ' << desc;
+					std::vector<std::string> exts = nextType->getFileExtensions();
+					if (exts.size() > 0) {
+						len = desc.length();
+						if (len < 40) std::cout << std::string(40-len, ' ');
+						std::cout << " [";
+						std::string sep;
+						for (std::vector<std::string>::iterator i = exts.begin();
+							i != exts.end();
+							i++
+						) {
+							std::cout << sep << "*." << *i;
+							if (sep.empty()) sep = "; ";
+						}
+						std::cout << "]\n";
+					}
 				}
 				return RET_OK;
 			} else if (
