@@ -53,7 +53,7 @@ struct Event {
 	/// Call the handleEvent() function in an EventHandler class, passing this
 	/// event as the parameter.
 	virtual void processEvent(EventHandler *handler)
-		throw (std::ios::failure) = 0;
+		throw (std::exception) = 0;
 };
 
 /// Shared pointer to an event
@@ -79,7 +79,7 @@ struct TempoEvent: virtual public Event
 		throw ();
 
 	virtual void processEvent(EventHandler *handler)
-		throw (std::ios::failure);
+		throw (std::exception);
 };
 
 
@@ -105,7 +105,7 @@ struct NoteOnEvent: virtual public Event
 		throw ();
 
 	virtual void processEvent(EventHandler *handler)
-		throw (std::ios::failure);
+		throw (std::exception);
 };
 
 
@@ -116,7 +116,7 @@ struct NoteOffEvent: virtual public Event
 		throw ();
 
 	virtual void processEvent(EventHandler *handler)
-		throw (std::ios::failure);
+		throw (std::exception);
 };
 
 
@@ -135,7 +135,7 @@ struct PitchbendEvent: virtual public Event
 		throw ();
 
 	virtual void processEvent(EventHandler *handler)
-		throw (std::ios::failure);
+		throw (std::exception);
 };
 
 /// Exception thrown when playing a note on an invalid channel

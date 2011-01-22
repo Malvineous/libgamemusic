@@ -28,8 +28,8 @@ std::string Event::getContent() const
 {
 	std::ostringstream ss;
 	ss
+		<< "time=" << this->absTime
 		<< ";channel=" << this->channel
-		<< ";time=" << this->absTime
 	;
 	return ss.str();
 }
@@ -39,14 +39,14 @@ std::string TempoEvent::getContent() const
 {
 	std::ostringstream ss;
 	ss
-		<< "event=tempo;us_per_tick=" << this->usPerTick
 		<< this->Event::getContent()
+		<< ";event=tempo;us_per_tick=" << this->usPerTick
 	;
 	return ss.str();
 }
 
 void TempoEvent::processEvent(EventHandler *handler)
-	throw (std::ios::failure)
+	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
@@ -57,16 +57,16 @@ std::string NoteOnEvent::getContent() const
 {
 	std::ostringstream ss;
 	ss
-		<< "event=note-on;freq=" << this->centiHertz
+		<< this->Event::getContent()
+		<< ";event=note-on;freq=" << this->centiHertz
 		<< ";instrument=" << this->instrument
 		<< ";velocity=" << (int)this->velocity
-		<< this->Event::getContent()
 	;
 	return ss.str();
 }
 
 void NoteOnEvent::processEvent(EventHandler *handler)
-	throw (std::ios::failure)
+	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
@@ -77,14 +77,14 @@ std::string NoteOffEvent::getContent() const
 {
 	std::ostringstream ss;
 	ss
-		<< "event=note-off"
 		<< this->Event::getContent()
+		<< ";event=note-off"
 	;
 	return ss.str();
 }
 
 void NoteOffEvent::processEvent(EventHandler *handler)
-	throw (std::ios::failure)
+	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
@@ -95,10 +95,17 @@ std::string PitchbendEvent::getContent() const
 {
 	std::ostringstream ss;
 	ss
-		<< "event=pitchbend;freq=" << this->centiHertz
 		<< this->Event::getContent()
+		<< ";event=pitchbend;freq=" << this->centiHertz
 	;
 	return ss.str();
+}
+
+void PitchbendEvent::processEvent(EventHandler *handler)
+	throw (std::exception)
+{
+	handler->handleEvent(this);
+	return;
 }
 
 EChannelMismatch::EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
@@ -124,11 +131,4 @@ const char *EChannelMismatch::what() const
 		this->msg = ss.str();
 	}
 	return this->msg.c_str();
-}
-
-void PitchbendEvent::processEvent(EventHandler *handler)
-	throw (std::ios::failure)
-{
-	handler->handleEvent(this);
-	return;
 }
