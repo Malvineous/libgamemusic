@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_HPP_
-#define _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_HPP_
+#ifndef _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_V1_HPP_
+#define _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_V1_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
 #include "mus-generic-opl.hpp"
@@ -116,4 +116,4 @@ class MusicWriter_DRO_v1: virtual public MusicWriter_GenericOPL {
 } // namespace gamemusic
 } // namespace camoto
 
-#endif // _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_HPP_
+#endif // _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_V1_HPP_

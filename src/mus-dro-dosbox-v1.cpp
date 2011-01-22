@@ -47,12 +47,6 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 E_CERTAINTY MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
-//	psMusic->seekg(0, std::ios::end);
-//	io::stream_offset len = psMusic->tellg();
-
-	// TESTED BY: mus_imf_idsoftware_isinstance_c01
-//	if (len < 2) return EC_DEFINITELY_NO; // too short
-
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c01
 	char sig[8];
@@ -129,13 +123,13 @@ nextCode:
 			case 0x00: // short delay
 				this->input >> u8(code);
 				this->lenData--;
-				*delay += code;
+				*delay += code + 1;
 				goto nextCode;
 			case 0x01: { // long delay
 				uint16_t amt;
 				this->input >> u16le(amt);
 				this->lenData -= 2;
-				*delay += amt;
+				*delay += amt + 1;
 				goto nextCode;
 			}
 			case 0x02:
@@ -233,17 +227,17 @@ void MusicWriter_DRO_v1::nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg
 	// Convert ticks into a DRO delay value (which is actually milliseconds)
 	delay = delay * this->usPerTick / 1000;
 
-	if (delay > 255) {
+	if (delay > 256) {
 		// Write out a 'long' delay
 		this->output
 			<< u8(1)
-			<< u16le(delay)
+			<< u16le(delay - 1)
 		;
 	} else if (delay > 0) {
 		// Write out a 'short' delay
 		this->output
 			<< u8(0)
-			<< u8(delay)
+			<< u8(delay - 1)
 		;
 	}
 	if (chipIndex != this->lastChipIndex) {

@@ -24,7 +24,7 @@
 	"DBRAWOPL" "\x00\x00\x01\x00" \
 	"\x10\x00\x00\x00" "\x08\x00\x00\x00" "\x00\x00\x00\x00" \
 	"\xa0\x44" \
-	"\xb0\x32" "\x00\x10" \
+	"\xb0\x32" "\x00\x0f" \
 	"\xb0\x12"
 
 #define HAS_OPL_RHYTHM_INSTRUMENTS
@@ -37,7 +37,7 @@
 	"\x71\xed" \
 	"\x91\xcb" \
 	"\xf1\x06" \
-	"\xbd\x21" "\x00\x10" \
+	"\xbd\x21" "\x00\x0f" \
 	"\xbd\x20"
 
 #define testdata_rhythm_cymbal \
@@ -48,7 +48,7 @@
 	"\x75\xed" \
 	"\x95\xcb" \
 	"\xf5\x06" \
-	"\xbd\x22" "\x00\x10" \
+	"\xbd\x22" "\x00\x0f" \
 	"\xbd\x20"
 
 #define testdata_rhythm_tom \
@@ -63,7 +63,7 @@
 	"\xa8\x44" \
 	"\xb8\x12" \
 	\
-	"\xbd\x24" "\x00\x10" \
+	"\xbd\x24" "\x00\x0f" \
 	"\xbd\x20"
 
 #define testdata_rhythm_snare \
@@ -78,7 +78,7 @@
 	"\xa7\x44" \
 	"\xb7\x12" \
 	\
-	"\xbd\x28" "\x00\x10" \
+	"\xbd\x28" "\x00\x0f" \
 	"\xbd\x20"
 
 #define testdata_rhythm_bassdrum \
@@ -99,7 +99,7 @@
 	"\xa6\x44" \
 	"\xb6\x12" \
 	\
-	"\xbd\x30" "\x00\x10" \
+	"\xbd\x30" "\x00\x0f" \
 	"\xbd\x20"
 
 #define MUSIC_CLASS fmt_mus_dro_dosbox_v1
