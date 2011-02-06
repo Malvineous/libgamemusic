@@ -1,0 +1,6 @@
+Bugs still needing to be fixed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ - stellar7.raw doesn't convert properly (final bass note at end of dynamix
+   logo lost, main drum is too loud)
+
+ - VGFM rhythm-mode percussion still doesn't convert exactly
