@@ -10,6 +10,7 @@ libgamemusic_la_SOURCES += patchbank-fmt-ibk.cpp
 libgamemusic_la_SOURCES += mus-generic-opl.cpp
 libgamemusic_la_SOURCES += mus-imf-idsoftware.cpp
 libgamemusic_la_SOURCES += mus-dro-dosbox-v1.cpp
+libgamemusic_la_SOURCES += mus-dro-dosbox-v2.cpp
 libgamemusic_la_SOURCES += mus-raw-rdos.cpp
 
 EXTRA_libgamemusic_la_SOURCES = patchbank-singletype.hpp
@@ -17,6 +18,7 @@ EXTRA_libgamemusic_la_SOURCES += patchbank-fmt-ibk.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-generic-opl.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-imf-idsoftware.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v1.hpp
+EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v2.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-raw-rdos.hpp
 
 AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(BOOST_CPPFLAGS) -I $(top_srcdir)/include $(libgamecommon_CFLAGS)

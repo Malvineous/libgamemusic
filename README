@@ -38,7 +38,7 @@ these games have been implemented:
 
 These auxiliary file formats have also been implemented:
 
-  * DOSBox raw OPL (.dro) [version 1 only]
+  * DOSBox raw OPL (.dro, v1 and v2)
   * RDOS raw OPL (.raw)
 
 Many more formats are planned.
