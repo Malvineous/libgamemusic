@@ -365,12 +365,18 @@ finishTesting:
 				// Write the output file's header
 				pMusicOut->start();
 
-				int i = 0;
-				for (; ; i++) {
-					gm::EventPtr next = pMusicIn->readNextEvent();
-					if (!next) break; // end of song
-					next->processEvent(pMusicOut.get());
+				try {
+					for (;;) {
+						gm::EventPtr next = pMusicIn->readNextEvent();
+						if (!next) break; // end of song
+						next->processEvent(pMusicOut.get());
+					}
+				} catch (...) {
+					// Write the output file's footer to prevent an assertion failure
+					pMusicOut->finish();
+					throw;
 				}
+
 				// Write the output file's footer
 				pMusicOut->finish();
 
@@ -388,17 +394,20 @@ finishTesting:
 			}
 		} // for (all command line elements)
 
-	} catch (po::unknown_option& e) {
+	} catch (const po::unknown_option& e) {
 		std::cerr << PROGNAME ": " << e.what()
 			<< ".  Use --help for help." << std::endl;
 		return RET_BADARGS;
-	} catch (po::invalid_command_line_syntax& e) {
+	} catch (const po::invalid_command_line_syntax& e) {
 		std::cerr << PROGNAME ": " << e.what()
 			<< ".  Use --help for help." << std::endl;
 		return RET_BADARGS;
-	} catch (std::ios::failure& e) {
+	} catch (const std::ios::failure& e) {
 		std::cerr << PROGNAME ": I/O error - " << e.what() << std::endl;
-		return RET_BADARGS;
+		return RET_UNCOMMON_FAILURE;
+	} catch (const std::exception& e) {
+		std::cerr << PROGNAME ": Unexpected error - " << e.what() << std::endl;
+		return RET_UNCOMMON_FAILURE;
 	}
 
 	return 0;
