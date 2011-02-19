@@ -218,6 +218,8 @@ int main(int iArgC, char *cArgV[])
 			"force open even if the file is not in the given format")
 		("list-formats,i",
 			"list available input/output file formats")
+		("no-pitchbends,b",
+			"don't use pitchbends with -c")
 	;
 
 	po::options_description poHidden("Hidden parameters");
@@ -241,6 +243,7 @@ int main(int iArgC, char *cArgV[])
 
 	bool bScript = false; // show output suitable for script parsing?
 	bool bForceOpen = false; // open anyway even if archive not in given format?
+	bool bUsePitchbends = true; // pass pitchbend events with -c
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
 
@@ -319,6 +322,11 @@ int main(int iArgC, char *cArgV[])
 				(i->string_key.compare("force") == 0)
 			) {
 				bForceOpen = true;
+			} else if (
+				(i->string_key.compare("b") == 0) ||
+				(i->string_key.compare("no-pitchbends") == 0)
+			) {
+				bUsePitchbends = false;
 			}
 		}
 
@@ -399,6 +407,9 @@ int main(int iArgC, char *cArgV[])
 				gm::MP_SUPPDATA suppData;
 				boost::shared_ptr<gm::MusicWriter> pMusicOut(pMusicOutType->create(psMusicOut, suppData));
 				assert(pMusicOut);
+
+				if (!bUsePitchbends) pMusicOut->setFlags(gm::MusicWriter::IntegerNotesOnly);
+
 				try {
 					pMusicOut->setPatchBank(instruments);
 				} catch (EBadPatchType) {
