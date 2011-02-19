@@ -147,6 +147,7 @@ PatchBankPtr MusicReader_GenericOPL::getPatchBank()
 		int numPatches = 0;
 
 		this->rewind();
+		memset(this->oplState, 0, sizeof(this->oplState));
 		uint32_t delay;
 		uint8_t reg, val;
 		uint8_t chipIndex;
@@ -204,10 +205,14 @@ PatchBankPtr MusicReader_GenericOPL::getPatchBank()
 					} else {
 						noteOn[chipIndex][oplChannel] = false;*/
 					}
+				} else {
+					std::cerr << "WARNING: Bad OPL register/channel 0x" << std::hex
+						<< (int)reg << std::endl;
 				}
 			}
 		}
 		this->rewind();
+		memset(this->oplState, 0, sizeof(this->oplState));
 	}
 	return boost::static_pointer_cast<PatchBank>(this->patches);
 }

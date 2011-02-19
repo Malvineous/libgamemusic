@@ -347,7 +347,9 @@ int main(int iArgC, char *cArgV[])
 			return ret;
 		}
 
-		// Default to using the instruments from the source file
+		// Default to using the instruments from the source file.  We don't always
+		// need the patch bank, but without it the instruments won't have been
+		// loaded and assertion failures will happen all over the place!
 		gm::PatchBankPtr instruments = pMusicIn->getPatchBank();
 
 		int iRet = RET_OK;
@@ -355,10 +357,6 @@ int main(int iArgC, char *cArgV[])
 		// Run through the actions on the command line
 		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
 			if (i->string_key.compare("list") == 0) {
-				// We don't need the patch bank, but without it the instruments won't
-				// have been loaded and the instrument field in the note-on events will
-				// contain invalid data.
-				pMusicIn->getPatchBank();
 
 				int i = 0;
 				for (; ; i++) {

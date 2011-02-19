@@ -49,7 +49,8 @@ std::string MusicReader::getMetadata(E_METADATA item) const
 }
 
 MusicWriter::MusicWriter()
-	throw ()
+	throw () :
+		flags(Default)
 {
 }
 
