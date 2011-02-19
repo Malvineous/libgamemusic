@@ -30,15 +30,25 @@ these games have been implemented:
   * Blake Stone (.wlf)
   * Commander Keen (.imf)
   * Cosmo's Cosmic Adventures (.imf)
+  * Drum Blaster (early .cmf)
   * Duke Nukem II (.imf)
+  * Jill of the Jungle (.cmf)
+  * Kiloblaster (.cmf)
   * Major Stryker (.wlf)
+  * Math Rescue (.cmf)
   * Monster Bash (.imf)
   * Operation Body Count (.wlf)
+  * Scud Atak (.cmf)
+  * Solar Winds (.cmf)
+  * Traffic Department 2192 (.cmf)
   * Wolfenstein 3-D (.wlf)
+  * Word Rescue (.cmf) [partial]
+  * Xargon (.cmf)
 
 These auxiliary file formats have also been implemented:
 
   * DOSBox raw OPL (.dro, v1 and v2)
+  * Type-0/single-track MIDI (.mid)
   * RDOS raw OPL (.raw)
 
 Many more formats are planned.

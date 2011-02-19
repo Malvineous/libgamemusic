@@ -11,3 +11,16 @@ Outstanding tasks
  - Add a velocity value to the NoteOnEvent and use the OPL's volume register
    for this value (removing it from the instrument settings...maybe.)
 
+ - Add support for multiple MIDI notes on the same channel
+
+ - Currently no way of detecting which CMF instruments are destined for rhythm
+   channels, thus converting a CMF with rhythm instruments to e.g. DRO will
+   result in bad percussion due to the register settings being loaded into the
+   wrong operator.
+
+ - Scan CMF patches and set deep tremolo event if necessary
+
+ - Support default CMF patches (e.g. for Word Rescue)
+
+ - Recognise MIDI control event to change patches, not just patch-change event
+

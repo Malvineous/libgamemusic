@@ -7,6 +7,9 @@ tests_SOURCES += test-mus-imf-idsoftware-type1.cpp
 tests_SOURCES += test-mus-raw-rdos.cpp
 tests_SOURCES += test-mus-dro-dosbox-v1.cpp
 tests_SOURCES += test-mus-dro-dosbox-v2.cpp
+tests_SOURCES += test-midi.cpp
+tests_SOURCES += test-mus-cmf-creativelabs.cpp
+tests_SOURCES += test-mus-mid-type0.cpp
 
 #EXTRA_tests_SOURCES = tests.hpp test-conv.hpp
 
