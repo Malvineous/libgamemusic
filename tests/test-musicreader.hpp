@@ -58,7 +58,6 @@ struct FIXTURE_NAME: public default_sample {
 	typedef boost::shared_ptr<std::stringstream> sstr_ptr;
 
 	sstr_ptr baseData;
-	void *_do; // unused var, but allows a statement to run in constructor init
 	camoto::iostream_sptr baseStream;
 	gm::MusicReaderPtr music;
 	gm::MP_SUPPDATA suppData;

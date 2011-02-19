@@ -27,7 +27,7 @@
 namespace camoto {
 namespace gamemusic {
 
-/// MusicType implementation for DRO.
+/// MusicType implementation for Rdos Raw.
 class MusicType_RAW: virtual public MusicType {
 
 	public:
@@ -55,7 +55,7 @@ class MusicType_RAW: virtual public MusicType {
 
 };
 
-/// MusicReader class that understands DRO music files.
+/// MusicReader class that understands Rdos RAW music files.
 class MusicReader_RAW: virtual public MusicReader_GenericOPL {
 
 	protected:

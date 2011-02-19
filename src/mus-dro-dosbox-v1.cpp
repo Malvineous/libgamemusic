@@ -32,7 +32,7 @@ std::string MusicType_DRO_v1::getCode() const
 std::string MusicType_DRO_v1::getFriendlyName() const
 	throw ()
 {
-	return "DOSBox Raw OPL (DRO) version 1";
+	return "DOSBox Raw OPL version 1";
 }
 
 std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
@@ -42,7 +42,6 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 	vcExtensions.push_back("dro");
 	return vcExtensions;
 }
-
 
 E_CERTAINTY MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
