@@ -201,6 +201,9 @@ int main(int iArgC, char *cArgV[])
 		("list,l",
 			"list all events in the song")
 
+		("list-instruments,i",
+			"list all instruments in the song")
+
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
 
@@ -216,7 +219,7 @@ int main(int iArgC, char *cArgV[])
 			"format output suitable for script parsing")
 		("force,f",
 			"force open even if the file is not in the given format")
-		("list-formats,i",
+		("list-formats,m",
 			"list available input/output file formats")
 		("no-pitchbends,b",
 			"don't use pitchbends with -c")
@@ -437,6 +440,31 @@ int main(int iArgC, char *cArgV[])
 				pMusicOut->finish();
 
 				std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
+
+			} else if (i->string_key.compare("list-instruments") == 0) {
+				int count = instruments->getPatchCount();
+				std::cout << "Listing " << count << " instruments:\n";
+				for (int i = 0; i < count; i++) {
+					gm::PatchPtr next = instruments->getPatch(i);
+					std::cout << " #" << i << ": ";
+					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(next);
+					if (oplNext) {
+						std::cout << "OPL " << oplNext;
+					} else {
+						gm::MIDIPatchPtr midiNext = boost::dynamic_pointer_cast<gm::MIDIPatch>(next);
+						if (midiNext) {
+							std::cout << "MIDI ";
+							if (midiNext->percussion) {
+								std::cout << "percussion note " << (int)midiNext->midiPatch;
+							} else {
+								std::cout << "patch " << (int)midiNext->midiPatch;
+							}
+						} else {
+							std::cout << "<unknown patch type>";
+						}
+					}
+					std::cout << "\n";
+				}
 
 			} else if (i->string_key.compare("newinst") == 0) {
 				if (i->value[0].empty()) {
