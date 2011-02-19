@@ -138,6 +138,63 @@ struct PitchbendEvent: virtual public Event
 		throw (std::exception);
 };
 
+
+/// Configure the synthesiser's global parameters.
+/**
+ * This event can occur at any time.
+ */
+struct ConfigurationEvent: virtual public Event
+{
+	/// What can be configured.
+	/**
+	 * For boolean values (Enable*) a value of 0 is false/disabled and a value
+	 * of nonzero (usually 1) is true/enabled.
+	 */
+	enum ConfigurationType {
+
+		/// Enable OPL3 mode (or limit to OPL2)
+		/**
+		 * value: 1 for OPL3 mode, 0 for OPL2 mode
+		 */
+		EnableOPL3,
+
+		/// Extend range of OPL tremolo
+		/**
+		 * value: bit0 = 1 to enable, 0 to disable
+		 *        bit1 = 0-1 as chip index
+		 */
+		EnableDeepTremolo,
+
+		/// Extend range of OPL vibrato
+		/**
+		 * value: bit0 = 1 to enable, 0 to disable
+		 *        bit1 = 0-1 as chip index
+		 */
+		EnableDeepVibrato,
+
+		/// Enable OPL rhythm mode
+		/**
+		 * value: 1 to enable, 0 to disable
+		 *
+		 * This is used by the CMF handler and MIDI controller event 0x67.
+		 */
+		EnableRhythm,
+	};
+
+	/// What we are configuring
+	ConfigurationType configType;
+
+	/// What value we are setting (meaning dependent on config type)
+	int value;
+
+	virtual std::string getContent() const
+		throw ();
+
+	virtual void processEvent(EventHandler *handler)
+		throw (std::exception);
+};
+
+
 /// Exception thrown when playing a note on an invalid channel
 /**
  * Certain formats have limits on which types of instruments can be played on
@@ -189,6 +246,9 @@ class EventHandler
 			throw (std::ios::failure) = 0;
 
 		virtual void handleEvent(PitchbendEvent *ev)
+			throw (std::ios::failure) = 0;
+
+		virtual void handleEvent(ConfigurationEvent *ev)
 			throw (std::ios::failure) = 0;
 };
 

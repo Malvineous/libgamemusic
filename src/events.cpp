@@ -108,6 +108,39 @@ void PitchbendEvent::processEvent(EventHandler *handler)
 	return;
 }
 
+std::string ConfigurationEvent::getContent() const
+	throw ()
+{
+	std::ostringstream ss;
+	ss
+		<< this->Event::getContent()
+		<< ";event=config;type="
+	;
+	switch (this->configType) {
+		case EnableOPL3:
+			ss << "enableOPL3";
+			break;
+		case EnableDeepTremolo:
+			ss << "enableDeepTremolo";
+			break;
+		case EnableDeepVibrato:
+			ss << "enableDeepVibrato";
+			break;
+		case EnableRhythm:
+			ss << "enableRhythm";
+			break;
+	}
+	ss << ";value=" << this->value;
+	return ss.str();
+}
+
+void ConfigurationEvent::processEvent(EventHandler *handler)
+	throw (std::exception)
+{
+	handler->handleEvent(this);
+	return;
+}
+
 EChannelMismatch::EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
 	throw () :
 		instIndex(instIndex),

@@ -180,6 +180,9 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 		virtual void handleEvent(PitchbendEvent *ev)
 			throw (std::ios::failure);
 
+		virtual void handleEvent(ConfigurationEvent *ev)
+			throw (std::ios::failure);
+
 		// MusicReader_GenericOPL functions
 
 		/// Change the tempo

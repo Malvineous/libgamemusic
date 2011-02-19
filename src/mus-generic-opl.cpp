@@ -245,6 +245,18 @@ bool MusicReader_GenericOPL::populateEventBuffer()
 		uint8_t oplChannel = reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
 		uint8_t channel = oplChannel + 14 * chipIndex;
 		switch (reg & 0xF0) {
+			case 0x01:
+				if (bitsChanged(0x20)) {
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					EventPtr gev(ev);
+					ev->channel = 0; // unused
+					ev->absTime = this->lastTick;
+					ev->configType = ConfigurationEvent::EnableOPL3;
+					ev->value = (val & 0x20) ? 1 : 0;
+					this->eventBuffer.push_back(gev);
+					addedEvent = true;
+				}
+				break;
 			case 0xA0:
 				if (bitsChanged(0xFF) && (this->oplState[chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON)) {
 					// The pitch has changed while a note was playing
@@ -294,6 +306,28 @@ bool MusicReader_GenericOPL::populateEventBuffer()
 								addedEvent = true;
 							}
 						}
+					}
+					if (bitsChanged(0x80)) {
+						ConfigurationEvent *ev = new ConfigurationEvent();
+						EventPtr gev(ev);
+						ev->channel = 0; // unused
+						ev->absTime = this->lastTick;
+						ev->configType = ConfigurationEvent::EnableDeepTremolo;
+						ev->value = (val & 0x80) ? 1 : 0; // bit0 is enable/disable
+						if (chipIndex) ev->value |= 2;    // bit1 is chip index
+						this->eventBuffer.push_back(gev);
+						addedEvent = true;
+					}
+					if (bitsChanged(0x40)) {
+						ConfigurationEvent *ev = new ConfigurationEvent();
+						EventPtr gev(ev);
+						ev->channel = 0; // unused
+						ev->absTime = this->lastTick;
+						ev->configType = ConfigurationEvent::EnableDeepVibrato;
+						ev->value = (val & 0x40) ? 1 : 0; // bit0 is enable/disable
+						if (chipIndex) ev->value |= 2;    // bit1 is chip index
+						this->eventBuffer.push_back(gev);
+						addedEvent = true;
 					}
 				} else if (bitsChanged(OPLBIT_KEYON)) {
 					if (val & OPLBIT_KEYON) {
@@ -719,6 +753,31 @@ void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
 		| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 	);
 
+	this->lastTick = ev->absTime;
+	return;
+}
+
+void MusicWriter_GenericOPL::handleEvent(ConfigurationEvent *ev)
+	throw (std::ios::failure)
+{
+	int delay = ev->absTime - this->lastTick;
+	switch (ev->configType) {
+		case ConfigurationEvent::EnableOPL3:
+			this->writeNextPair(delay, 0, 0x01, ev->value ? 0x20 : 0x00);
+			break;
+		case ConfigurationEvent::EnableDeepTremolo:
+			if (ev->value & 1) this->oplState[ev->value >> 1][0xBD] |= 0x80;
+			else this->oplState[ev->value >> 1][0xBD] &= 0x7F;
+			break;
+		case ConfigurationEvent::EnableDeepVibrato:
+			if (ev->value & 1) this->oplState[ev->value >> 1][0xBD] |= 0x40;
+			else this->oplState[ev->value >> 1][0xBD] &= 0xBF;
+			break;
+		case ConfigurationEvent::EnableRhythm:
+			// Nothing required, rhythm mode is enabled the first type a rhythm
+			// instrument is played.
+			break;
+	}
 	this->lastTick = ev->absTime;
 	return;
 }
