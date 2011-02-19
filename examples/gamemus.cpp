@@ -53,6 +53,140 @@ bool split(const std::string& in, char delim, std::string *out1, std::string *ou
 	return bAltDest;
 }
 
+/// Open a music file.
+/**
+ * @param strFilename
+ *   Filename of music or instrument file to open.
+ *
+ * @param typeArg
+ *   Name of command line argument used to specify strType.  Shown to user
+ *   when strType is invalid to indicate which option was at fault.
+ *
+ * @param strType
+ *   File type, empty string for autodetect.
+ *
+ * @param pManager
+ *   Manager instance.
+ *
+ * @param bForceOpen
+ *   True to force files to be opened, even if they are not of the indicated
+ *   file format.
+ *
+ * @return Shared pointer to MusicReader instance.
+ *
+ * @throws int on failure (one of the RET_* values)
+ */
+gm::MusicReaderPtr openMusicFile(const std::string& strFilename,
+	const char *typeArg, const std::string& strType, gm::ManagerPtr pManager,
+	bool bForceOpen)
+	throw (int)
+{
+	boost::shared_ptr<std::ifstream> psMusic(new std::ifstream());
+	psMusic->exceptions(std::ios::badbit | std::ios::failbit);
+	try {
+		psMusic->open(strFilename.c_str(), std::ios::in | std::ios::binary);
+	} catch (std::ios::failure& e) {
+		std::cerr << "Error opening " << strFilename << std::endl;
+		#ifdef DEBUG
+			std::cerr << "e.what(): " << e.what() << std::endl;
+		#endif
+		throw RET_SHOWSTOPPER;
+	}
+
+	gm::MusicTypePtr pMusicType;
+	if (strType.empty()) {
+		// Need to autodetect the file format.
+		gm::MusicTypePtr pTestType;
+		int i = 0;
+		while ((pTestType = pManager->getMusicType(i++))) {
+			gm::E_CERTAINTY cert = pTestType->isInstance(psMusic);
+			switch (cert) {
+				case gm::EC_DEFINITELY_NO:
+					// Don't print anything (TODO: Maybe unless verbose?)
+					break;
+				case gm::EC_UNSURE:
+					std::cout << "File could be: " << pTestType->getFriendlyName()
+						<< " [" << pTestType->getCode() << "]" << std::endl;
+					// If we haven't found a match already, use this one
+					if (!pMusicType) pMusicType = pTestType;
+					break;
+				case gm::EC_POSSIBLY_YES:
+					std::cout << "File is likely to be: " << pTestType->getFriendlyName()
+						<< " [" << pTestType->getCode() << "]" << std::endl;
+					// Take this one as it's better than an uncertain match
+					pMusicType = pTestType;
+					break;
+				case gm::EC_DEFINITELY_YES:
+					std::cout << "File is definitely: " << pTestType->getFriendlyName()
+						<< " [" << pTestType->getCode() << "]" << std::endl;
+					pMusicType = pTestType;
+					// Don't bother checking any other formats if we got a 100% match
+					goto finishTesting;
+			}
+		}
+finishTesting:
+		if (!pMusicType) {
+			std::cerr << "Unable to automatically determine the file type.  Use "
+				"the " << typeArg << " option to manually specify the file format."
+				<< std::endl;
+			throw RET_BE_MORE_SPECIFIC;
+		}
+	} else {
+		gm::MusicTypePtr pTestType(pManager->getMusicTypeByCode(strType));
+		if (!pTestType) {
+			std::cerr << "Unknown file type given to " << typeArg << ": " << strType
+				<< std::endl;
+			throw RET_BADARGS;
+		}
+		pMusicType = pTestType;
+	}
+
+	assert(pMusicType != NULL);
+
+	// Check to see if the file is actually in this format
+	if (!pMusicType->isInstance(psMusic)) {
+		if (bForceOpen) {
+			std::cerr << "Warning: " << strFilename << " is not a "
+				<< pMusicType->getFriendlyName() << ", open forced." << std::endl;
+		} else {
+			std::cerr << "Invalid format: " << strFilename << " is not a "
+				<< pMusicType->getFriendlyName() << "\n"
+				<< "Use the -f option to try anyway." << std::endl;
+			throw RET_BE_MORE_SPECIFIC;
+		}
+	}
+
+	// See if the format requires any supplemental files
+	gm::MP_SUPPLIST suppList = pMusicType->getRequiredSupps(strFilename);
+	gm::MP_SUPPDATA suppData;
+	if (suppList.size() > 0) {
+		for (gm::MP_SUPPLIST::iterator i = suppList.begin(); i != suppList.end(); i++) {
+			try {
+				boost::shared_ptr<std::fstream> suppStream(new std::fstream());
+				suppStream->exceptions(std::ios::badbit | std::ios::failbit);
+				std::cout << "Opening supplemental file " << i->second << std::endl;
+				suppStream->open(i->second.c_str(), std::ios::in | std::ios::out | std::ios::binary);
+				gm::SuppItem si;
+				si.stream = suppStream;
+				//si.fnTruncate = boost::bind<void>(truncate, i->second.c_str(), _1);
+				suppData[i->first] = si;
+			} catch (std::ios::failure e) {
+				std::cerr << "Error opening supplemental file " << i->second.c_str() << std::endl;
+				#ifdef DEBUG
+					std::cerr << "e.what(): " << e.what() << std::endl;
+				#endif
+				throw RET_SHOWSTOPPER;
+			}
+		}
+	}
+
+	// Open the archive file
+	gm::MusicReaderPtr pMusicIn(pMusicType->open(psMusic, suppData));
+	assert(pMusicIn);
+
+	return pMusicIn;
+}
+
 int main(int iArgC, char *cArgV[])
 {
 	// Set a better exception handler
@@ -69,6 +203,9 @@ int main(int iArgC, char *cArgV[])
 
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
+
+		("newinst,n", po::value<std::string>(),
+			"override the instrument bank used by subsequent conversions (-c)")
 	;
 
 	po::options_description poOptions("Options");
@@ -130,6 +267,8 @@ int main(int iArgC, char *cArgV[])
 					"Build date " __DATE__ " " __TIME__ << "\n"
 					"\n"
 					"Usage: gamemus [options] <infile> [actions...]\n" << poVisible << "\n"
+					"--convert requires a filetype prefix, e.g. raw-rdos:out.raw.  Also works\n"
+					"with --newinst if the file type cannot be autodetected."
 					<< std::endl;
 				return RET_OK;
 			} else if (i->string_key.compare("list-formats") == 0) {
@@ -155,8 +294,9 @@ int main(int iArgC, char *cArgV[])
 							std::cout << sep << "*." << *i;
 							if (sep.empty()) sep = "; ";
 						}
-						std::cout << "]\n";
+						std::cout << ']';
 					}
+					std::cout << '\n';
 				}
 				return RET_OK;
 			} else if (
@@ -189,116 +329,17 @@ int main(int iArgC, char *cArgV[])
 		std::cout << "Opening " << strFilename << " as type "
 			<< (strType.empty() ? "<autodetect>" : strType) << std::endl;
 
-		boost::shared_ptr<std::ifstream> psMusic(new std::ifstream());
-		psMusic->exceptions(std::ios::badbit | std::ios::failbit);
+		gm::MusicReaderPtr pMusicIn;
 		try {
-			psMusic->open(strFilename.c_str(), std::ios::in | std::ios::binary);
-		} catch (std::ios::failure& e) {
-			std::cerr << "Error opening " << strFilename << std::endl;
-			#ifdef DEBUG
-				std::cerr << "e.what(): " << e.what() << std::endl;
-			#endif
-			return RET_SHOWSTOPPER;
+			pMusicIn = openMusicFile(strFilename, "-t/--type", strType, pManager, bForceOpen);
+		} catch (int ret) {
+			return ret;
 		}
 
-		gm::MusicTypePtr pMusicType;
-		if (strType.empty()) {
-			// Need to autodetect the file format.
-			gm::MusicTypePtr pTestType;
-			int i = 0;
-			while ((pTestType = pManager->getMusicType(i++))) {
-				gm::E_CERTAINTY cert = pTestType->isInstance(psMusic);
-				switch (cert) {
-					case gm::EC_DEFINITELY_NO:
-						// Don't print anything (TODO: Maybe unless verbose?)
-						break;
-					case gm::EC_UNSURE:
-						std::cout << "File could be: " << pTestType->getFriendlyName()
-							<< " [" << pTestType->getCode() << "]" << std::endl;
-						// If we haven't found a match already, use this one
-						if (!pMusicType) pMusicType = pTestType;
-						break;
-					case gm::EC_POSSIBLY_YES:
-						std::cout << "File is likely to be: " << pTestType->getFriendlyName()
-							<< " [" << pTestType->getCode() << "]" << std::endl;
-						// Take this one as it's better than an uncertain match
-						pMusicType = pTestType;
-						break;
-					case gm::EC_DEFINITELY_YES:
-						std::cout << "File is definitely: " << pTestType->getFriendlyName()
-							<< " [" << pTestType->getCode() << "]" << std::endl;
-						pMusicType = pTestType;
-						// Don't bother checking any other formats if we got a 100% match
-						goto finishTesting;
-				}
-			}
-finishTesting:
-			if (!pMusicType) {
-				std::cerr << "Unable to automatically determine the file type.  Use "
-					"the --type option to manually specify the file format." << std::endl;
-				return RET_BE_MORE_SPECIFIC;
-			}
-		} else {
-			gm::MusicTypePtr pTestType(pManager->getMusicTypeByCode(strType));
-			if (!pTestType) {
-				std::cerr << "Unknown file type given to -t/--type: " << strType
-					<< std::endl;
-				return RET_BADARGS;
-			}
-			pMusicType = pTestType;
-		}
-
-		assert(pMusicType != NULL);
-
-		// Check to see if the file is actually in this format
-		if (!pMusicType->isInstance(psMusic)) {
-			if (bForceOpen) {
-				std::cerr << "Warning: " << strFilename << " is not a "
-					<< pMusicType->getFriendlyName() << ", open forced." << std::endl;
-			} else {
-				std::cerr << "Invalid format: " << strFilename << " is not a "
-					<< pMusicType->getFriendlyName() << "\n"
-					<< "Use the -f option to try anyway." << std::endl;
-				return 3;
-			}
-		}
-
-		// See if the format requires any supplemental files
-		gm::MP_SUPPLIST suppList = pMusicType->getRequiredSupps(strFilename);
-		gm::MP_SUPPDATA suppData;
-		if (suppList.size() > 0) {
-			for (gm::MP_SUPPLIST::iterator i = suppList.begin(); i != suppList.end(); i++) {
-				try {
-					boost::shared_ptr<std::fstream> suppStream(new std::fstream());
-					suppStream->exceptions(std::ios::badbit | std::ios::failbit);
-					std::cout << "Opening supplemental file " << i->second << std::endl;
-					suppStream->open(i->second.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-					gm::SuppItem si;
-					si.stream = suppStream;
-					//si.fnTruncate = boost::bind<void>(truncate, i->second.c_str(), _1);
-					suppData[i->first] = si;
-				} catch (std::ios::failure e) {
-					std::cerr << "Error opening supplemental file " << i->second.c_str() << std::endl;
-					#ifdef DEBUG
-						std::cerr << "e.what(): " << e.what() << std::endl;
-					#endif
-					return RET_SHOWSTOPPER;
-				}
-			}
-		}
-
-		// Open the archive file
-		boost::shared_ptr<gm::MusicReader> pMusicIn(pMusicType->open(psMusic, suppData));
-		assert(pMusicIn);
-		//pArchive->fnTruncate = boost::bind<void>(truncate, strFilename.c_str(), _1);
+		// Default to using the instruments from the source file
+		gm::PatchBankPtr instruments = pMusicIn->getPatchBank();
 
 		int iRet = RET_OK;
-
-		// File type of inserted files defaults to empty, which means 'generic file'
-		std::string strLastFiletype;
-
-		// Last attribute value set with -b
-		int iLastAttr;
 
 		// Run through the actions on the command line
 		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
@@ -317,13 +358,18 @@ finishTesting:
 				std::cout << i << " events listed." << std::endl;
 
 			} else if (i->string_key.compare("convert") == 0) {
-
 				std::string strOutFile;
 				std::string strOutType;
 				if (!split(i->value[0], ':', &strOutType, &strOutFile)) {
 					std::cerr << "-c/--convert requires a type and a filename, "
-						"e.g. -c imf-idsoftware:out.imf " << std::endl;
+						"e.g. -c raw-rdos:out.raw" << std::endl;
 					return RET_BADARGS;
+				}
+
+				if (!instruments) {
+					std::cerr << "Unable to convert, the source file had no "
+						"instruments!  Please supply some with -n." << std::endl;
+					return RET_SHOWSTOPPER;
 				}
 
 				boost::shared_ptr<std::ofstream> psMusicOut(new std::ofstream());
@@ -353,7 +399,6 @@ finishTesting:
 				gm::MP_SUPPDATA suppData;
 				boost::shared_ptr<gm::MusicWriter> pMusicOut(pMusicOutType->create(psMusicOut, suppData));
 				assert(pMusicOut);
-				gm::PatchBankPtr instruments = pMusicIn->getPatchBank();
 				try {
 					pMusicOut->setPatchBank(instruments);
 				} catch (EBadPatchType) {
@@ -381,6 +426,46 @@ finishTesting:
 				pMusicOut->finish();
 
 				std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
+
+			} else if (i->string_key.compare("newinst") == 0) {
+				if (i->value[0].empty()) {
+					std::cerr << "-n/--newinst requires filename" << std::endl;
+					return RET_BADARGS;
+				}
+				std::string strInstFile, strInstType;
+				if (!split(i->value[0], ':', &strInstType, &strInstFile)) {
+					strInstFile = i->value[0];
+					strInstType.clear();
+				}
+
+				gm::MusicReaderPtr pInst;
+				try {
+					pInst = openMusicFile(strInstFile, "-n/--newinst", strInstType, pManager, bForceOpen);
+				} catch (int ret) {
+					return ret;
+				}
+
+				gm::PatchBankPtr newinst = pInst->getPatchBank();
+				int newCount = newinst->getPatchCount();
+				int oldCount = instruments->getPatchCount();
+				if (newCount < oldCount) {
+					std::cout << "Warning: " << strInstFile << " has less instruments "
+						"than the original song! (" << newCount << " vs " << oldCount
+						<< ")" << std::endl;
+					// Recycle the new instruments until there are the same as there were
+					// originally.
+					newinst->setPatchCount(oldCount);
+					for (int i = newCount; i < oldCount; i++) {
+						std::cout << " > Reusing new instrument #"
+							<< ((i - newCount) % newCount) + 1 << " as #" << i + 1 << "/"
+							<< oldCount << std::endl;
+						newinst->setPatch(i, newinst->getPatch((i - newCount) % newCount));
+					}
+				}
+				instruments = newinst;
+
+				std::cout << "Loaded replacement instruments from " << strInstFile
+					<< std::endl;
 
 			// Ignore --type/-t
 			} else if (i->string_key.compare("type") == 0) {
