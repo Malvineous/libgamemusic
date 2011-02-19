@@ -95,8 +95,8 @@ struct NoteOnEvent: virtual public Event
 	/// returned by Music::getInstruments().
 	int instrument;
 
-	/// Note frequency (44000 == 440Hz)
-	int centiHertz;
+	/// Note frequency (440000 == 440Hz)
+	int milliHertz;
 
 	/// Velocity.  0 == unused/default, 1 == quiet, 255 = loud
 	uint8_t velocity;
@@ -128,8 +128,8 @@ struct NoteOffEvent: virtual public Event
  */
 struct PitchbendEvent: virtual public Event
 {
-	/// Note frequency (4400 == 440Hz)
-	int centiHertz;
+	/// Note frequency (440000 == 440Hz)
+	int milliHertz;
 
 	virtual std::string getContent() const
 		throw ();

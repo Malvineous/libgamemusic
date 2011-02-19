@@ -171,7 +171,7 @@ setInstrumentAgain:
 
 		gm::NoteOnEvent *pevOn = new gm::NoteOnEvent();
 		gm::EventPtr evOn(pevOn);
-		pevOn->centiHertz = 44000;
+		pevOn->milliHertz = 440000;
 		pevOn->absTime = 0;
 		pevOn->channel = 8 + rhythm;
 		pevOn->instrument = 0;
@@ -198,7 +198,7 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(write_noteonoff))
 	gm::EventPtr evOn(pevOn);
 	pevOn->absTime = 0;
 	pevOn->channel = 0;
-	pevOn->centiHertz = 44000;
+	pevOn->milliHertz = 440000;
 	pevOn->instrument = 0;
 	evOn->processEvent(this->music.get());
 

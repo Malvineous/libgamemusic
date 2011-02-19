@@ -275,7 +275,7 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(noteonoff))
 
 	// Allow a certain amount of leeway, as frequency values can only be
 	// approximated by many music formats.
-	BOOST_REQUIRE_CLOSE(pevNoteOn->centiHertz / 100.0, 440.0, 0.01);
+	BOOST_REQUIRE_CLOSE(pevNoteOn->milliHertz / 1000.0, 440.0, 0.01);
 
 	gm::EventPtr evOff = this->music->readNextEvent();
 	BOOST_REQUIRE_MESSAGE(evOff,

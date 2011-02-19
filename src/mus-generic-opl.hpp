@@ -132,7 +132,7 @@ class MusicReader_GenericOPL: virtual public MusicReader {
 			throw ();
 
 		/// Convert the given f-number and block into a note frequency.
-		int fnumToCentiHertz(int fnum, int block)
+		int fnumToMilliHertz(int fnum, int block)
 			throw ();
 
 };
@@ -218,7 +218,7 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 			throw (std::ios::failure);
 
 		/// Convert a frequency into an OPL f-number
-		void centiHertzToFnum(int centiHertz, int *fnum, int *block)
+		void milliHertzToFnum(int milliHertz, int *fnum, int *block)
 			throw ();
 
 };

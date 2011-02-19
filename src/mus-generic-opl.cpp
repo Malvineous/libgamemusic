@@ -361,7 +361,7 @@ EventPtr MusicReader_GenericOPL::createNoteOn(uint8_t chipIndex,
 	int block = (b0val >> 2) & 0x07;
 	// TODO: Calculate the frequency from the fnum
 
-	ev->centiHertz = this->fnumToCentiHertz(fnum, block);
+	ev->milliHertz = this->fnumToMilliHertz(fnum, block);
 	// TODO: ignore velocity (or use other operator) for MOD-only rhythm instruments
 	ev->velocity = (0x3F - (this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F)) << 2;
 
@@ -413,7 +413,7 @@ void MusicReader_GenericOPL::createOrUpdatePitchbend(uint8_t chipIndex,
 	// Get the OPL frequency number for this channel
 	int fnum = ((b0val & 0x03) << 8) | a0val;
 	int block = (b0val >> 2) & 0x07;
-	int freq = this->fnumToCentiHertz(fnum, block);
+	int freq = this->fnumToMilliHertz(fnum, block);
 
 	// See if there is already a pitchbend event in the buffer with the
 	// same time as this one.  If there is, it will be because the OPL
@@ -433,7 +433,7 @@ void MusicReader_GenericOPL::createOrUpdatePitchbend(uint8_t chipIndex,
 		if (pbev) {
 			// There is an existing pitchbend event at the same time, so edit
 			// that one.
-			pbev->centiHertz = freq;
+			pbev->milliHertz = freq;
 			addNew = false;
 			break;
 		}
@@ -444,17 +444,17 @@ void MusicReader_GenericOPL::createOrUpdatePitchbend(uint8_t chipIndex,
 		EventPtr gev(ev);
 		ev->channel = channel;
 		ev->absTime = this->lastTick;
-		ev->centiHertz = freq;
+		ev->milliHertz = freq;
 		this->eventBuffer.push_back(gev);
 	}
 	return;
 }
 
-int MusicReader_GenericOPL::fnumToCentiHertz(int fnum, int block)
+int MusicReader_GenericOPL::fnumToMilliHertz(int fnum, int block)
 	throw ()
 {
 	double dbOriginalFreq = this->fnumConversion * (double)fnum * pow(2, (double)(block - 20));
-	return dbOriginalFreq * 100;
+	return dbOriginalFreq * 1000;
 }
 
 
@@ -515,7 +515,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 	assert(this->inst);
 
 	int fnum, block;
-	this->centiHertzToFnum(ev->centiHertz, &fnum, &block);
+	this->milliHertzToFnum(ev->milliHertz, &fnum, &block);
 
 	int oplChannel = ev->channel % 14; // TODO: channel map for >9 chans
 	int rhythm = 0;
@@ -655,7 +655,7 @@ void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
 	throw (std::ios::failure)
 {
 	int fnum, block;
-	this->centiHertzToFnum(ev->centiHertz, &fnum, &block);
+	this->milliHertzToFnum(ev->milliHertz, &fnum, &block);
 	int oplChannel = ev->channel % 9; // TODO: channel map for >9 chans
 	int chipIndex = 0; // TODO: calculate from channel map
 
@@ -754,24 +754,24 @@ void MusicWriter_GenericOPL::writeOpSettings(int chipIndex, int oplChannel,
 	return;
 }
 
-void MusicWriter_GenericOPL::centiHertzToFnum(int centiHertz, int *fnum, int *block)
+void MusicWriter_GenericOPL::milliHertzToFnum(int milliHertz, int *fnum, int *block)
 	throw ()
 {
 	// Special case to avoid divide by zero
-	if (centiHertz == 0) {
+	if (milliHertz == 0) {
 		*block = 0; // actually any block will work
 		*fnum = 0;
 		return;
 	}
 
-	int invertedBlock = log2(620843 / centiHertz);
+	int invertedBlock = log2(6208430 / milliHertz);
 	// Very low frequencies will produce very high inverted block numbers, but
 	// as they can all be covered by inverted block 7 (block 0) we can just clip
 	// the value.
 	if (invertedBlock > 7) invertedBlock = 7;
 
 	*block = 7 - invertedBlock;
-	*fnum = centiHertz * pow(2, 20 - *block) / 100 / this->fnumConversion;
+	*fnum = milliHertz * pow(2, 20 - *block) / 1000 / this->fnumConversion;
 	if ((*block == 7) && (*fnum > 1023)) {
 		std::cerr << "Warning: Frequency out of range, clipped to max" << std::endl;
 		*fnum = 1023;

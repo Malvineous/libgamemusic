@@ -58,7 +58,7 @@ std::string NoteOnEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=note-on;freq=" << this->centiHertz
+		<< ";event=note-on;freq=" << this->milliHertz
 		<< ";instrument=" << this->instrument
 		<< ";velocity=" << (int)this->velocity
 	;
@@ -96,7 +96,7 @@ std::string PitchbendEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=pitchbend;freq=" << this->centiHertz
+		<< ";event=pitchbend;freq=" << this->milliHertz
 	;
 	return ss.str();
 }
