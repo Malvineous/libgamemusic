@@ -58,14 +58,12 @@ MusicWriter::~MusicWriter()
 {
 }
 
-/*void MusicWriter::writeNextEvent(EventPtr ev)
-	throw (std::ios::failure)
+void MusicWriter::setFlags(Flags f)
+	throw ()
 {
-	Event *evbase = ev.get();
-	{ NoteOnEvent  *e = dynamic_cast<NoteOnEvent  *>(evbase); if (e) return this->writeNextEvent(e); }
-	{ NoteOffEvent *e = dynamic_cast<NoteOffEvent *>(evbase); if (e) return this->writeNextEvent(e); }
-	{ TempoEvent   *e = dynamic_cast<TempoEvent   *>(evbase); if (e) return this->writeNextEvent(e); }
-}*/
+	this->flags = f;
+	return;
+}
 
 void MusicWriter::setMetadata(E_METADATA item, const std::string& value)
 	throw (std::ios::failure)

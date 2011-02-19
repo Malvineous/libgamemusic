@@ -178,10 +178,19 @@ class MusicWriter: virtual public EventHandler {
 
 	public:
 
+		enum Flags {
+			Default          = 0x00,  ///< No special treatment
+			IntegerNotesOnly = 0x01,  ///< Disable pitchbends
+		};
+
 		MusicWriter()
 			throw ();
 
 		virtual ~MusicWriter()
+			throw ();
+
+		/// Set some parameters to control how the music file is produced.
+		virtual void setFlags(Flags f)
 			throw ();
 
 		/// Set the instruments to use in this song.
@@ -247,30 +256,9 @@ class MusicWriter: virtual public EventHandler {
 		virtual void finish()
 			throw (std::ios::failure) = 0;
 
-		/// Write the next event to the file.
-		/**
-		 * Write out the given Event to the underlying file.
-		 *
-		 * @param  ev  A pointer to the %Event to write.
-		 *
-		 * @note   The first time this function is called it will write out the
-		 *         file header, instruments, etc.  This means the instruments
-		 *         and metadata must be set *before* this function is called.
-		 */
-/*		virtual void writeNextEvent(EventPtr ev)
-			throw (std::ios::failure);
-
 	protected:
+		Flags flags;
 
-		virtual void writeNextEvent(TempoEvent *ev)
-			throw (std::ios::failure) = 0;
-
-		virtual void writeNextEvent(NoteOnEvent *ev)
-			throw (std::ios::failure) = 0;
-
-		virtual void writeNextEvent(NoteOffEvent *ev)
-			throw (std::ios::failure) = 0;
-*/
 };
 
 /// Shared pointer to a MusicReader
