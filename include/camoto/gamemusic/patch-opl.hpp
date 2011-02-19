@@ -171,4 +171,8 @@ typedef boost::shared_ptr<OPLPatch> OPLPatchPtr;
 } // namespace gamemusic
 } // namespace camoto
 
+/// ostream handler for printing patches as ASCII
+std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatch& p);
+std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatchPtr p);
+
 #endif // _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_
