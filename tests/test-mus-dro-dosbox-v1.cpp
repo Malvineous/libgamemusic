@@ -19,6 +19,7 @@
  */
 
 #define INITIAL_TEMPO 1000 // Native DRO tempo (makes ticks match data)
+#define INSTRUMENT_TYPE  0 // OPL
 
 #define testdata_noteonoff \
 	"DBRAWOPL" "\x00\x00\x01\x00" \

@@ -99,11 +99,22 @@ struct FIXTURE_NAME: public default_sample {
 	void init(bool setInstruments)
 	{
 		if (setInstruments) {
+#if INSTRUMENT_TYPE == 0
 			// Set some default instruments
 			gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
 			instruments->setPatchCount(1);
 			gm::OPLPatchPtr defInst(new gm::OPLPatch);
 			instruments->setPatch(0, defInst);
+#elif INSTRUMENT_TYPE == 1
+			gm::MIDIPatchBankPtr instruments(new gm::MIDIPatchBank());
+			instruments->setPatchCount(1);
+			gm::MIDIPatchPtr defInst(new gm::MIDIPatch);
+			defInst->midiPatch = 0;
+			defInst->percussion = false;
+			instruments->setPatch(0, defInst);
+#else
+#error Unknown instrument type
+#endif
 			this->music->setPatchBank(instruments);
 		}
 

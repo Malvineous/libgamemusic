@@ -19,6 +19,7 @@
  */
 
 #define INITIAL_TEMPO 1785
+#define INSTRUMENT_TYPE  0 // OPL
 
 #define testdata_noteonoff \
 	"RAWADATA" "\x50\x08" \

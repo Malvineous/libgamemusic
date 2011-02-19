@@ -63,6 +63,7 @@ struct FIXTURE_NAME: public default_sample {
 	gm::MP_SUPPDATA suppData;
 	std::map<gm::E_SUPPTYPE, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
+	gm::PatchBankPtr bank;
 
 	FIXTURE_NAME() :
 		baseData(new std::stringstream),
@@ -99,6 +100,9 @@ struct FIXTURE_NAME: public default_sample {
 
 		this->music = this->pTestType->open(this->baseStream, this->suppData);
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
+
+		this->bank = this->music->getPatchBank();
+		BOOST_REQUIRE_MESSAGE(this->bank, "Music reader didn't supply an instrument bank");
 	}
 
 	/// Test a rhythm-mode instrument
@@ -130,8 +134,7 @@ struct FIXTURE_NAME: public default_sample {
 		// Note must play immediately at start of song
 		BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
 
-		gm::PatchBankPtr bank = this->music->getPatchBank();
-		gm::OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<gm::OPLPatchBank>(bank);
+		gm::OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<gm::OPLPatchBank>(this->bank);
 		BOOST_REQUIRE_MESSAGE(instruments, "Test fault: Tried to run OPL test for "
 			"music format that doesn't have OPL instruments");
 

@@ -19,6 +19,7 @@
  */
 
 #define INITIAL_TEMPO 1785
+#define INSTRUMENT_TYPE  0 // OPL
 
 // F-num 577 is 440.2Hz in block 4 (w/ conversion constant of 50,000)
 // F-num 580 is 439.9Hz in block 4 (w/ conversion constant of 49,716)
