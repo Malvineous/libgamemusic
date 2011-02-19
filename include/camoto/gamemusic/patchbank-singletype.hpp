@@ -106,7 +106,7 @@ class SingleTypePatchBank: virtual public PatchBank {
 			// a new shared_ptr instance that won't be used.
 			//TPatchPtr tpp = boost::dynamic_pointer_cast<TPatch>(newPatch);
 			TPatch *tpp = dynamic_cast<TPatch *>(newPatch.get());
-			if (!tpp) throw EBadPatchType();
+			if (!tpp) throw EBadPatchType("This patch bank cannot store this type of instrument");
 			this->PatchBank::setPatch(index, newPatch);
 			return;
 		}

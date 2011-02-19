@@ -172,7 +172,7 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 			throw (std::ios::failure);
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch);
+			throw (std::ios::failure, EChannelMismatch, EBadPatchType);
 
 		virtual void handleEvent(NoteOffEvent *ev)
 			throw (std::ios::failure);

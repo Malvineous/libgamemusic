@@ -31,7 +31,16 @@
 /// Exception thrown when adding a patch to a bank that doesn't support that
 /// patch type (e.g. adding a sampled patch to an OPL bank)
 class EBadPatchType: public std::exception {
+	protected:
+		std::string msg;
+
 	public:
+		EBadPatchType(const std::string& msg)
+			throw ();
+
+		~EBadPatchType()
+			throw ();
+
 		virtual const char *what() const
 			throw ();
 };

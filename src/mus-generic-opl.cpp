@@ -592,7 +592,7 @@ void MusicWriter_GenericOPL::handleEvent(TempoEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
-	throw (std::ios::failure, EChannelMismatch)
+	throw (std::ios::failure, EChannelMismatch, EBadPatchType)
 {
 	assert(this->inst);
 
@@ -610,7 +610,13 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 	this->cachedDelay += delay;
 
 	// See if the instrument is already set
-	assert(ev->instrument < this->inst->getPatchCount());
+	if (ev->instrument >= this->inst->getPatchCount()) {
+		std::stringstream ss;
+		ss << "Instrument bank too small - tried to play note with instrument #"
+			<< ev->instrument + 1 << " but patch bank only has "
+			<< this->inst->getPatchCount() << " instruments.";
+		throw EBadPatchType(ss.str());
+	}
 	OPLPatchPtr i = this->inst->getTypedPatch(ev->instrument);
 
 	if (oplChannel > 8) {

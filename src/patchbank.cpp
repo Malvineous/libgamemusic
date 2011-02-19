@@ -23,10 +23,21 @@
 
 using namespace camoto::gamemusic;
 
+EBadPatchType::EBadPatchType(const std::string& msg)
+	throw () :
+		msg(msg)
+{
+}
+
+EBadPatchType::~EBadPatchType()
+	throw ()
+{
+}
+
 const char *EBadPatchType::what() const
 	throw ()
 {
-	return "This patch bank cannot store this type of instrument";
+	return this->msg.c_str();
 }
 
 PatchBank::PatchBank()

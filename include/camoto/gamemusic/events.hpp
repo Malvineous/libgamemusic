@@ -26,11 +26,15 @@
 #include <vector>
 
 #include <camoto/types.hpp>
+#include <camoto/gamemusic/patchbank.hpp> // EBadPatchType
 
 namespace camoto {
 namespace gamemusic {
 
 class EventHandler;
+
+/// All channel numbers in the %Event struct must be less than this value.
+const int MAX_CHANNELS = 256;
 
 /// Base class to represent events in the file.
 /**
@@ -239,8 +243,16 @@ class EventHandler
 		virtual void handleEvent(TempoEvent *ev)
 			throw (std::ios::failure) = 0;
 
+		/// A note is being played.
+		/**
+		 * @throws EChannelMismatch if the note could not be played on the given
+		 *   channel (e.g. channel does not support the instrument.)
+		 *
+		 * @throws EBadPatchType if the note could not be played with the given
+		 *   instrument (e.g. not enough instruments in patch bank.)
+		 */
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch) = 0;
+			throw (std::ios::failure, EChannelMismatch, EBadPatchType) = 0;
 
 		virtual void handleEvent(NoteOffEvent *ev)
 			throw (std::ios::failure) = 0;
