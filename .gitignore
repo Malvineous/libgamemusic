@@ -34,3 +34,7 @@ doxygen/full/
 # Compiled binaries
 examples/gamemus
 tests/tests
+
+# SWIG output files
+python/gamemusic.py
+python/gamemusic_wrap.cxx

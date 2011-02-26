@@ -31,6 +31,30 @@ PKG_CHECK_MODULES([libgamecommon], [libgamecommon])
 
 # Checks for library functions.
 
+AC_ARG_WITH([python],
+	AS_HELP_STRING([--without-python], [do not build Python interface to the library]))
+
+AS_IF([test "x$with_python" != "xno"],
+	[AM_PATH_PYTHON([2.5], [have_python=yes], [have_python=no])],
+	[have_python=no]
+)
+
+AS_IF([test "x$have_python" = "xyes"], [
+	AM_CHECK_PYTHON_HEADERS(
+		[have_python=yes],
+		[have_python=no]
+	)
+])
+
+AS_IF([test "x$have_python" = "xyes"], [
+	MAYBE_PYTHON="python"
+	# Find the optional SWIG binary
+	AC_PATH_PROG([SWIG], [swig])
+], [
+	MAYBE_PYTHON=
+])
+AC_SUBST(MAYBE_PYTHON)
+
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],[enable extra debugging output]))
 
 dnl Check for --enable-debug and add appropriate flags for gcc
@@ -47,4 +71,4 @@ then
 	AC_DEFINE([DEBUG], [1], [Define to include extra debugging output])
 fi
 
-AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile $PACKAGE.pc)
+AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile python/Makefile $PACKAGE.pc)

@@ -1,7 +1,10 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2
 
 # "src" must go first so the library is available when the examples compile
-SUBDIRS = src doc examples include tests
+SUBDIRS = src doc examples include tests $(MAYBE_PYTHON)
+
+# Since Automake can't guess what $(MAYBE_PYTHON) might be, we have to specify it
+DIST_SUBDIRS = $(SUBDIRS) python
 
 EXTRA_DIST = @PACKAGE@.pc.in README
 
