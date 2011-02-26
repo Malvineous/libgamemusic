@@ -11,7 +11,10 @@ tests_SOURCES += test-midi.cpp
 tests_SOURCES += test-mus-cmf-creativelabs.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
 
-#EXTRA_tests_SOURCES = tests.hpp test-conv.hpp
+EXTRA_tests_SOURCES = tests.hpp
+EXTRA_tests_SOURCES += test-musicreader.hpp
+EXTRA_tests_SOURCES += test-musicwriter.hpp
+EXTRA_tests_SOURCES += test-mus-imf-idsoftware-common.hpp
 
 TESTS = tests
 
