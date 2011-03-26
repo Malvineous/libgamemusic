@@ -232,7 +232,7 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 			default:
 				break;
 		}
-	} while (!eof);
+	} while ((!eof) && (!this->midi->eof()));
 	this->rewind();
 
 	// Make sure there's at least one instrument set
