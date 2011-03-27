@@ -224,7 +224,7 @@ class EChannelMismatch: virtual public std::exception {
 		EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
 			throw ();
 
-		~EChannelMismatch()
+		virtual ~EChannelMismatch()
 			throw ();
 
 		virtual const char *what() const

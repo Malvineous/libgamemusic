@@ -38,7 +38,7 @@ class EBadPatchType: public std::exception {
 		EBadPatchType(const std::string& msg)
 			throw ();
 
-		~EBadPatchType()
+		virtual ~EBadPatchType()
 			throw ();
 
 		virtual const char *what() const

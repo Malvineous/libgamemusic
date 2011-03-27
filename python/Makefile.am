@@ -27,5 +27,5 @@ MAINTAINERCLEANFILES = gamemusic.py gamemusic_wrap.cxx
 		echo "SWIG is required to perform this action.  See http://www.swig.org"; \
 		exit 1; \
 	else \
-		$(SWIG) -c++ -python -classic -Wextra -I$(top_srcdir)/include $(libgamecommon_CFLAGS) $<; \ 
+		$(SWIG) -c++ -python -classic -Wextra -I$(top_srcdir)/include $(libgamecommon_CFLAGS) $<; \
 	fi
