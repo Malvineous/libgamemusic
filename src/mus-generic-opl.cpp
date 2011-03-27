@@ -22,7 +22,7 @@
 #include <boost/pointer_cast.hpp>
 #include <camoto/gamemusic/patchbank-singletype.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
-#include "mus-generic-opl.hpp"
+#include <camoto/gamemusic/mus-generic-opl.hpp>
 
 // OPL register offsets
 #define BASE_CHAR_MULT  0x20

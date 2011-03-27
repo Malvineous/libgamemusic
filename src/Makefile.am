@@ -18,7 +18,6 @@ libgamemusic_la_SOURCES += mus-cmf-creativelabs.cpp
 libgamemusic_la_SOURCES += mus-mid-type0.cpp
 
 EXTRA_libgamemusic_la_SOURCES = patchbank-fmt-ibk.hpp
-EXTRA_libgamemusic_la_SOURCES += mus-generic-opl.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-imf-idsoftware.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v1.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v2.hpp

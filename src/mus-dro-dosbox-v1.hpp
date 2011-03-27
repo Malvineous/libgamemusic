@@ -22,7 +22,7 @@
 #define _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_V1_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
-#include "mus-generic-opl.hpp"
+#include <camoto/gamemusic/mus-generic-opl.hpp>
 
 namespace camoto {
 namespace gamemusic {
