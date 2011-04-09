@@ -37,4 +37,5 @@ tests/tests
 
 # SWIG output files
 python/gamemusic.py
-python/gamemusic_wrap.cxx
+python/gamemusic_wrap.*
+python/*.pyc

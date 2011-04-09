@@ -35,7 +35,7 @@ AC_ARG_WITH([python],
 	AS_HELP_STRING([--without-python], [do not build Python interface to the library]))
 
 AS_IF([test "x$with_python" != "xno"],
-	[AM_PATH_PYTHON([2.5], [have_python=yes], [have_python=no])],
+	[AM_PATH_PYTHON2([2.5], [have_python=yes], [have_python=no])],
 	[have_python=no]
 )
 
