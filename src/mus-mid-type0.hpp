@@ -45,13 +45,13 @@ class MusicType_MID_Type0: virtual public MusicType {
 		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
-		virtual MusicWriterPtr create(ostream_sptr output, MP_SUPPDATA& suppData) const
+		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
 			throw (std::ios::failure);
 
-		virtual MusicReaderPtr open(istream_sptr input, MP_SUPPDATA& suppData) const
+		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
 			throw (std::ios::failure);
 
-		virtual MP_SUPPLIST getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
 
 };

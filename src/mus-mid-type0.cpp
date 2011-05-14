@@ -22,6 +22,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include "mus-mid-type0.hpp"
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_MID_Type0::getCode() const
@@ -67,23 +68,23 @@ E_CERTAINTY MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
 	return EC_DEFINITELY_YES;
 }
 
-MusicWriterPtr MusicType_MID_Type0::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_MID_Type0::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_MID_Type0(output));
 }
 
-MusicReaderPtr MusicType_MID_Type0::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_MID_Type0::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_MID_Type0(input));
 }
 
-MP_SUPPLIST MusicType_MID_Type0::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_MID_Type0::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 

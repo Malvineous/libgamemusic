@@ -21,6 +21,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include "mus-dro-dosbox-v1.hpp"
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_DRO_v1::getCode() const
@@ -63,23 +64,23 @@ E_CERTAINTY MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	return EC_DEFINITELY_YES;
 }
 
-MusicWriterPtr MusicType_DRO_v1::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_DRO_v1::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_DRO_v1(output));
 }
 
-MusicReaderPtr MusicType_DRO_v1::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_DRO_v1::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_DRO_v1(input));
 }
 
-MP_SUPPLIST MusicType_DRO_v1::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_DRO_v1::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 MusicReader_DRO_v1::MusicReader_DRO_v1(istream_sptr input)

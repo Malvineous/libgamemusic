@@ -21,6 +21,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include "mus-raw-rdos.hpp"
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_RAW::getCode() const
@@ -62,23 +63,23 @@ E_CERTAINTY MusicType_RAW::isInstance(istream_sptr psMusic) const
 	return EC_DEFINITELY_YES;
 }
 
-MusicWriterPtr MusicType_RAW::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_RAW::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_RAW(output));
 }
 
-MusicReaderPtr MusicType_RAW::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_RAW::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_RAW(input));
 }
 
-MP_SUPPLIST MusicType_RAW::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_RAW::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 MusicReader_RAW::MusicReader_RAW(istream_sptr input)

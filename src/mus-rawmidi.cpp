@@ -21,6 +21,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include "mus-rawmidi.hpp"
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_RawMIDI::getCode() const
@@ -52,23 +53,23 @@ E_CERTAINTY MusicType_RawMIDI::isInstance(istream_sptr psMusic) const
 	return EC_DEFINITELY_NO;
 }
 
-MusicWriterPtr MusicType_RawMIDI::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_RawMIDI::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_RawMIDI(output));
 }
 
-MusicReaderPtr MusicType_RawMIDI::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_RawMIDI::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_RawMIDI(input));
 }
 
-MP_SUPPLIST MusicType_RawMIDI::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_RawMIDI::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 MusicReader_RawMIDI::MusicReader_RawMIDI(istream_sptr input)

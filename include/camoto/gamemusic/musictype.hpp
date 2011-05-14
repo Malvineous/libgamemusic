@@ -26,6 +26,7 @@
 #include <map>
 
 #include <camoto/types.hpp>
+#include <camoto/suppitem.hpp>
 #include <camoto/gamemusic/music.hpp>
 
 /// Main namespace
@@ -45,35 +46,6 @@ enum E_CERTAINTY {
 	/// This format has a signature and it matched.
 	EC_DEFINITELY_YES,
 };
-
-/// Type of supplemental file.
-enum E_SUPPTYPE {
-	/// Instrument data is stored externally
-	EST_INSTRUMENTS,
-};
-
-/// Supplementary item for a music file.
-/**
- * This class contains data about a supplementary item required to open a
- * music file.
- *
- * @see MusicType::getRequiredSupps()
- */
-struct SuppItem {
-	/// The stream containing the supplemental data.  When writing a file,
-	/// this should be an empty stream/file.
-	iostream_sptr stream;
-	/// The truncate callback (required)
-	//FN_TRUNCATE fnTruncate;
-};
-
-/// A list of required supplemental files and their filenames.  The filenames
-/// may contain a path (especially if the main music file also contains a
-/// path.)
-typedef std::map<E_SUPPTYPE, std::string> MP_SUPPLIST;
-
-/// A list of the supplemental file types mapped to open file streams.
-typedef std::map<E_SUPPTYPE, SuppItem> MP_SUPPDATA;
 
 /// Interface to a particular music format.
 class MusicType {
@@ -122,7 +94,7 @@ class MusicType {
 		 * @return A pointer to an instance of the MusicWriter class, just as if a
 		 *         valid empty file had been opened by open().
 		 */
-		virtual MusicWriterPtr create(ostream_sptr output, MP_SUPPDATA& suppData) const
+		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
 			throw (std::ios::failure) = 0;
 
 		/// Open a music file.
@@ -137,7 +109,7 @@ class MusicType {
 		 *         anyway, to make it possible to "force" a file to be opened by a
 		 *         particular format handler.
 		 */
-		virtual MusicReaderPtr open(istream_sptr input, MP_SUPPDATA& suppData) const
+		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
 			throw (std::ios::failure) = 0;
 
 		/// Get a list of any required supplemental files.
@@ -159,7 +131,7 @@ class MusicType {
 		 *         returned can have relative paths, and may even have an absolute
 		 *         path, if one was passed in with filenameMusic.
 		 */
-		virtual MP_SUPPLIST getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw () = 0;
 
 };

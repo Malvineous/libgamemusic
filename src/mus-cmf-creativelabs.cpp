@@ -21,6 +21,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include "mus-cmf-creativelabs.hpp"
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_CMF::getCode() const
@@ -64,23 +65,23 @@ E_CERTAINTY MusicType_CMF::isInstance(istream_sptr psMusic) const
 	return EC_DEFINITELY_YES;
 }
 
-MusicWriterPtr MusicType_CMF::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_CMF::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_CMF(output));
 }
 
-MusicReaderPtr MusicType_CMF::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_CMF::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_CMF(input));
 }
 
-MP_SUPPLIST MusicType_CMF::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_CMF::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 

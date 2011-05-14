@@ -36,7 +36,7 @@ struct midi_fixture: public default_sample {
 	camoto::iostream_sptr baseStream;
 	gm::MusicReaderPtr musIn;
 	gm::MusicWriterPtr musOut;
-	std::map<gm::E_SUPPTYPE, sstr_ptr> suppBase;
+	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 	gm::PatchBankPtr bank;
 
@@ -59,7 +59,7 @@ struct midi_fixture: public default_sample {
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
 
-		gm::MP_SUPPDATA suppData;
+		camoto::SuppData suppData;
 		this->musIn = this->pTestType->open(this->baseStream, suppData);
 		BOOST_REQUIRE_MESSAGE(this->musIn, "Could not create music reader class");
 
@@ -77,7 +77,7 @@ struct midi_fixture: public default_sample {
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
 
-		gm::MP_SUPPDATA suppData;
+		camoto::SuppData suppData;
 		this->musOut = this->pTestType->create(this->baseStream, suppData);
 		BOOST_REQUIRE_MESSAGE(this->musOut, "Could not create music writer class");
 

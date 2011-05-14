@@ -61,8 +61,8 @@ struct FIXTURE_NAME: public default_sample {
 	void *_do; // unused var, but allows a statement to run in constructor init
 	camoto::iostream_sptr baseStream;
 	gm::MusicWriterPtr music;
-	gm::MP_SUPPDATA suppData;
-	std::map<gm::E_SUPPTYPE, sstr_ptr> suppBase;
+	camoto::SuppData suppData;
+	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 
 	FIXTURE_NAME() :
@@ -75,7 +75,7 @@ struct FIXTURE_NAME: public default_sample {
 			suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
 			(*suppSS) << makeString(TEST_RESULT(FAT_initialstate));
 			camoto::iostream_sptr suppStream(suppSS);
-			gm::SuppItem si;
+			camoto::SuppItem si;
 			si.stream = suppStream;
 			si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1);
 			this->suppData[gm::EST_FAT] = si;
@@ -135,7 +135,7 @@ struct FIXTURE_NAME: public default_sample {
 		return this->default_sample::is_equal(strExpected, this->baseData->str());
 	}
 
-	boost::test_tools::predicate_result is_supp_equal(gm::E_SUPPTYPE type, const std::string& strExpected)
+	boost::test_tools::predicate_result is_supp_equal(camoto::SuppItem::Type type, const std::string& strExpected)
 	{
 		this->music->finish();
 		return this->default_sample::is_equal(strExpected, this->suppBase[type]->str());

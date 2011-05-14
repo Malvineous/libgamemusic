@@ -26,6 +26,7 @@
 // to be any real songs with delays this long.
 #define IMF_MAX_DELAY  0x4000
 
+using namespace camoto;
 using namespace camoto::gamemusic;
 
 E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int imfType) const
@@ -99,11 +100,11 @@ E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int im
 	return EC_DEFINITELY_YES;
 }
 
-MP_SUPPLIST MusicType_IMF_Common::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_IMF_Common::getRequiredSupps(const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
-	return MP_SUPPLIST();
+	return SuppFilenames();
 }
 
 
@@ -134,13 +135,13 @@ E_CERTAINTY MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_IMF_Type0::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_IMF_Type0::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 560));
 }
 
-MusicReaderPtr MusicType_IMF_Type0::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_IMF_Type0::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 560));
@@ -174,13 +175,13 @@ E_CERTAINTY MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
 	return this->genericIsInstance(psMusic, 1);
 }
 
-MusicWriterPtr MusicType_IMF_Type1::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_IMF_Type1::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 560));
 }
 
-MusicReaderPtr MusicType_IMF_Type1::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_IMF_Type1::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 1, 560));
@@ -213,13 +214,13 @@ E_CERTAINTY MusicType_WLF_Type0::isInstance(istream_sptr psMusic) const
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_WLF_Type0::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_WLF_Type0::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 700));
 }
 
-MusicReaderPtr MusicType_WLF_Type0::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_WLF_Type0::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 700));
@@ -252,13 +253,13 @@ E_CERTAINTY MusicType_WLF_Type1::isInstance(istream_sptr psMusic) const
 	return this->genericIsInstance(psMusic, 1);
 }
 
-MusicWriterPtr MusicType_WLF_Type1::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_WLF_Type1::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 700));
 }
 
-MusicReaderPtr MusicType_WLF_Type1::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_WLF_Type1::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 1, 700));
@@ -291,13 +292,13 @@ E_CERTAINTY MusicType_IMF_Duke2::isInstance(istream_sptr psMusic) const
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_IMF_Duke2::create(ostream_sptr output, MP_SUPPDATA& suppData) const
+MusicWriterPtr MusicType_IMF_Duke2::create(ostream_sptr output, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 280));
 }
 
-MusicReaderPtr MusicType_IMF_Duke2::open(istream_sptr input, MP_SUPPDATA& suppData) const
+MusicReaderPtr MusicType_IMF_Duke2::open(istream_sptr input, SuppData& suppData) const
 	throw (std::ios::failure)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 280));

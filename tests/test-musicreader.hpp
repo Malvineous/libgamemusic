@@ -60,8 +60,8 @@ struct FIXTURE_NAME: public default_sample {
 	sstr_ptr baseData;
 	camoto::iostream_sptr baseStream;
 	gm::MusicReaderPtr music;
-	gm::MP_SUPPDATA suppData;
-	std::map<gm::E_SUPPTYPE, sstr_ptr> suppBase;
+	camoto::SuppData suppData;
+	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 	gm::PatchBankPtr bank;
 
@@ -82,7 +82,7 @@ struct FIXTURE_NAME: public default_sample {
 			suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
 			(*suppSS) << makeString(TEST_RESULT(FAT_initialstate));
 			camoto::iostream_sptr suppStream(suppSS);
-			gm::SuppItem si;
+			camoto::SuppItem si;
 			si.stream = suppStream;
 			si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1);
 			this->suppData[gm::EST_FAT] = si;
@@ -213,7 +213,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::EC_DEFINITELY_YES);
 		suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit); \
 		(*suppSS) << makeString(d); \
 		camoto::iostream_sptr suppStream(suppSS); \
-		gm::SuppItem si; \
+		camoto::SuppItem si; \
 		si.stream = suppStream; \
 		si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1); \
 		suppData[gm::EST_FAT] = si; \
@@ -244,7 +244,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::EC_DEFINITELY_YES);
 		(*psstrBase) << makeString(d); \
 		camoto::iostream_sptr psBase(psstrBase); \
 		\
-		gm::MP_SUPPDATA suppData; \
+		camoto::SuppData suppData; \
 		INVALIDDATA_FATCODE(f) \
 		\
 		BOOST_CHECK_THROW( \

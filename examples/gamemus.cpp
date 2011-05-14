@@ -157,16 +157,16 @@ finishTesting:
 	}
 
 	// See if the format requires any supplemental files
-	gm::MP_SUPPLIST suppList = pMusicType->getRequiredSupps(strFilename);
-	gm::MP_SUPPDATA suppData;
+	camoto::SuppFilenames suppList = pMusicType->getRequiredSupps(strFilename);
+	camoto::SuppData suppData;
 	if (suppList.size() > 0) {
-		for (gm::MP_SUPPLIST::iterator i = suppList.begin(); i != suppList.end(); i++) {
+		for (camoto::SuppFilenames::iterator i = suppList.begin(); i != suppList.end(); i++) {
 			try {
 				boost::shared_ptr<std::fstream> suppStream(new std::fstream());
 				suppStream->exceptions(std::ios::badbit | std::ios::failbit);
 				std::cout << "Opening supplemental file " << i->second << std::endl;
 				suppStream->open(i->second.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-				gm::SuppItem si;
+				camoto::SuppItem si;
 				si.stream = suppStream;
 				//si.fnTruncate = boost::bind<void>(truncate, i->second.c_str(), _1);
 				suppData[i->first] = si;
@@ -405,7 +405,7 @@ int main(int iArgC, char *cArgV[])
 				// TODO: figure out whether we need to open any supplemental files
 				// (e.g. Vinyl will need to create an external instrument file, whereas
 				// Kenslab has one but won't need to use it for this.)
-				gm::MP_SUPPDATA suppData;
+				camoto::SuppData suppData;
 				boost::shared_ptr<gm::MusicWriter> pMusicOut(pMusicOutType->create(psMusicOut, suppData));
 				assert(pMusicOut);
 
