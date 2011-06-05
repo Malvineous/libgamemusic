@@ -892,18 +892,18 @@ void MusicWriter_GenericOPL::writeOpSettings(int chipIndex, int oplChannel,
 {
 	uint8_t op;
 	OPLOperator *o;
-	int volume;
+	int outputLevel;
 	if (opNum == 0) {
 		op = OPLOFFSET_MOD(oplChannel);
 		o = &(i->m);
-		volume = o->outputLevel;
+		outputLevel = o->outputLevel;
 	} else {
 		op = OPLOFFSET_CAR(oplChannel);
 		o = &(i->c);
-		volume = o->outputLevel;
+		outputLevel = o->outputLevel;
 		if (velocity != 0) {
 			// Not using default velocity
-			volume = 0x3F - (velocity >> 2);
+			outputLevel = 0x3F - ((0x3F - outputLevel) * velocity / 255);
 		}
 	}
 //this->writeNextPair(0, chipIndex, 0x01, 0x20); // WSEnable
@@ -915,7 +915,7 @@ void MusicWriter_GenericOPL::writeOpSettings(int chipIndex, int oplChannel,
 		((o->enableKSR     & 1) << 4) |
 		 (o->freqMult      & 0x0F)
 	);
-	this->writeNextPair(0, chipIndex, BASE_SCAL_LEVL | op, (o->scaleLevel << 6) | (o->outputLevel & 0x3F));
+	this->writeNextPair(0, chipIndex, BASE_SCAL_LEVL | op, (o->scaleLevel << 6) | (outputLevel & 0x3F));
 	this->writeNextPair(0, chipIndex, BASE_ATCK_DCAY | op, (o->attackRate << 4) | (o->decayRate & 0x0F));
 	this->writeNextPair(0, chipIndex, BASE_SUST_RLSE | op, (o->sustainRate << 4) | (o->releaseRate & 0x0F));
 	this->writeNextPair(0, chipIndex, BASE_WAVE      | op,  o->waveSelect & 7);
