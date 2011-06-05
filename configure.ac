@@ -71,6 +71,13 @@ then
 	AC_DEFINE([DEBUG], [1], [Define to include extra debugging output])
 fi
 
+case "$host_os" in
+*mingw*)
+	# Must specify this parameter when compiling for Windows
+	LDFLAGS="$LDFLAGS -no-undefined"
+	;;
+esac
+
 AM_SILENT_RULES([yes])
 
 AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile python/Makefile $PACKAGE.pc)
