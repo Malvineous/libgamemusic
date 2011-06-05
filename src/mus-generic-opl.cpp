@@ -129,15 +129,29 @@ void camoto::gamemusic::milliHertzToFnum(int milliHertz, int *fnum, int *block, 
 		return;
 	}
 
-	/// @todo Where did 6208430 and is the zero I added onto the end accurate?
-	int invertedBlock = log2(6208430 / milliHertz);
+	// Special case for frequencies too high to produce
+	if (milliHertz > 6208431) {
+		*block = 7;
+		*fnum = 1023;
+		return;
+	}
+
+	/// This formula will provide a pretty good estimate as to the best block to
+	/// use for a given frequency.  It tries to use the lowest possible block
+	/// number that is capable of representing the given frequency.  This is
+	/// because as the block number increases, the precision decreases (i.e. there
+	/// are larger steps between adjacent note frequencies.)  The 6M constant is
+	/// the largest frequency (in milliHertz) that can be represented by the
+	/// block/fnum system.
+	int invertedBlock = log2(6208431 / milliHertz);
+
 	// Very low frequencies will produce very high inverted block numbers, but
 	// as they can all be covered by inverted block 7 (block 0) we can just clip
 	// the value.
 	if (invertedBlock > 7) invertedBlock = 7;
 
 	*block = 7 - invertedBlock;
-	*fnum = milliHertz * pow(2, 20 - *block) / 1000 / conversionFactor;
+	*fnum = milliHertz * pow(2, 20 - *block) / 1000 / conversionFactor + 0.5;
 	if ((*block == 7) && (*fnum > 1023)) {
 		std::cerr << "Warning: Frequency out of range, clipped to max" << std::endl;
 		*fnum = 1023;

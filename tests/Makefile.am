@@ -8,6 +8,7 @@ tests_SOURCES += test-mus-raw-rdos.cpp
 tests_SOURCES += test-mus-dro-dosbox-v1.cpp
 tests_SOURCES += test-mus-dro-dosbox-v2.cpp
 tests_SOURCES += test-midi.cpp
+tests_SOURCES += test-opl.cpp
 tests_SOURCES += test-mus-cmf-creativelabs.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
 
