@@ -112,6 +112,45 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 	return s;
 }
 
+int camoto::gamemusic::fnumToMilliHertz(int fnum, int block, int conversionFactor)
+	throw ()
+{
+	double dbOriginalFreq = conversionFactor * (double)fnum * pow(2, (double)(block - 20));
+	return dbOriginalFreq * 1000;
+}
+
+void camoto::gamemusic::milliHertzToFnum(int milliHertz, int *fnum, int *block, int conversionFactor)
+	throw ()
+{
+	// Special case to avoid divide by zero
+	if (milliHertz == 0) {
+		*block = 0; // actually any block will work
+		*fnum = 0;
+		return;
+	}
+
+	/// @todo Where did 6208430 and is the zero I added onto the end accurate?
+	int invertedBlock = log2(6208430 / milliHertz);
+	// Very low frequencies will produce very high inverted block numbers, but
+	// as they can all be covered by inverted block 7 (block 0) we can just clip
+	// the value.
+	if (invertedBlock > 7) invertedBlock = 7;
+
+	*block = 7 - invertedBlock;
+	*fnum = milliHertz * pow(2, 20 - *block) / 1000 / conversionFactor;
+	if ((*block == 7) && (*fnum > 1023)) {
+		std::cerr << "Warning: Frequency out of range, clipped to max" << std::endl;
+		*fnum = 1023;
+	}
+
+	// Make sure the values come out within range
+	assert(*block >= 0);
+	assert(*block <= 7);
+	assert(*fnum >= 0);
+	assert(*fnum < 1024);
+	return;
+}
+
 
 MusicReader_GenericOPL::MusicReader_GenericOPL(DelayType delayType)
 	throw () :
@@ -461,7 +500,7 @@ EventPtr MusicReader_GenericOPL::createNoteOn(uint8_t chipIndex,
 	int block = (b0val >> 2) & 0x07;
 	// TODO: Calculate the frequency from the fnum
 
-	ev->milliHertz = this->fnumToMilliHertz(fnum, block);
+	ev->milliHertz = ::fnumToMilliHertz(fnum, block, this->fnumConversion);
 	// TODO: ignore velocity (or use other operator) for MOD-only rhythm instruments
 	ev->velocity = (0x3F - (this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F)) << 2;
 
@@ -513,7 +552,7 @@ void MusicReader_GenericOPL::createOrUpdatePitchbend(uint8_t chipIndex,
 	// Get the OPL frequency number for this channel
 	int fnum = ((b0val & 0x03) << 8) | a0val;
 	int block = (b0val >> 2) & 0x07;
-	int freq = this->fnumToMilliHertz(fnum, block);
+	int freq = ::fnumToMilliHertz(fnum, block, this->fnumConversion);
 
 	// See if there is already a pitchbend event in the buffer with the
 	// same time as this one.  If there is, it will be because the OPL
@@ -548,13 +587,6 @@ void MusicReader_GenericOPL::createOrUpdatePitchbend(uint8_t chipIndex,
 		this->eventBuffer.push_back(gev);
 	}
 	return;
-}
-
-int MusicReader_GenericOPL::fnumToMilliHertz(int fnum, int block)
-	throw ()
-{
-	double dbOriginalFreq = this->fnumConversion * (double)fnum * pow(2, (double)(block - 20));
-	return dbOriginalFreq * 1000;
 }
 
 
@@ -615,7 +647,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 	assert(this->inst);
 
 	int fnum, block;
-	this->milliHertzToFnum(ev->milliHertz, &fnum, &block);
+	::milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 
 	int oplChannel = ev->channel % 14; // TODO: channel map for >9 chans
 	int rhythm = 0;
@@ -761,7 +793,7 @@ void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
 	throw (std::ios::failure)
 {
 	int fnum, block;
-	this->milliHertzToFnum(ev->milliHertz, &fnum, &block);
+	::milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 	int oplChannel = ev->channel % 9; // TODO: channel map for >9 chans
 	int chipIndex = 0; // TODO: calculate from channel map
 
@@ -885,36 +917,5 @@ void MusicWriter_GenericOPL::writeOpSettings(int chipIndex, int oplChannel,
 	this->writeNextPair(0, chipIndex, BASE_SUST_RLSE | op, (o->sustainRate << 4) | (o->releaseRate & 0x0F));
 	this->writeNextPair(0, chipIndex, BASE_WAVE      | op,  o->waveSelect & 7);
 
-	return;
-}
-
-void MusicWriter_GenericOPL::milliHertzToFnum(int milliHertz, int *fnum, int *block)
-	throw ()
-{
-	// Special case to avoid divide by zero
-	if (milliHertz == 0) {
-		*block = 0; // actually any block will work
-		*fnum = 0;
-		return;
-	}
-
-	int invertedBlock = log2(6208430 / milliHertz);
-	// Very low frequencies will produce very high inverted block numbers, but
-	// as they can all be covered by inverted block 7 (block 0) we can just clip
-	// the value.
-	if (invertedBlock > 7) invertedBlock = 7;
-
-	*block = 7 - invertedBlock;
-	*fnum = milliHertz * pow(2, 20 - *block) / 1000 / this->fnumConversion;
-	if ((*block == 7) && (*fnum > 1023)) {
-		std::cerr << "Warning: Frequency out of range, clipped to max" << std::endl;
-		*fnum = 1023;
-	}
-
-	// Make sure the values come out within range
-	assert(*block >= 0);
-	assert(*block <= 7);
-	assert(*fnum >= 0);
-	assert(*fnum < 1024);
 	return;
 }
