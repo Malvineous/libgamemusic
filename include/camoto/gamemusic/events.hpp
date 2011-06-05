@@ -183,6 +183,12 @@ struct ConfigurationEvent: virtual public Event
 		 * This is used by the CMF handler and MIDI controller event 0x67.
 		 */
 		EnableRhythm,
+
+		/// Enable use of wavesel registers
+		/**
+		 * value: 1 to enable, 0 to disable
+		 */
+		EnableWaveSel,
 	};
 
 	/// What we are configuring

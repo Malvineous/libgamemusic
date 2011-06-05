@@ -250,16 +250,29 @@ bool MusicReader_GenericOPL::populateEventBuffer()
 		uint8_t oplChannel = reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
 		uint8_t channel = oplChannel + 14 * chipIndex;
 		switch (reg & 0xF0) {
-			case 0x01:
-				if (bitsChanged(0x20)) {
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					EventPtr gev(ev);
-					ev->channel = 0; // unused
-					ev->absTime = this->lastTick;
-					ev->configType = ConfigurationEvent::EnableOPL3;
-					ev->value = (val & 0x20) ? 1 : 0;
-					this->eventBuffer.push_back(gev);
-					addedEvent = true;
+			case 0x00:
+				if (reg == 0x01) {
+					if (bitsChanged(0x20)) {
+						ConfigurationEvent *ev = new ConfigurationEvent();
+						EventPtr gev(ev);
+						ev->channel = 0; // unused
+						ev->absTime = this->lastTick;
+						ev->configType = ConfigurationEvent::EnableWaveSel;
+						ev->value = (val & 0x20) ? 1 : 0;
+						this->eventBuffer.push_back(gev);
+						addedEvent = true;
+					}
+				} else if (reg == 0x05) {
+					if (bitsChanged(0x01)) {
+						ConfigurationEvent *ev = new ConfigurationEvent();
+						EventPtr gev(ev);
+						ev->channel = 0; // unused
+						ev->absTime = this->lastTick;
+						ev->configType = ConfigurationEvent::EnableOPL3;
+						ev->value = (val & 0x01) ? 1 : 0;
+						this->eventBuffer.push_back(gev);
+						addedEvent = true;
+					}
 				}
 				break;
 			case 0xA0:
@@ -774,7 +787,7 @@ void MusicWriter_GenericOPL::handleEvent(ConfigurationEvent *ev)
 	int delay = ev->absTime - this->lastTick;
 	switch (ev->configType) {
 		case ConfigurationEvent::EnableOPL3:
-			this->writeNextPair(delay, 0, 0x01, ev->value ? 0x20 : 0x00);
+			this->writeNextPair(delay, 0, 0x05, ev->value ? 0x01 : 0x00);
 			break;
 		case ConfigurationEvent::EnableDeepTremolo:
 			if (ev->value & 1) this->oplState[ev->value >> 1][0xBD] |= 0x80;
@@ -787,6 +800,9 @@ void MusicWriter_GenericOPL::handleEvent(ConfigurationEvent *ev)
 		case ConfigurationEvent::EnableRhythm:
 			// Nothing required, rhythm mode is enabled the first type a rhythm
 			// instrument is played.
+			break;
+		case ConfigurationEvent::EnableWaveSel:
+			this->writeNextPair(delay, 0, 0x01, ev->value ? 0x20 : 0x00);
 			break;
 	}
 	this->lastTick = ev->absTime;
