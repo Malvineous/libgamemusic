@@ -257,8 +257,6 @@ PatchBankPtr MusicReader_GenericOPL::getPatchBank()
 }
 
 
-#define bitsChanged(b) ((val ^ this->oplState[chipIndex][reg]) & b)
-
 EventPtr MusicReader_GenericOPL::readNextEvent()
 	throw (std::ios::failure)
 {
@@ -285,6 +283,11 @@ bool MusicReader_GenericOPL::populateEventBuffer()
 		if (!this->nextPair(&delay, &chipIndex, &reg, &val)) break; // end of song
 		assert(chipIndex < 2);
 		if (this->delayType == DelayIsPreData) this->lastTick += delay;
+
+		// Update the current state with the new value
+		uint8_t oldval = this->oplState[chipIndex][reg];
+		this->oplState[chipIndex][reg] = val;
+#define bitsChanged(b) ((val ^ oldval) & b)
 
 		uint8_t oplChannel = reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
 		uint8_t channel = oplChannel + 14 * chipIndex;
