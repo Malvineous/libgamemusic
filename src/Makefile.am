@@ -15,6 +15,7 @@ libgamemusic_la_SOURCES += mus-raw-rdos.cpp
 libgamemusic_la_SOURCES += mus-generic-midi.cpp
 libgamemusic_la_SOURCES += mus-rawmidi.cpp
 libgamemusic_la_SOURCES += mus-cmf-creativelabs.cpp
+libgamemusic_la_SOURCES += mus-klm-wacky.cpp
 libgamemusic_la_SOURCES += mus-mid-type0.cpp
 
 EXTRA_libgamemusic_la_SOURCES = patchbank-fmt-ibk.hpp
@@ -25,6 +26,7 @@ EXTRA_libgamemusic_la_SOURCES += mus-raw-rdos.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-generic-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-rawmidi.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-cmf-creativelabs.hpp
+EXTRA_libgamemusic_la_SOURCES += mus-klm-wacky.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-mid-type0.hpp
 
 AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(BOOST_CPPFLAGS) -I $(top_srcdir)/include $(libgamecommon_CFLAGS)

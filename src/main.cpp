@@ -29,6 +29,7 @@
 #include "mus-raw-rdos.hpp"
 #include "mus-rawmidi.hpp"
 #include "mus-cmf-creativelabs.hpp"
+#include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
 
 namespace camoto {
@@ -69,6 +70,7 @@ Manager::Manager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RawMIDI()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
 }
 

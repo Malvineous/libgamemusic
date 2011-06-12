@@ -10,6 +10,7 @@ tests_SOURCES += test-mus-dro-dosbox-v2.cpp
 tests_SOURCES += test-midi.cpp
 tests_SOURCES += test-opl.cpp
 tests_SOURCES += test-mus-cmf-creativelabs.cpp
+tests_SOURCES += test-mus-klm-wacky.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
 
 EXTRA_tests_SOURCES = tests.hpp

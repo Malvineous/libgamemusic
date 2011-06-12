@@ -24,3 +24,4 @@ Outstanding tasks
 
  - Recognise MIDI control event to change patches, not just patch-change event
 
+ - Fix .KLM writer
