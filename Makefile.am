@@ -1,7 +1,7 @@
 AUTOMAKE_OPTIONS = foreign dist-bzip2
 
 # "src" must go first so the library is available when the examples compile
-SUBDIRS = src doc examples include tests
+SUBDIRS = src doc examples include tests utils
 
 EXTRA_DIST = @PACKAGE@.pc.in README
 

@@ -18,7 +18,7 @@ AC_PROG_CXX
 # Checks for libraries.
 AC_PROG_LIBTOOL
 
-BOOST_REQUIRE([1.37])
+BOOST_REQUIRE([1.46])
 BOOST_FILESYSTEM
 BOOST_PROGRAM_OPTIONS
 BOOST_TEST
@@ -56,4 +56,4 @@ esac
 
 AM_SILENT_RULES([yes])
 
-AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile $PACKAGE.pc)
+AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile utils/Makefile $PACKAGE.pc)
