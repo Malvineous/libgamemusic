@@ -21,6 +21,8 @@
 #include "test-mus-imf-idsoftware-common.hpp"
 
 #define testdata_noteonoff \
+	imf_commonheader \
+	imf_setinstrument \
 	imf_noteonoff
 
 #define HAS_OPL_RHYTHM_INSTRUMENTS

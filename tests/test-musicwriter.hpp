@@ -104,6 +104,30 @@ struct FIXTURE_NAME: public default_sample {
 			gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
 			instruments->setPatchCount(1);
 			gm::OPLPatchPtr defInst(new gm::OPLPatch);
+			defInst->m.enableTremolo = defInst->c.enableTremolo = true;
+			defInst->m.enableVibrato = defInst->c.enableVibrato = false;
+			defInst->m.enableSustain = defInst->c.enableSustain = true;
+			defInst->m.enableKSR     = defInst->c.enableKSR     = false;
+
+			defInst->m.freqMult      = 14;
+			defInst->m.scaleLevel    = 1;
+			defInst->m.outputLevel   = 63;
+			defInst->m.attackRate    = 14;
+			defInst->m.decayRate     = 13;
+			defInst->m.sustainRate   = 12;
+			defInst->m.releaseRate   = 11;
+			defInst->m.waveSelect    = 6;
+
+			defInst->c.freqMult      = 7;
+			defInst->c.scaleLevel    = 0;
+			defInst->c.outputLevel   = 31;
+			defInst->c.attackRate    = 6;
+			defInst->c.decayRate     = 5;
+			defInst->c.sustainRate   = 4;
+			defInst->c.releaseRate   = 3;
+			defInst->c.waveSelect    = 2;
+
+			defInst->feedback = 2;
 			instruments->setPatch(0, defInst);
 #elif INSTRUMENT_TYPE == 1
 			gm::MIDIPatchBankPtr instruments(new gm::MIDIPatchBank());

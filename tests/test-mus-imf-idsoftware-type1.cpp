@@ -21,7 +21,9 @@
 #include "test-mus-imf-idsoftware-common.hpp"
 
 #define testdata_noteonoff \
-	"\x10\x00" \
+	"\x3c\x00" \
+	imf_commonheader \
+	imf_setinstrument \
 	imf_noteonoff
 
 #define HAS_OPL_RHYTHM_INSTRUMENTS

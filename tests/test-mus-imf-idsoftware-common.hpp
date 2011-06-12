@@ -21,13 +21,28 @@
 #define INITIAL_TEMPO 1785
 #define INSTRUMENT_TYPE  0 // OPL
 
+#define imf_commonheader \
+	"\x00\x00" "\x00\x00"
+
 // F-num 577 is 440.2Hz in block 4 (w/ conversion constant of 50,000)
 // F-num 580 is 439.9Hz in block 4 (w/ conversion constant of 49,716)
 #define imf_noteonoff \
-	"\x00\x00" "\x00\x00" \
 	"\xA0\x44" "\x00\x00" \
 	"\xB0\x32" "\x10\x00" \
 	"\xB0\x12" "\x00\x00"
+
+#define imf_setinstrument \
+	"\x20\xae" "\x00\x00" \
+	"\x40\x7f" "\x00\x00" \
+	"\x60\xed" "\x00\x00" \
+	"\x80\xcb" "\x00\x00" \
+	"\xe0\x06" "\x00\x00" \
+	"\x23\xa7" "\x00\x00" \
+	"\x43\x1f" "\x00\x00" \
+	"\x63\x65" "\x00\x00" \
+	"\x83\x43" "\x00\x00" \
+	"\xe3\x02" "\x00\x00" \
+	"\xc0\x04" "\x00\x00"
 
 #define imf_rhythm_hihat \
 	"\x00\x00\x00\x00" \
