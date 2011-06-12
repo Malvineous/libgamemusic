@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(freqToNote)
 {
 	BOOST_TEST_MESSAGE("Testing frequency to note conversion");
 
-	int fnum, block;
+	unsigned int fnum, block;
 #define check_freq(f, n, b) \
 	gm::milliHertzToFnum(f, &fnum, &block, 49716); \
 	BOOST_CHECK_EQUAL(fnum, n); \

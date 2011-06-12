@@ -35,20 +35,6 @@
 #define BASE_WAVE       0xE0
 #define BASE_FEED_CONN  0xC0
 
-#define OPLBIT_KEYON    0x20 // Bit in BASE_KEYON_FREQ register for turning a note on
-
-/// Supplied with a channel, return the offset from a base OPL register for the
-/// Modulator cell (e.g. channel 4's modulator is at offset 0x09.  Since 0x60 is
-/// the attack/decay function, register 0x69 will thus set the attack/decay for
-/// channel 4's modulator.)  Channels go from 0 to 8 inclusive.
-#define OPLOFFSET_MOD(channel)   (((channel) / 3) * 8 + ((channel) % 3))
-#define OPLOFFSET_CAR(channel)   (OPLOFFSET_MOD(channel) + 3)
-
-/// Supplied with an operator offset, return the OPL channel it is associated
-/// with (0-8).  Note that this only works in 2-operator mode, the OPL3's 4-op
-/// mode requires a different formula.
-#define OPL_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
-
 /// Convert the OPLPatch::rhythm value into text for error messages.
 const char *rhythmToText(int rhythm)
 {
@@ -112,14 +98,17 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 	return s;
 }
 
-int camoto::gamemusic::fnumToMilliHertz(int fnum, int block, int conversionFactor)
+int camoto::gamemusic::fnumToMilliHertz(unsigned int fnum, unsigned int block,
+	unsigned int conversionFactor)
 	throw ()
 {
-	double dbOriginalFreq = conversionFactor * (double)fnum * pow(2, (double)(block - 20));
-	return dbOriginalFreq * 1000;
+	assert(block < 8);
+	assert(fnum < 1024);
+	return 1000 * conversionFactor * (double)fnum * pow(2, (double)((signed)block - 20));
 }
 
-void camoto::gamemusic::milliHertzToFnum(int milliHertz, int *fnum, int *block, int conversionFactor)
+void camoto::gamemusic::milliHertzToFnum(unsigned int milliHertz,
+	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor)
 	throw ()
 {
 	// Special case to avoid divide by zero
@@ -663,7 +652,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 {
 	assert(this->inst);
 
-	int fnum, block;
+	unsigned int fnum, block;
 	::milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 
 	int oplChannel = ev->channel % 14; // TODO: channel map for >9 chans
@@ -809,7 +798,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOffEvent *ev)
 void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
 	throw (std::ios::failure)
 {
-	int fnum, block;
+	unsigned int fnum, block;
 	::milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 	int oplChannel = ev->channel % 9; // TODO: channel map for >9 chans
 	int chipIndex = 0; // TODO: calculate from channel map
