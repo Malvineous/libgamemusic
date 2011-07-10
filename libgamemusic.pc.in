@@ -6,7 +6,6 @@ includedir=@includedir@
 Name: libgamemusic
 Description: Read, write and convert music files, with a focus on file formats used by DOS games
 URL: http://www.shikadi.net/camoto/
-Requires: boost >= 1.37
 Version: @VERSION@
-Libs: -L${libdir}
+Libs: -L${libdir} -lgamemusic
 Cflags: -I${includedir}/@camoto_release@
