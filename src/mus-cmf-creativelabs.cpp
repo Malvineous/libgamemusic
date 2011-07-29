@@ -44,7 +44,7 @@ std::vector<std::string> MusicType_CMF::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_CMF::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_CMF::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	// Make sure the signature matches
@@ -52,17 +52,17 @@ E_CERTAINTY MusicType_CMF::isInstance(istream_sptr psMusic) const
 	char sig[4];
 	psMusic->seekg(0, std::ios::beg);
 	psMusic->read(sig, 4);
-	if (strncmp(sig, "CTMF", 4) != 0) return EC_DEFINITELY_NO;
+	if (strncmp(sig, "CTMF", 4) != 0) return MusicType::DefinitelyNo;
 
 	// Make sure the header says it's version 1.0 or 1.1
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c02 (wrong ver)
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c03 (1.0)
 	uint16_t ver;
 	psMusic >> u16le(ver);
-	if ((ver != 0x100) && (ver != 0x101)) return EC_DEFINITELY_NO;
+	if ((ver != 0x100) && (ver != 0x101)) return MusicType::DefinitelyNo;
 
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c00
-	return EC_DEFINITELY_YES;
+	return MusicType::DefinitelyYes;
 }
 
 MusicWriterPtr MusicType_CMF::create(ostream_sptr output, SuppData& suppData) const

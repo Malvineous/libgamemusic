@@ -41,7 +41,7 @@ class MusicType_RAW: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const

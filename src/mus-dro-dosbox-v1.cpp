@@ -44,7 +44,7 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	// Make sure the signature matches
@@ -52,16 +52,16 @@ E_CERTAINTY MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	char sig[8];
 	psMusic->seekg(0, std::ios::beg);
 	psMusic->read(sig, 8);
-	if (strncmp(sig, "DBRAWOPL", 8) != 0) return EC_DEFINITELY_NO;
+	if (strncmp(sig, "DBRAWOPL", 8) != 0) return MusicType::DefinitelyNo;
 
 	// Make sure the header says it's version 0.1
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c02
 	uint16_t verMajor, verMinor;
 	psMusic >> u16le(verMajor) >> u16le(verMinor);
-	if ((verMajor != 0) || (verMinor != 1)) return EC_DEFINITELY_NO;
+	if ((verMajor != 0) || (verMinor != 1)) return MusicType::DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c00
-	return EC_DEFINITELY_YES;
+	return MusicType::DefinitelyYes;
 }
 
 MusicWriterPtr MusicType_DRO_v1::create(ostream_sptr output, SuppData& suppData) const

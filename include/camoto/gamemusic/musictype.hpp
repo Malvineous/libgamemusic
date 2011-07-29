@@ -34,23 +34,18 @@ namespace camoto {
 /// Namespace for this library
 namespace gamemusic {
 
-/// Confidence level when guessing an music format.
-enum E_CERTAINTY {
-	/// Certain this file is not of the music format.
-	EC_DEFINITELY_NO,
-	/// The checks were inconclusive, it could go either way.
-	EC_UNSURE,
-	/// Everything checked out OK, but this format has no signature or other
-	/// test to be completely certain.
-	EC_POSSIBLY_YES,
-	/// This format has a signature and it matched.
-	EC_DEFINITELY_YES,
-};
-
 /// Interface to a particular music format.
 class MusicType {
 
 	public:
+
+		/// Confidence level when guessing a file format.
+		enum Certainty {
+			DefinitelyNo,  ///< Definitely not in this format
+			Unsure,        ///< The checks were inconclusive, it could go either way
+			PossiblyYes,   ///< Everything checked out OK, but there's no signature
+			DefinitelyYes, ///< This format has a signature and it matched
+		};
 
 		/// Get a short code to identify this file format, e.g. "imf-idsoftware"
 		/**
@@ -78,9 +73,9 @@ class MusicType {
 		/// Check a stream to see if it's in this music format.
 		/**
 		 * @param  psMusic A C++ iostream of the file to test.
-		 * @return A single confidence value from \ref E_CERTAINTY.
+		 * @return A single confidence value from \ref MusicType::Certainty.
 		 */
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure) = 0;
 
 		/// Create a blank song in this format.

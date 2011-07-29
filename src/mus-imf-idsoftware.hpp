@@ -43,7 +43,7 @@ class MusicType_IMF_Common: virtual public MusicType {
 		 * @param imfType 0 to check as type-0, 1 to check as type-1
 		 * @return @see MusicType::isInstance()
 		 */
-		virtual E_CERTAINTY genericIsInstance(istream_sptr psMusic, int imfType) const
+		virtual MusicType::Certainty genericIsInstance(istream_sptr psMusic, int imfType) const
 			throw (std::ios::failure);
 
 };
@@ -62,7 +62,7 @@ class MusicType_IMF_Type0: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
@@ -87,7 +87,7 @@ class MusicType_IMF_Type1: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
@@ -111,7 +111,7 @@ class MusicType_WLF_Type0: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
@@ -136,7 +136,7 @@ class MusicType_WLF_Type1: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
@@ -160,7 +160,7 @@ class MusicType_IMF_Duke2: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual E_CERTAINTY isInstance(istream_sptr psMusic) const
+		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
 			throw (std::ios::failure);
 
 		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const

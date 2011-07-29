@@ -45,7 +45,7 @@ std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	// Make sure the signature matches
@@ -53,7 +53,7 @@ E_CERTAINTY MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
 	char sig[4];
 	psMusic->seekg(0, std::ios::beg);
 	psMusic->read(sig, 4);
-	if (strncmp(sig, "MThd", 4) != 0) return EC_DEFINITELY_NO;
+	if (strncmp(sig, "MThd", 4) != 0) return MusicType::DefinitelyNo;
 
 	// Skip over the length field
 	psMusic->seekg(4, std::ios::cur);
@@ -62,10 +62,10 @@ E_CERTAINTY MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
 	// TESTED BY: mus_mid_type0_isinstance_c02 (wrong type)
 	uint16_t type;
 	psMusic >> u16be(type);
-	if (type != 0) return EC_DEFINITELY_NO;
+	if (type != 0) return MusicType::DefinitelyNo;
 
 	// TESTED BY: mus_mid_type0_isinstance_c00
-	return EC_DEFINITELY_YES;
+	return MusicType::DefinitelyYes;
 }
 
 MusicWriterPtr MusicType_MID_Type0::create(ostream_sptr output, SuppData& suppData) const

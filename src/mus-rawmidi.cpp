@@ -44,13 +44,13 @@ std::vector<std::string> MusicType_RawMIDI::getFileExtensions() const
 }
 
 
-E_CERTAINTY MusicType_RawMIDI::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_RawMIDI::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	/// @todo Try to read the data
 
 	// TESTED BY: mus_raw_rdos_isinstance_c00
-	return EC_DEFINITELY_NO;
+	return MusicType::DefinitelyNo;
 }
 
 MusicWriterPtr MusicType_RawMIDI::create(ostream_sptr output, SuppData& suppData) const

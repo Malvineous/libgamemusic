@@ -45,7 +45,7 @@ std::vector<std::string> MusicType_RAW::getFileExtensions() const
 }
 
 
-E_CERTAINTY MusicType_RAW::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_RAW::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	// Make sure the signature matches
@@ -54,13 +54,13 @@ E_CERTAINTY MusicType_RAW::isInstance(istream_sptr psMusic) const
 		char sig[8];
 		psMusic->seekg(0, std::ios::beg);
 		psMusic->read(sig, 8);
-		if (strncmp(sig, "RAWADATA", 8) != 0) return EC_DEFINITELY_NO;
+		if (strncmp(sig, "RAWADATA", 8) != 0) return MusicType::DefinitelyNo;
 	} catch (std::ios::failure) {
-		return EC_DEFINITELY_NO; // EOF
+		return MusicType::DefinitelyNo; // EOF
 	}
 
 	// TESTED BY: mus_raw_rdos_isinstance_c00
-	return EC_DEFINITELY_YES;
+	return MusicType::DefinitelyYes;
 }
 
 MusicWriterPtr MusicType_RAW::create(ostream_sptr output, SuppData& suppData) const

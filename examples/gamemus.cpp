@@ -99,24 +99,24 @@ gm::MusicReaderPtr openMusicFile(const std::string& strFilename,
 		gm::MusicTypePtr pTestType;
 		int i = 0;
 		while ((pTestType = pManager->getMusicType(i++))) {
-			gm::E_CERTAINTY cert = pTestType->isInstance(psMusic);
+			gm::MusicType::Certainty cert = pTestType->isInstance(psMusic);
 			switch (cert) {
-				case gm::EC_DEFINITELY_NO:
+				case gm::MusicType::DefinitelyNo:
 					// Don't print anything (TODO: Maybe unless verbose?)
 					break;
-				case gm::EC_UNSURE:
+				case gm::MusicType::Unsure:
 					std::cout << "File could be: " << pTestType->getFriendlyName()
 						<< " [" << pTestType->getCode() << "]" << std::endl;
 					// If we haven't found a match already, use this one
 					if (!pMusicType) pMusicType = pTestType;
 					break;
-				case gm::EC_POSSIBLY_YES:
+				case gm::MusicType::PossiblyYes:
 					std::cout << "File is likely to be: " << pTestType->getFriendlyName()
 						<< " [" << pTestType->getCode() << "]" << std::endl;
 					// Take this one as it's better than an uncertain match
 					pMusicType = pTestType;
 					break;
-				case gm::EC_DEFINITELY_YES:
+				case gm::MusicType::DefinitelyYes:
 					std::cout << "File is definitely: " << pTestType->getFriendlyName()
 						<< " [" << pTestType->getCode() << "]" << std::endl;
 					pMusicType = pTestType;

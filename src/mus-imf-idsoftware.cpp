@@ -29,14 +29,14 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int imfType) const
+MusicType::Certainty MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int imfType) const
 	throw (std::ios::failure)
 {
 	psMusic->seekg(0, std::ios::end);
 	io::stream_offset len = psMusic->tellg();
 
 	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c01
-	if (len < 2) return EC_DEFINITELY_NO; // too short
+	if (len < 2) return MusicType::DefinitelyNo; // too short
 
 	// Read the first two bytes as the data length size and make sure they
 	// don't point past the end of the file.
@@ -44,18 +44,18 @@ E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int im
 	psMusic->seekg(0, std::ios::beg);
 	uint16_t dataLen;
 	psMusic >> u16le(dataLen);
-	if (dataLen > len) return EC_DEFINITELY_NO;
+	if (dataLen > len) return MusicType::DefinitelyNo;
 
 	if (dataLen == 0) { // type-0 format
 		// Jump back so these bytes are counted as the first event
 		psMusic->seekg(0, std::ios::beg);
 		// Only type-0 files start like this
 		// TESTED BY: mus_imf_idsoftware_type0_isinstance_c04
-		if (imfType != 0) return EC_DEFINITELY_NO;
+		if (imfType != 0) return MusicType::DefinitelyNo;
 		dataLen = len;
 	} else { // type-1 format
 		// TESTED BY: mus_imf_idsoftware_type1_isinstance_c04
-		if (imfType != 1) return EC_DEFINITELY_NO;
+		if (imfType != 1) return MusicType::DefinitelyNo;
 	}
 
 	// TODO: Parse file and check for invalid register writes.
@@ -86,18 +86,18 @@ E_CERTAINTY MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int im
 		) {
 			// This is an invalid OPL register
 			// TESTED BY: mus_imf_idsoftware_type*_isinstance_c02
-			return EC_DEFINITELY_NO;
+			return MusicType::DefinitelyNo;
 		}
 
 		// Very unlikely that a real song would have a lengthy delay in it...
 		// TESTED BY: mus_imf_idsoftware_type*_isinstance_c03
-		if (delay > IMF_MAX_DELAY) return EC_DEFINITELY_NO;
+		if (delay > IMF_MAX_DELAY) return MusicType::DefinitelyNo;
 
 		dataLen -= 4;
 	}
 
 	// TESTED BY: mus_imf_idsoftware_isinstance_c00
-	return EC_DEFINITELY_YES;
+	return MusicType::DefinitelyYes;
 }
 
 SuppFilenames MusicType_IMF_Common::getRequiredSupps(const std::string& filenameMusic) const
@@ -129,7 +129,7 @@ std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	return this->genericIsInstance(psMusic, 0);
@@ -169,7 +169,7 @@ std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	return this->genericIsInstance(psMusic, 1);
@@ -208,7 +208,7 @@ std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_WLF_Type0::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_WLF_Type0::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	return this->genericIsInstance(psMusic, 0);
@@ -247,7 +247,7 @@ std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_WLF_Type1::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_WLF_Type1::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	return this->genericIsInstance(psMusic, 1);
@@ -286,7 +286,7 @@ std::vector<std::string> MusicType_IMF_Duke2::getFileExtensions() const
 	return vcExtensions;
 }
 
-E_CERTAINTY MusicType_IMF_Duke2::isInstance(istream_sptr psMusic) const
+MusicType::Certainty MusicType_IMF_Duke2::isInstance(istream_sptr psMusic) const
 	throw (std::ios::failure)
 {
 	return this->genericIsInstance(psMusic, 0);
