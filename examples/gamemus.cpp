@@ -413,7 +413,7 @@ int main(int iArgC, char *cArgV[])
 
 				try {
 					pMusicOut->setPatchBank(instruments);
-				} catch (EBadPatchType) {
+				} catch (gm::EBadPatchType) {
 					std::cerr << "ERROR: Output format " << strOutType << " does not "
 						"support the instruments used in the input file." << std::endl;
 					// TODO: delete output file

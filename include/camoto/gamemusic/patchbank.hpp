@@ -28,6 +28,9 @@
 #include <boost/shared_ptr.hpp>
 #include <camoto/gamemusic/patch.hpp>
 
+namespace camoto {
+namespace gamemusic {
+
 /// Exception thrown when adding a patch to a bank that doesn't support that
 /// patch type (e.g. adding a sampled patch to an OPL bank)
 class EBadPatchType: public std::exception {
@@ -44,9 +47,6 @@ class EBadPatchType: public std::exception {
 		virtual const char *what() const
 			throw ();
 };
-
-namespace camoto {
-namespace gamemusic {
 
 /// Primary interface to a patchbank (list of patches available for use in a
 /// song)
