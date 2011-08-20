@@ -58,7 +58,7 @@ ISINSTANCE_TEST(c01,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Wrong type
@@ -74,5 +74,5 @@ ISINSTANCE_TEST(c02,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );

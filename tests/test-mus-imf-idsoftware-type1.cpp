@@ -64,7 +64,7 @@
 ISINSTANCE_TEST(c01,
 	"\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Invalid register
@@ -73,7 +73,7 @@ ISINSTANCE_TEST(c02,
 	"\x00\x00\x00\x00"
 	"\xF9\x00\x00\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Delay too large
@@ -82,7 +82,7 @@ ISINSTANCE_TEST(c03,
 	"\x00\x00\x00\x00"
 	"\xBD\x20\x00\xF0"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Type-1 file with zero length
@@ -91,7 +91,7 @@ ISINSTANCE_TEST(c04,
 	"\x00\x00\x00\x00"
 	"\x12\x34\x56\x78"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Type-1 file with wrong length
@@ -100,7 +100,7 @@ ISINSTANCE_TEST(c05,
 	"\x00\x00\x00\x00"
 	"\x12\x34\x56\x78"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Make sure weird short files don't get picked up
@@ -109,6 +109,6 @@ ISINSTANCE_TEST(c06,
 	"\x01\x00"
 	"\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 */

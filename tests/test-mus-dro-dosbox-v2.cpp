@@ -136,12 +136,12 @@
 ISINSTANCE_TEST(c01,
 	"DBRAWOPP" "\x00\x00\x02\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Wrong version
 ISINSTANCE_TEST(c02,
 	"DBRAWOPL" "\x00\x00\x01\x00"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );

@@ -200,7 +200,7 @@ BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 		BOOST_CHECK_EQUAL(pTestType->isInstance(psBase), r); \
 	}
 
-ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::EC_DEFINITELY_YES);
+ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 
 
 // Define an INVALIDDATA_TEST macro which we use to confirm the reader correctly
@@ -230,7 +230,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::EC_DEFINITELY_YES);
 
 #define INVALIDDATA_TEST_FULL(c, d, f) \
 	/* Run an isInstance test first to make sure the data is accepted */ \
-	ISINSTANCE_TEST(invaliddata_ ## c, d, gm::EC_DEFINITELY_YES); \
+	ISINSTANCE_TEST(invaliddata_ ## c, d, gm::MusicType::DefinitelyYes); \
 	\
 	BOOST_AUTO_TEST_CASE(TEST_NAME(invaliddata_ ## c)) \
 	{ \

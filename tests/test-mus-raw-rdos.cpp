@@ -128,5 +128,5 @@
 ISINSTANCE_TEST(c01,
 	"RAWADATO"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
