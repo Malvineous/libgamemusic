@@ -24,7 +24,8 @@
 #include <deque>
 #include <camoto/gamemusic/music.hpp>
 #include <camoto/gamemusic/patchbank-midi.hpp>
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 
 namespace camoto {
 namespace gamemusic {
@@ -93,7 +94,7 @@ class MusicReader_GenericMIDI: virtual public MusicReader {
 		unsigned long tick;               ///< Time of next event
 		uint8_t lastEvent;                ///< Last event (for MIDI running status)
 		std::deque<EventPtr> eventBuffer; ///< List of events to return in readNextEvent()
-		istream_sptr midi;                ///< MIDI data to read
+		stream::input_sptr midi;          ///< MIDI data to read
 		MIDIPatchBankPtr patches;         ///< Cached patches populated by getPatchBank()
 		bool setTempo;                    ///< Have we sent the initial tempo event?
 		MIDIFlags::Type midiFlags;        ///< Flags supplied in constructor
@@ -135,7 +136,7 @@ class MusicReader_GenericMIDI: virtual public MusicReader {
 			throw ();
 
 		virtual EventPtr readNextEvent()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// MusicReader_GenericMIDI functions
 
@@ -191,8 +192,8 @@ class MusicReader_GenericMIDI: virtual public MusicReader {
 		 *   in the stream, as the data begins at the stream's current seek
 		 *   position, which may not be the beginning of the stream.
 		 */
-		virtual void setMIDIStream(istream_sptr data)
-			throw (std::ios::failure);
+		virtual void setMIDIStream(stream::input_sptr data)
+			throw (stream::error);
 
 		/// Set the initial tempo to be returned in the first event.
 		/**
@@ -224,7 +225,7 @@ class MusicReader_GenericMIDI: virtual public MusicReader {
 		 * integer.
 		 */
 		uint32_t readMIDINumber()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 };
 
@@ -233,7 +234,7 @@ class MusicWriter_GenericMIDI: virtual public MusicWriter {
 
 	protected:
 		unsigned long lastTick;            ///< Time of last event
-		ostream_sptr midi;                 ///< Where to write MIDI data
+		stream::output_sptr midi;          ///< Where to write MIDI data
 		MIDIPatchBankPtr patches;          ///< List of instruments
 		MIDIFlags::Type midiFlags;         ///< Flags supplied in constructor
 		uint8_t lastCommand;               ///< Last event written (for running-status)
@@ -279,22 +280,22 @@ class MusicWriter_GenericMIDI: virtual public MusicWriter {
 		 * If overriding this function, before to call this version of it first!
 		 */
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(TempoEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch);
+			throw (stream::error, EChannelMismatch);
 
 		virtual void handleEvent(NoteOffEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(PitchbendEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(ConfigurationEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// MusicReader_GenericMIDI functions
 
@@ -310,8 +311,8 @@ class MusicWriter_GenericMIDI: virtual public MusicWriter {
 		 * @param data
 		 *   Shared pointer to an std::ostream where raw MIDI data will be written.
 		 */
-		virtual void setMIDIStream(ostream_sptr data)
-			throw (std::ios::failure);
+		virtual void setMIDIStream(stream::output_sptr data)
+			throw (stream::error);
 
 	protected:
 
@@ -349,7 +350,7 @@ class MusicWriter_GenericMIDI: virtual public MusicWriter {
 		 *   if the value is larger than this.
 		 */
 		virtual void writeMIDINumber(uint32_t value)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		/// Write the MIDI command only if it's different to the last one
 		/**
@@ -362,7 +363,7 @@ class MusicWriter_GenericMIDI: virtual public MusicWriter {
 		 * @post cmd may or may not be written to %midi
 		 */
 		virtual void writeCommand(uint8_t cmd)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		/// Get the current mapping of the input channel to a MIDI channel.
 		/**

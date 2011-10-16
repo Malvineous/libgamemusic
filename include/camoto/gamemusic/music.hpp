@@ -27,7 +27,8 @@
 #include <sstream>
 #include <vector>
 
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 #include <camoto/gamemusic/patchbank.hpp>
 #include <camoto/gamemusic/events.hpp>
 
@@ -93,7 +94,7 @@ class MusicReader {
 		 *         there are no more events to be read.
 		 */
 		virtual EventPtr readNextEvent()
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 		/// Get the next event from the file and pass it to a HandleEvent instance.
 		/**
@@ -106,7 +107,7 @@ class MusicReader {
 		 *         there are no more events to be read.
 		 */
 //		virtual void handleNextEvent(HandleEvent *cb)
-//			throw (std::ios::failure) = 0;
+//			throw (stream::error) = 0;
 // This isn't going to work because events can't be buffered then
 
 		/// Find out which attributes can be set on files in this music.
@@ -158,7 +159,7 @@ class MusicReader {
 		 * @return A string containing the metadata (may be empty.)
 		 */
 		virtual std::string getMetadata(E_METADATA item) const
-			throw (std::ios::failure);
+			throw (stream::error);
 
 };
 
@@ -236,7 +237,7 @@ class MusicWriter: virtual public EventHandler {
 		 *         a blank.
 		 */
 		virtual void setMetadata(E_METADATA item, const std::string& value)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		/// Start writing to the output stream.
 		/**
@@ -246,7 +247,7 @@ class MusicWriter: virtual public EventHandler {
 		 * into the file header.
 		 */
 		virtual void start()
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 		/// Finish writing to the output stream.
 		/**
@@ -254,7 +255,7 @@ class MusicWriter: virtual public EventHandler {
 		 * It must be called after the last event has been written.
 		 */
 		virtual void finish()
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 	protected:
 		Flags flags;

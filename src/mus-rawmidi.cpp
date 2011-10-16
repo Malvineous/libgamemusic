@@ -44,8 +44,8 @@ std::vector<std::string> MusicType_RawMIDI::getFileExtensions() const
 }
 
 
-MusicType::Certainty MusicType_RawMIDI::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_RawMIDI::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	/// @todo Try to read the data
 
@@ -53,14 +53,14 @@ MusicType::Certainty MusicType_RawMIDI::isInstance(istream_sptr psMusic) const
 	return MusicType::DefinitelyNo;
 }
 
-MusicWriterPtr MusicType_RawMIDI::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_RawMIDI::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_RawMIDI(output));
 }
 
-MusicReaderPtr MusicType_RawMIDI::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_RawMIDI::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_RawMIDI(input));
 }
@@ -72,8 +72,8 @@ SuppFilenames MusicType_RawMIDI::getRequiredSupps(const std::string& filenameMus
 	return SuppFilenames();
 }
 
-MusicReader_RawMIDI::MusicReader_RawMIDI(istream_sptr input)
-	throw (std::ios::failure) :
+MusicReader_RawMIDI::MusicReader_RawMIDI(stream::input_sptr input)
+	throw (stream::error) :
 		MusicReader_GenericMIDI(MIDIFlags::ShortAftertouch), // TEMP for Vinyl
 		input(input)
 {
@@ -88,14 +88,13 @@ MusicReader_RawMIDI::~MusicReader_RawMIDI()
 void MusicReader_RawMIDI::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
-	this->input->seekg(0, std::ios::beg);
+	this->input->seekg(0, stream::start);
 	return;
 }
 
 
 
-MusicWriter_RawMIDI::MusicWriter_RawMIDI(ostream_sptr output)
+MusicWriter_RawMIDI::MusicWriter_RawMIDI(stream::output_sptr output)
 	throw () :
 		MusicWriter_GenericMIDI(MIDIFlags::Default)
 {
@@ -108,7 +107,7 @@ MusicWriter_RawMIDI::~MusicWriter_RawMIDI()
 }
 
 void MusicWriter_RawMIDI::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	return;
 }

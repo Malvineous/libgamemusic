@@ -41,14 +41,14 @@ class MusicType_DRO_v1: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -59,14 +59,14 @@ class MusicType_DRO_v1: virtual public MusicType {
 class MusicReader_DRO_v1: virtual public MusicReader_GenericOPL {
 
 	protected:
-		istream_sptr input;  ///< Stream of data to read
+		stream::input_sptr input;  ///< Stream of data to read
 		int lenData;         ///< Length of data to read (must be signed as -1 is possible)
 		int chipIndex;       ///< Index of the currently selected OPL chip
 
 	public:
 
-		MusicReader_DRO_v1(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_DRO_v1(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_DRO_v1()
 			throw ();
@@ -75,7 +75,7 @@ class MusicReader_DRO_v1: virtual public MusicReader_GenericOPL {
 			throw ();
 
 		virtual bool nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 };
@@ -84,30 +84,30 @@ class MusicReader_DRO_v1: virtual public MusicReader_GenericOPL {
 class MusicWriter_DRO_v1: virtual public MusicWriter_GenericOPL {
 
 	protected:
-		ostream_sptr output; ///< Stream to write data into
+		stream::output_sptr output; ///< Stream to write data into
 		uint32_t numTicks;   ///< Total number of ticks in the song
 		int usPerTick;       ///< Latest microseconds per tick value (tempo)
 		int lastChipIndex;   ///< Index of the currently selected OPL chip
 
 	public:
 
-		MusicWriter_DRO_v1(ostream_sptr output)
+		MusicWriter_DRO_v1(stream::output_sptr output)
 			throw ();
 
 		virtual ~MusicWriter_DRO_v1()
 			throw ();
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void changeSpeed(uint32_t usPerTick)
 			throw ();
 
 		virtual void nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 

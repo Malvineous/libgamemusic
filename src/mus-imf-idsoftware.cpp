@@ -29,11 +29,10 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-MusicType::Certainty MusicType_IMF_Common::genericIsInstance(istream_sptr psMusic, int imfType) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_IMF_Common::genericIsInstance(stream::input_sptr psMusic, int imfType) const
+	throw (stream::error)
 {
-	psMusic->seekg(0, std::ios::end);
-	io::stream_offset len = psMusic->tellg();
+	stream::pos len = psMusic->size();
 
 	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c01
 	if (len < 2) return MusicType::DefinitelyNo; // too short
@@ -41,14 +40,14 @@ MusicType::Certainty MusicType_IMF_Common::genericIsInstance(istream_sptr psMusi
 	// Read the first two bytes as the data length size and make sure they
 	// don't point past the end of the file.
 	// TESTED BY: mus_imf_idsoftware_type1_isinstance_c05
-	psMusic->seekg(0, std::ios::beg);
+	psMusic->seekg(0, stream::start);
 	uint16_t dataLen;
 	psMusic >> u16le(dataLen);
 	if (dataLen > len) return MusicType::DefinitelyNo;
 
 	if (dataLen == 0) { // type-0 format
 		// Jump back so these bytes are counted as the first event
-		psMusic->seekg(0, std::ios::beg);
+		psMusic->seekg(0, stream::start);
 		// Only type-0 files start like this
 		// TESTED BY: mus_imf_idsoftware_type0_isinstance_c04
 		if (imfType != 0) return MusicType::DefinitelyNo;
@@ -129,20 +128,20 @@ std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_IMF_Type0::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_IMF_Type0::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_IMF_Type0::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_IMF_Type0::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 560));
 }
 
-MusicReaderPtr MusicType_IMF_Type0::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_IMF_Type0::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 560));
 }
@@ -169,20 +168,20 @@ std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_IMF_Type1::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_IMF_Type1::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	return this->genericIsInstance(psMusic, 1);
 }
 
-MusicWriterPtr MusicType_IMF_Type1::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_IMF_Type1::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 560));
 }
 
-MusicReaderPtr MusicType_IMF_Type1::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_IMF_Type1::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 1, 560));
 }
@@ -208,20 +207,20 @@ std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_WLF_Type0::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_WLF_Type0::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_WLF_Type0::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_WLF_Type0::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 700));
 }
 
-MusicReaderPtr MusicType_WLF_Type0::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_WLF_Type0::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 700));
 }
@@ -247,20 +246,20 @@ std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_WLF_Type1::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_WLF_Type1::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	return this->genericIsInstance(psMusic, 1);
 }
 
-MusicWriterPtr MusicType_WLF_Type1::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_WLF_Type1::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 1, 700));
 }
 
-MusicReaderPtr MusicType_WLF_Type1::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_WLF_Type1::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 1, 700));
 }
@@ -286,32 +285,32 @@ std::vector<std::string> MusicType_IMF_Duke2::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_IMF_Duke2::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_IMF_Duke2::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	return this->genericIsInstance(psMusic, 0);
 }
 
-MusicWriterPtr MusicType_IMF_Duke2::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_IMF_Duke2::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_IMF(output, 0, 280));
 }
 
-MusicReaderPtr MusicType_IMF_Duke2::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_IMF_Duke2::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_IMF(input, 0, 280));
 }
 
 
-MusicReader_IMF::MusicReader_IMF(istream_sptr input, int imfType, int hzSpeed)
-	throw (std::ios::failure) :
+MusicReader_IMF::MusicReader_IMF(stream::input_sptr input, int imfType, int hzSpeed)
+	throw (stream::error) :
 		MusicReader_GenericOPL(DelayIsPostData),
 		input(input),
 		imfType(imfType)
 {
-	this->input->seekg(0, std::ios::beg);
+	this->input->seekg(0, stream::start);
 	if (imfType == 1) {
 		this->input >> u16le(this->lenData);
 	} else {
@@ -328,17 +327,16 @@ MusicReader_IMF::~MusicReader_IMF()
 void MusicReader_IMF::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
 	if (imfType == 1) {
-		this->input->seekg(2, std::ios::beg);
+		this->input->seekg(2, stream::start);
 	} else {
-		this->input->seekg(0, std::ios::beg);
+		this->input->seekg(0, stream::start);
 	}
 	return;
 }
 
 bool MusicReader_IMF::nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	try {
 		*chipIndex = 0; // IMF only supports one OPL2
@@ -347,17 +345,16 @@ bool MusicReader_IMF::nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg
 			>> u8(*val)
 			>> u16le(*delay)
 		;
-	} catch (std::ios::failure) {
-		if (this->input->eof()) return false;
-		throw;
+	} catch (const stream::incomplete_read&) {
+		return false;
 	}
-	return !this->input->eof();
+	return true;
 }
 
 // TODO: metadata functions
 
 
-MusicWriter_IMF::MusicWriter_IMF(ostream_sptr output, int imfType, int hzSpeed)
+MusicWriter_IMF::MusicWriter_IMF(stream::output_sptr output, int imfType, int hzSpeed)
 	throw () :
 		MusicWriter_GenericOPL(DelayIsPostData),
 		output(output),
@@ -373,7 +370,7 @@ MusicWriter_IMF::~MusicWriter_IMF()
 }
 
 void MusicWriter_IMF::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	if (this->imfType == 1) {
 		// Write a placeholder for the file size, which will be overwritten later
@@ -384,7 +381,7 @@ void MusicWriter_IMF::start()
 }
 
 void MusicWriter_IMF::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->MusicWriter_GenericOPL::finish();
 
@@ -393,7 +390,7 @@ void MusicWriter_IMF::finish()
 		int size = this->output->tellp();
 		size -= 2; // don't count the field itself
 		// TODO: write out metadata here
-		this->output->seekp(0, std::ios::beg);
+		this->output->seekp(0, stream::start);
 		this->output << u16le(size);
 	}
 	return;
@@ -407,7 +404,7 @@ void MusicWriter_IMF::changeSpeed(uint32_t usPerTick)
 }
 
 void MusicWriter_IMF::nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	assert(chipIndex == 0);  // make sure the format capabilities are being honoured
 	assert(this->usPerTick > 0); // make sure this has been set already

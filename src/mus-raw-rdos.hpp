@@ -41,14 +41,14 @@ class MusicType_RAW: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -59,13 +59,13 @@ class MusicType_RAW: virtual public MusicType {
 class MusicReader_RAW: virtual public MusicReader_GenericOPL {
 
 	protected:
-		istream_sptr input;  ///< Stream of data to read
+		stream::input_sptr input;  ///< Stream of data to read
 		int chipIndex;       ///< Index of the currently selected OPL chip
 
 	public:
 
-		MusicReader_RAW(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_RAW(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_RAW()
 			throw ();
@@ -75,7 +75,7 @@ class MusicReader_RAW: virtual public MusicReader_GenericOPL {
 
 		virtual bool nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg,
 			uint8_t *val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 };
@@ -84,31 +84,31 @@ class MusicReader_RAW: virtual public MusicReader_GenericOPL {
 class MusicWriter_RAW: virtual public MusicWriter_GenericOPL {
 
 	protected:
-		ostream_sptr output; ///< Stream to write data into
+		stream::output_sptr output; ///< Stream to write data into
 		int lastChipIndex;   ///< Index of the currently selected OPL chip
 		uint16_t firstClock; ///< First tempo change saved to write back into header
 		uint16_t lastClock;  ///< Last tempo change actioned (to avoid dupes)
 
 	public:
 
-		MusicWriter_RAW(ostream_sptr output)
+		MusicWriter_RAW(stream::output_sptr output)
 			throw ();
 
 		virtual ~MusicWriter_RAW()
 			throw ();
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void changeSpeed(uint32_t usPerTick)
 			throw ();
 
 		virtual void nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg,
 			uint8_t val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 

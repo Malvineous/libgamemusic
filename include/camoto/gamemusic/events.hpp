@@ -25,7 +25,8 @@
 #include <exception>
 #include <vector>
 
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 #include <camoto/gamemusic/patchbank.hpp> // EBadPatchType
 
 namespace camoto {
@@ -247,7 +248,7 @@ class EventHandler
 {
 	public:
 		virtual void handleEvent(TempoEvent *ev)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 		/// A note is being played.
 		/**
@@ -258,16 +259,16 @@ class EventHandler
 		 *   instrument (e.g. not enough instruments in patch bank.)
 		 */
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch, EBadPatchType) = 0;
+			throw (stream::error, EChannelMismatch, EBadPatchType) = 0;
 
 		virtual void handleEvent(NoteOffEvent *ev)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 		virtual void handleEvent(PitchbendEvent *ev)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 		virtual void handleEvent(ConfigurationEvent *ev)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 };
 
 

@@ -22,7 +22,8 @@
 #define _CAMOTO_GAMEMUSIC_PATCH_MIDI_HPP_
 
 #include <camoto/gamemusic/patch.hpp>
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 
 namespace camoto {
 namespace gamemusic {

@@ -106,7 +106,7 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 		uint32_t delay;
 		try {
 			this->readMIDINumber();
-		} catch (...) {
+		} catch (const stream::incomplete_read&) {
 			eof = true;
 			break;
 		}
@@ -157,7 +157,7 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 			case 0xA0:   // Polyphonic key pressure (two data bytes)
 			case 0xB0:   // Controller (two data bytes)
 			case 0xE0:   // Pitch bend (two data bytes)
-				this->midi->seekg(1, std::ios::cur);
+				this->midi->seekg(1, stream::cur);
 				break;
 			case 0xC0: { // Instrument change (one data byte)
 				// See if we've used this instrument before
@@ -187,13 +187,13 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 						break;
 					}
 					case 0xF1: // MIDI Time Code Quarter Frame
-						this->midi->seekg(1, std::ios::cur); // message data (ignored)
+						this->midi->seekg(1, stream::cur); // message data (ignored)
 						break;
 					case 0xF2: // Song position pointer
-						this->midi->seekg(2, std::ios::cur); // message data (ignored)
+						this->midi->seekg(2, stream::cur); // message data (ignored)
 						break;
 					case 0xF3: // Song select
-						this->midi->seekg(1, std::ios::cur); // message data (ignored)
+						this->midi->seekg(1, stream::cur); // message data (ignored)
 						std::cout << "Warning: MIDI Song Select is not implemented." << std::endl;
 						break;
 					case 0xF6: // Tune request
@@ -218,11 +218,11 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 						uint32_t len;
 						try {
 							len = this->readMIDINumber();
-						} catch (...) {
+						} catch (const stream::incomplete_read&) {
 							eof = true;
 							break;
 						}
-						this->midi->seekg(len, std::ios::cur); // message data (ignored)
+						this->midi->seekg(len, stream::cur); // message data (ignored)
 						break;
 					}
 					default:
@@ -232,7 +232,7 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 			default:
 				break;
 		}
-	} while ((!eof) && (!this->midi->eof()));
+	} while (!eof);
 	this->rewind();
 
 	// Make sure there's at least one instrument set
@@ -259,7 +259,7 @@ PatchBankPtr MusicReader_GenericMIDI::getPatchBank()
 }
 
 EventPtr MusicReader_GenericMIDI::readNextEvent()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	EventPtr gev;
 
@@ -459,13 +459,13 @@ EventPtr MusicReader_GenericMIDI::readNextEvent()
 						break;
 					}
 					case 0xF1: // MIDI Time Code Quarter Frame
-						this->midi->seekg(1, std::ios::cur); // message data (ignored)
+						this->midi->seekg(1, stream::cur); // message data (ignored)
 						break;
 					case 0xF2: // Song position pointer
-						this->midi->seekg(2, std::ios::cur); // message data (ignored)
+						this->midi->seekg(2, stream::cur); // message data (ignored)
 						break;
 					case 0xF3: // Song select
-						this->midi->seekg(1, std::ios::cur); // message data (ignored)
+						this->midi->seekg(1, stream::cur); // message data (ignored)
 						std::cout << "Warning: MIDI Song Select is not implemented." << std::endl;
 						break;
 					case 0xF6: // Tune request
@@ -500,7 +500,7 @@ EventPtr MusicReader_GenericMIDI::readNextEvent()
 							case 0x51: { // set tempo
 								if (len != 3) {
 									std::cerr << "Set tempo event had invalid length!" << std::endl;
-									this->midi->seekg(len, std::ios::cur); // message data (ignored)
+									this->midi->seekg(len, stream::cur); // message data (ignored)
 									break;
 								}
 								this->usPerQuarterNote = 0;
@@ -518,7 +518,7 @@ EventPtr MusicReader_GenericMIDI::readNextEvent()
 							default:
 								std::cout << "Unknown MIDI meta-event 0x" << std::hex
 									<< (int)evdata << std::dec << std::endl;
-								this->midi->seekg(len, std::ios::cur); // message data (ignored)
+								this->midi->seekg(len, stream::cur); // message data (ignored)
 								break;
 						}
 						break;
@@ -541,8 +541,8 @@ EventPtr MusicReader_GenericMIDI::readNextEvent()
 	return gev;
 }
 
-void MusicReader_GenericMIDI::setMIDIStream(istream_sptr data)
-	throw (std::ios::failure)
+void MusicReader_GenericMIDI::setMIDIStream(stream::input_sptr data)
+	throw (stream::error)
 {
 	this->midi = data;
 	return;
@@ -569,7 +569,7 @@ void MusicReader_GenericMIDI::setusPerQuarterNote(unsigned long us)
 }
 
 uint32_t MusicReader_GenericMIDI::readMIDINumber()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// Make sure this->setMIDIStream() has been called
 	assert(this->midi);
@@ -623,7 +623,7 @@ void MusicWriter_GenericMIDI::setPatchBank(const PatchBankPtr& instruments)
 }
 
 void MusicWriter_GenericMIDI::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// Write delay then EOF meta-event
 	this->midi->write("\x00\xFF\x2F\x00", 4);
@@ -631,7 +631,7 @@ void MusicWriter_GenericMIDI::finish()
 }
 
 void MusicWriter_GenericMIDI::handleEvent(TempoEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	assert(ev->usPerTick > 0);
 	unsigned long n = ev->usPerTick * this->ticksPerQuarterNote;
@@ -651,7 +651,7 @@ void MusicWriter_GenericMIDI::handleEvent(TempoEvent *ev)
 }
 
 void MusicWriter_GenericMIDI::handleEvent(NoteOnEvent *ev)
-	throw (std::ios::failure, EChannelMismatch)
+	throw (stream::error, EChannelMismatch)
 {
 	// Make sure a patch bank has been set
 	assert(this->patches);
@@ -726,7 +726,7 @@ void MusicWriter_GenericMIDI::handleEvent(NoteOnEvent *ev)
 }
 
 void MusicWriter_GenericMIDI::handleEvent(NoteOffEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// No need to use the mapping logic here as a channel must always be mapped,
 	// otherwise we will be processing a note-off with no associated note-on.
@@ -764,7 +764,7 @@ void MusicWriter_GenericMIDI::handleEvent(NoteOffEvent *ev)
 }
 
 void MusicWriter_GenericMIDI::handleEvent(PitchbendEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	if (this->flags & IntegerNotesOnly) return;
 
@@ -794,7 +794,7 @@ void MusicWriter_GenericMIDI::handleEvent(PitchbendEvent *ev)
 }
 
 void MusicWriter_GenericMIDI::handleEvent(ConfigurationEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	uint32_t delay = ev->absTime - this->lastTick;
 
@@ -822,8 +822,8 @@ void MusicWriter_GenericMIDI::handleEvent(ConfigurationEvent *ev)
 	return;
 }
 
-void MusicWriter_GenericMIDI::setMIDIStream(ostream_sptr data)
-	throw (std::ios::failure)
+void MusicWriter_GenericMIDI::setMIDIStream(stream::output_sptr data)
+	throw (stream::error)
 {
 	this->midi = data;
 	return;
@@ -842,7 +842,7 @@ unsigned long MusicWriter_GenericMIDI::getusPerQuarterNote()
 }
 
 void MusicWriter_GenericMIDI::writeMIDINumber(uint32_t value)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// Make sure this->setMIDIStream() has been called
 	assert(this->midi);
@@ -866,7 +866,7 @@ void MusicWriter_GenericMIDI::writeMIDINumber(uint32_t value)
 }
 
 void MusicWriter_GenericMIDI::writeCommand(uint8_t cmd)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	assert(cmd < 0xF0); // these commands are not part of the running status
 	if (this->lastCommand == cmd) return;

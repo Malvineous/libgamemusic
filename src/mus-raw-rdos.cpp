@@ -45,17 +45,17 @@ std::vector<std::string> MusicType_RAW::getFileExtensions() const
 }
 
 
-MusicType::Certainty MusicType_RAW::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_raw_rdos_isinstance_c01
 	try {
 		char sig[8];
-		psMusic->seekg(0, std::ios::beg);
+		psMusic->seekg(0, stream::start);
 		psMusic->read(sig, 8);
 		if (strncmp(sig, "RAWADATA", 8) != 0) return MusicType::DefinitelyNo;
-	} catch (std::ios::failure) {
+	} catch (const stream::error&) {
 		return MusicType::DefinitelyNo; // EOF
 	}
 
@@ -63,14 +63,14 @@ MusicType::Certainty MusicType_RAW::isInstance(istream_sptr psMusic) const
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_RAW::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_RAW::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_RAW(output));
 }
 
-MusicReaderPtr MusicType_RAW::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_RAW::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_RAW(input));
 }
@@ -82,13 +82,13 @@ SuppFilenames MusicType_RAW::getRequiredSupps(const std::string& filenameMusic) 
 	return SuppFilenames();
 }
 
-MusicReader_RAW::MusicReader_RAW(istream_sptr input)
-	throw (std::ios::failure) :
+MusicReader_RAW::MusicReader_RAW(stream::input_sptr input)
+	throw (stream::error) :
 		MusicReader_GenericOPL(DelayIsPreData),
 		input(input),
 		chipIndex(0)
 {
-	this->input->seekg(8, std::ios::beg);
+	this->input->seekg(8, stream::start);
 	uint16_t clock;
 	this->input >> u16le(clock);
 	if (clock == 0) clock = 0xffff;
@@ -103,15 +103,14 @@ MusicReader_RAW::~MusicReader_RAW()
 void MusicReader_RAW::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
-	this->input->seekg(10, std::ios::beg);
+	this->input->seekg(10, stream::start);
 	return;
 }
 
 bool MusicReader_RAW::nextPair(uint32_t *delay, uint8_t *chipIndex,
 	uint8_t *reg, uint8_t *val
 )
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	*delay = 0;
 	try {
@@ -145,18 +144,17 @@ nextCode:
 			default: // normal reg
 				break;
 		}
-	} catch (std::ios::failure) {
-		if (this->input->eof()) return false;
-		throw;
+	} catch (const stream::incomplete_read&) {
+		return false;
 	}
 	*chipIndex = this->chipIndex;
-	return !this->input->eof();
+	return true;
 }
 
 // TODO: metadata functions
 
 
-MusicWriter_RAW::MusicWriter_RAW(ostream_sptr output)
+MusicWriter_RAW::MusicWriter_RAW(stream::output_sptr output)
 	throw () :
 		MusicWriter_GenericOPL(DelayIsPreData),
 		output(output),
@@ -172,14 +170,14 @@ MusicWriter_RAW::~MusicWriter_RAW()
 }
 
 void MusicWriter_RAW::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->output->write("RAWADATA\xFF\xFF", 10);
 	return;
 }
 
 void MusicWriter_RAW::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->MusicWriter_GenericOPL::finish();
 
@@ -188,7 +186,7 @@ void MusicWriter_RAW::finish()
 
 	// TODO: write out metadata here
 
-	this->output->seekp(8, std::ios::beg);
+	this->output->seekp(8, stream::start);
 	this->output
 		<< u16le(this->firstClock)
 	;
@@ -212,7 +210,7 @@ void MusicWriter_RAW::changeSpeed(uint32_t usPerTick)
 }
 
 void MusicWriter_RAW::nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// Write out the delay in one or more lots of 255 or less.
 	while (delay > 0) {

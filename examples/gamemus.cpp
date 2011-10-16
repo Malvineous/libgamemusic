@@ -22,11 +22,13 @@
 #include <boost/bind.hpp>
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
+#include <camoto/stream_file.hpp>
 #include <iostream>
 #include <fstream>
 
 namespace po = boost::program_options;
 namespace gm = camoto::gamemusic;
+using namespace camoto;
 
 #define PROGNAME "gamemus"
 
@@ -83,15 +85,12 @@ gm::MusicReaderPtr openMusicFile(const std::string& strFilename,
 	bool bForceOpen)
 	throw (int)
 {
-	boost::shared_ptr<std::ifstream> psMusic(new std::ifstream());
-	psMusic->exceptions(std::ios::badbit | std::ios::failbit);
+	stream::input_file_sptr psMusic(new stream::input_file());
 	try {
-		psMusic->open(strFilename.c_str(), std::ios::in | std::ios::binary);
-	} catch (std::ios::failure& e) {
-		std::cerr << "Error opening " << strFilename << std::endl;
-		#ifdef DEBUG
-			std::cerr << "e.what(): " << e.what() << std::endl;
-		#endif
+		psMusic->open(strFilename.c_str());
+	} catch (stream::open_error& e) {
+		std::cerr << "Error opening " << strFilename << ": " << e.what()
+			<< std::endl;
 		throw RET_SHOWSTOPPER;
 	}
 
@@ -163,20 +162,13 @@ finishTesting:
 	camoto::SuppData suppData;
 	if (suppList.size() > 0) {
 		for (camoto::SuppFilenames::iterator i = suppList.begin(); i != suppList.end(); i++) {
+			stream::file_sptr suppStream(new stream::file());
 			try {
-				boost::shared_ptr<std::fstream> suppStream(new std::fstream());
-				suppStream->exceptions(std::ios::badbit | std::ios::failbit);
-				std::cout << "Opening supplemental file " << i->second << std::endl;
-				suppStream->open(i->second.c_str(), std::ios::in | std::ios::out | std::ios::binary);
-				camoto::SuppItem si;
-				si.stream = suppStream;
-				si.fnTruncate = boost::bind<void>(camoto::truncateFromString, i->second, _1);
-				suppData[i->first] = si;
-			} catch (std::ios::failure e) {
-				std::cerr << "Error opening supplemental file " << i->second.c_str() << std::endl;
-				#ifdef DEBUG
-					std::cerr << "e.what(): " << e.what() << std::endl;
-				#endif
+				suppStream->open(i->second.c_str());
+				suppData[i->first] = suppStream;
+			} catch (stream::open_error& e) {
+				std::cerr << "Error opening supplemental file " << i->second << ": " << e.what()
+					<< std::endl;
 				throw RET_SHOWSTOPPER;
 			}
 		}
@@ -383,16 +375,13 @@ int main(int iArgC, char *cArgV[])
 					return RET_SHOWSTOPPER;
 				}
 
-				boost::shared_ptr<std::ofstream> psMusicOut(new std::ofstream());
-				psMusicOut->exceptions(std::ios::badbit | std::ios::failbit);
+				stream::output_file_sptr psMusicOut(new stream::output_file());
 				try {
-					psMusicOut->open(strOutFile.c_str(), std::ios::trunc | std::ios::out | std::ios::binary);
-				} catch (std::ios::failure& e) {
-					std::cerr << "Error creating output file \"" << strOutFile << "\"" << std::endl;
-					#ifdef DEBUG
-						std::cerr << "e.what(): " << e.what() << std::endl;
-					#endif
-					return RET_SHOWSTOPPER;
+					psMusicOut->create(strOutFile.c_str());
+				} catch (stream::open_error& e) {
+					std::cerr << "Error creating " << strOutFile << ": " << e.what()
+						<< std::endl;
+					throw RET_SHOWSTOPPER;
 				}
 
 				gm::MusicTypePtr pMusicOutType(pManager->getMusicTypeByCode(strOutType));
@@ -408,7 +397,7 @@ int main(int iArgC, char *cArgV[])
 				// (e.g. Vinyl will need to create an external instrument file, whereas
 				// Kenslab has one but won't need to use it for this.)
 				camoto::SuppData suppData;
-				boost::shared_ptr<gm::MusicWriter> pMusicOut(pMusicOutType->create(psMusicOut, suppData));
+				gm::MusicWriterPtr pMusicOut(pMusicOutType->create(psMusicOut, suppData));
 				assert(pMusicOut);
 
 				if (!bUsePitchbends) pMusicOut->setFlags(gm::MusicWriter::IntegerNotesOnly);
@@ -526,7 +515,7 @@ int main(int iArgC, char *cArgV[])
 		std::cerr << PROGNAME ": " << e.what()
 			<< ".  Use --help for help." << std::endl;
 		return RET_BADARGS;
-	} catch (const std::ios::failure& e) {
+	} catch (const stream::error& e) {
 		std::cerr << PROGNAME ": I/O error - " << e.what() << std::endl;
 		return RET_UNCOMMON_FAILURE;
 	} catch (const std::exception& e) {

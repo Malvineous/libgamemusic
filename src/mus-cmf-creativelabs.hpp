@@ -42,14 +42,14 @@ class MusicType_CMF: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -60,14 +60,14 @@ class MusicType_CMF: virtual public MusicType {
 class MusicReader_CMF: virtual public MusicReader_GenericMIDI {
 
 	protected:
-		istream_sptr input;       ///< CMF file to read
+		stream::input_sptr input;       ///< CMF file to read
 		OPLPatchBankPtr patches;  ///< List of instruments
 		uint16_t offMusic;        ///< Offset of music block (for rewind)
 
 	public:
 
-		MusicReader_CMF(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_CMF(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_CMF()
 			throw ();
@@ -84,13 +84,13 @@ class MusicReader_CMF: virtual public MusicReader_GenericMIDI {
 class MusicWriter_CMF: virtual public MusicWriter_GenericMIDI {
 
 	protected:
-		ostream_sptr output;                  ///< Where to write CMF file
+		stream::output_sptr output;                  ///< Where to write CMF file
 		OPLPatchBankPtr patches;              ///< List of instruments
 		uint8_t channelsInUse[MIDI_CHANNELS]; ///< Which MIDI channels were used
 
 	public:
-		MusicWriter_CMF(ostream_sptr output)
-			throw (std::ios::failure);
+		MusicWriter_CMF(stream::output_sptr output)
+			throw (stream::error);
 
 		virtual ~MusicWriter_CMF()
 			throw ();
@@ -99,13 +99,13 @@ class MusicWriter_CMF: virtual public MusicWriter_GenericMIDI {
 			throw (EBadPatchType);
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch);
+			throw (stream::error, EChannelMismatch);
 
 };
 

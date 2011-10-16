@@ -45,18 +45,18 @@ std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_mid_type0_isinstance_c01
 	char sig[4];
-	psMusic->seekg(0, std::ios::beg);
+	psMusic->seekg(0, stream::start);
 	psMusic->read(sig, 4);
 	if (strncmp(sig, "MThd", 4) != 0) return MusicType::DefinitelyNo;
 
 	// Skip over the length field
-	psMusic->seekg(4, std::ios::cur);
+	psMusic->seekg(4, stream::cur);
 
 	// Make sure the header says it's a type-0 file
 	// TESTED BY: mus_mid_type0_isinstance_c02 (wrong type)
@@ -68,14 +68,14 @@ MusicType::Certainty MusicType_MID_Type0::isInstance(istream_sptr psMusic) const
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_MID_Type0::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_MID_Type0::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_MID_Type0(output));
 }
 
-MusicReaderPtr MusicType_MID_Type0::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_MID_Type0::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_MID_Type0(input));
 }
@@ -88,13 +88,13 @@ SuppFilenames MusicType_MID_Type0::getRequiredSupps(const std::string& filenameM
 }
 
 
-MusicReader_MID_Type0::MusicReader_MID_Type0(istream_sptr input)
-	throw (std::ios::failure) :
+MusicReader_MID_Type0::MusicReader_MID_Type0(stream::input_sptr input)
+	throw (stream::error) :
 		MusicReader_GenericMIDI(MIDIFlags::Default),
 		input(input)
 {
 	// Skip MThd header.
-	this->input->seekg(4, std::ios::beg);
+	this->input->seekg(4, stream::start);
 
 	uint32_t len;
 	uint16_t type, numTracks, ticksPerQuarter;
@@ -106,13 +106,13 @@ MusicReader_MID_Type0::MusicReader_MID_Type0(istream_sptr input)
 	;
 
 	// Skip over any remaining data in the MThd block (should be none)
-	this->input->seekg(len - 6, std::ios::cur);
+	this->input->seekg(len - 6, stream::cur);
 
 	this->setTicksPerQuarterNote(ticksPerQuarter);
 	//this->setusPerQuarterNote(ticksPerQuarter * 1000000 / ticksPerSecond);
 
 	// Read the MTrk header
-	this->input->seekg(4, std::ios::cur); // skip "MTrk", assume it's fine
+	this->input->seekg(4, stream::cur); // skip "MTrk", assume it's fine
 	uint32_t lenData;
 	this->input >> u32be(lenData);
 
@@ -133,14 +133,13 @@ MusicReader_MID_Type0::~MusicReader_MID_Type0()
 void MusicReader_MID_Type0::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
-	this->input->seekg(this->offMusic, std::ios::beg);
+	this->input->seekg(this->offMusic, stream::start);
 	return;
 }
 
 
-MusicWriter_MID_Type0::MusicWriter_MID_Type0(ostream_sptr output)
-	throw (std::ios::failure) :
+MusicWriter_MID_Type0::MusicWriter_MID_Type0(stream::output_sptr output)
+	throw (stream::error) :
 		MusicWriter_GenericMIDI(MIDIFlags::Default),
 		output(output)
 {
@@ -152,7 +151,7 @@ MusicWriter_MID_Type0::~MusicWriter_MID_Type0()
 }
 
 void MusicWriter_MID_Type0::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->output->write(
 		"MThd"
@@ -169,7 +168,7 @@ void MusicWriter_MID_Type0::start()
 }
 
 void MusicWriter_MID_Type0::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->MusicWriter_GenericMIDI::finish();
 
@@ -177,10 +176,10 @@ void MusicWriter_MID_Type0::finish()
 	mtrkLen -= 22; // 22 == header from start()
 
 	uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
-	this->output->seekp(12, std::ios::beg);
+	this->output->seekp(12, stream::start);
 	this->output << u16be(ticksPerQuarter);
 
-	this->output->seekp(18, std::ios::beg);
+	this->output->seekp(18, stream::start);
 	this->output << u32be(mtrkLen);
 	return;
 }

@@ -43,8 +43,8 @@ class MusicType_IMF_Common: virtual public MusicType {
 		 * @param imfType 0 to check as type-0, 1 to check as type-1
 		 * @return @see MusicType::isInstance()
 		 */
-		virtual MusicType::Certainty genericIsInstance(istream_sptr psMusic, int imfType) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty genericIsInstance(stream::input_sptr psMusic, int imfType) const
+			throw (stream::error);
 
 };
 
@@ -62,14 +62,14 @@ class MusicType_IMF_Type0: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 };
 
@@ -87,14 +87,14 @@ class MusicType_IMF_Type1: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 };
 
 /// 700Hz (Wolf3D) variant
@@ -111,14 +111,14 @@ class MusicType_WLF_Type0: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 };
 
@@ -136,14 +136,14 @@ class MusicType_WLF_Type1: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 };
 
 /// 280Hz (DukeII) variant
@@ -160,14 +160,14 @@ class MusicType_IMF_Duke2: virtual public MusicType_IMF_Common {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 };
 
@@ -175,7 +175,7 @@ class MusicType_IMF_Duke2: virtual public MusicType_IMF_Common {
 class MusicReader_IMF: virtual public MusicReader_GenericOPL {
 
 	protected:
-		istream_sptr input;  ///< Stream of IMF data to read
+		stream::input_sptr input;  ///< Stream of IMF data to read
 		int imfType;         ///< 0 or 1 for IMF variant
 		int lenData;         ///< Length of data to read (0 == read until EOF)
 
@@ -192,8 +192,8 @@ class MusicReader_IMF: virtual public MusicReader_GenericOPL {
 		 * @param hzSpeed
 		 *   Speed of IMF file in Hertz (280/560/700)
 		 */
-		MusicReader_IMF(istream_sptr input, int imfType, int hzSpeed)
-			throw (std::ios::failure);
+		MusicReader_IMF(stream::input_sptr input, int imfType, int hzSpeed)
+			throw (stream::error);
 
 		virtual ~MusicReader_IMF()
 			throw ();
@@ -202,7 +202,7 @@ class MusicReader_IMF: virtual public MusicReader_GenericOPL {
 			throw ();
 
 		virtual bool nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 };
@@ -211,7 +211,7 @@ class MusicReader_IMF: virtual public MusicReader_GenericOPL {
 class MusicWriter_IMF: virtual public MusicWriter_GenericOPL {
 
 	protected:
-		ostream_sptr output; ///< Stream to write IMF data into
+		stream::output_sptr output; ///< Stream to write IMF data into
 		int imfType;         ///< 0 or 1 for IMF variant
 		int usPerTick;       ///< Latest microseconds per tick value (tempo)
 		int hzSpeed;         ///< Speed of IMF file in Hertz (280/560/700)
@@ -229,23 +229,23 @@ class MusicWriter_IMF: virtual public MusicWriter_GenericOPL {
 		 * @param hzSpeed
 		 *   Speed of IMF file in Hertz (280/560/700)
 		 */
-		MusicWriter_IMF(ostream_sptr output, int imfType, int hzSpeed)
+		MusicWriter_IMF(stream::output_sptr output, int imfType, int hzSpeed)
 			throw ();
 
 		virtual ~MusicWriter_IMF()
 			throw ();
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void changeSpeed(uint32_t usPerTick)
 			throw ();
 
 		virtual void nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// TODO: metadata functions
 

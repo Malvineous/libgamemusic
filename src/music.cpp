@@ -40,12 +40,12 @@ VC_METADATA_ITEMS MusicReader::getMetadataList() const
 }
 
 std::string MusicReader::getMetadata(E_METADATA item) const
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// This should never be called because getMetadataList() returned an empty
 	// list.
 	assert(false);
-	throw std::ios::failure("unsupported metadata item");
+	throw stream::error("unsupported metadata item");
 }
 
 MusicWriter::MusicWriter()
@@ -67,10 +67,10 @@ void MusicWriter::setFlags(Flags f)
 }
 
 void MusicWriter::setMetadata(E_METADATA item, const std::string& value)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// This should never be called because getMetadataList() returned an empty
 	// list.
 	assert(false);
-	throw std::ios::failure("unsupported metadata item");
+	throw stream::error("unsupported metadata item");
 }

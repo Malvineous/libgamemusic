@@ -261,7 +261,7 @@ PatchBankPtr MusicReader_GenericOPL::getPatchBank()
 
 
 EventPtr MusicReader_GenericOPL::readNextEvent()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	if (this->eventBuffer.size() == 0) {
 		if (!this->populateEventBuffer()) return EventPtr(); // end of song
@@ -272,7 +272,7 @@ EventPtr MusicReader_GenericOPL::readNextEvent()
 }
 
 bool MusicReader_GenericOPL::populateEventBuffer()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// Process some more bytes until we end up with an event
 	uint32_t delay;
@@ -629,7 +629,7 @@ void MusicWriter_GenericOPL::setPatchBank(const PatchBankPtr& instruments)
 }
 
 void MusicWriter_GenericOPL::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	if (this->delayType == DelayIsPostData) {
 		// The last reg/val pair have been cached, so flush them out.
@@ -640,7 +640,7 @@ void MusicWriter_GenericOPL::finish()
 }
 
 void MusicWriter_GenericOPL::handleEvent(TempoEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	assert(ev->usPerTick > 0);
 	this->changeSpeed(ev->usPerTick);
@@ -648,7 +648,7 @@ void MusicWriter_GenericOPL::handleEvent(TempoEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
-	throw (std::ios::failure, EChannelMismatch, EBadPatchType)
+	throw (stream::error, EChannelMismatch, EBadPatchType)
 {
 	assert(this->inst);
 
@@ -766,7 +766,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOnEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(NoteOffEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// TODO: These are just converting back the mappings we used when reading
 	// files.  We'll need to implement some kind of proper channel map (probably
@@ -796,7 +796,7 @@ void MusicWriter_GenericOPL::handleEvent(NoteOffEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	unsigned int fnum, block;
 	::milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
@@ -820,7 +820,7 @@ void MusicWriter_GenericOPL::handleEvent(PitchbendEvent *ev)
 }
 
 void MusicWriter_GenericOPL::handleEvent(ConfigurationEvent *ev)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	int delay = ev->absTime - this->lastTick;
 	switch (ev->configType) {
@@ -850,7 +850,7 @@ void MusicWriter_GenericOPL::handleEvent(ConfigurationEvent *ev)
 void MusicWriter_GenericOPL::writeNextPair(uint32_t delay, uint8_t chipIndex,
 	uint8_t reg, uint8_t val
 )
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	// TODO: Cache all the events with no delay then optimise them before
 	// writing them out (once a delay is encountered.)  This should allow multiple
@@ -891,7 +891,7 @@ void MusicWriter_GenericOPL::writeNextPair(uint32_t delay, uint8_t chipIndex,
 void MusicWriter_GenericOPL::writeOpSettings(int chipIndex, int oplChannel,
 	int opNum, OPLPatchPtr i, int velocity
 )
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	uint8_t op;
 	OPLOperator *o;

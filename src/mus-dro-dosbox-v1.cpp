@@ -44,13 +44,13 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c01
 	char sig[8];
-	psMusic->seekg(0, std::ios::beg);
+	psMusic->seekg(0, stream::start);
 	psMusic->read(sig, 8);
 	if (strncmp(sig, "DBRAWOPL", 8) != 0) return MusicType::DefinitelyNo;
 
@@ -64,14 +64,14 @@ MusicType::Certainty MusicType_DRO_v1::isInstance(istream_sptr psMusic) const
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_DRO_v1::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_DRO_v1::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_DRO_v1(output));
 }
 
-MusicReaderPtr MusicType_DRO_v1::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_DRO_v1::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_DRO_v1(input));
 }
@@ -83,8 +83,8 @@ SuppFilenames MusicType_DRO_v1::getRequiredSupps(const std::string& filenameMusi
 	return SuppFilenames();
 }
 
-MusicReader_DRO_v1::MusicReader_DRO_v1(istream_sptr input)
-	throw (std::ios::failure) :
+MusicReader_DRO_v1::MusicReader_DRO_v1(stream::input_sptr input)
+	throw (stream::error) :
 		MusicReader_GenericOPL(DelayIsPreData),
 		input(input),
 		chipIndex(0)
@@ -101,15 +101,14 @@ MusicReader_DRO_v1::~MusicReader_DRO_v1()
 void MusicReader_DRO_v1::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
-	this->input->seekg(16, std::ios::beg);
+	this->input->seekg(16, stream::start);
 	this->input >> u32le(this->lenData);
-	this->input->seekg(24, std::ios::beg);
+	this->input->seekg(24, stream::start);
 	return;
 }
 
 bool MusicReader_DRO_v1::nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	*delay = 0;
 	*reg = 0; *val = 0; // in case of trailing delay
@@ -151,19 +150,17 @@ nextCode:
 				this->lenData--;
 				break;
 		}
-	} catch (std::ios::failure) {
-		if (this->input->eof()) return false;
-		throw;
+	} catch (const stream::incomplete_read&) {
+		return false;
 	}
 	*chipIndex = this->chipIndex;
 	return true; // read some data
-	//return this->lenData > 0;//!this->input->eof();
 }
 
 // TODO: metadata functions
 
 
-MusicWriter_DRO_v1::MusicWriter_DRO_v1(ostream_sptr output)
+MusicWriter_DRO_v1::MusicWriter_DRO_v1(stream::output_sptr output)
 	throw () :
 		MusicWriter_GenericOPL(DelayIsPreData),
 		output(output),
@@ -179,7 +176,7 @@ MusicWriter_DRO_v1::~MusicWriter_DRO_v1()
 }
 
 void MusicWriter_DRO_v1::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->output->write("DBRAWOPL\x00\x00\x01\x00", 12);
 
@@ -193,7 +190,7 @@ void MusicWriter_DRO_v1::start()
 }
 
 void MusicWriter_DRO_v1::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->MusicWriter_GenericOPL::finish();
 
@@ -203,7 +200,7 @@ void MusicWriter_DRO_v1::finish()
 
 	// TODO: write out metadata here
 
-	this->output->seekp(12, std::ios::beg);
+	this->output->seekp(12, stream::start);
 	this->output
 		<< u32le(this->numTicks) // Song length in milliseconds (one tick == 1ms)
 		<< u32le(size) // Song length in bytes
@@ -220,7 +217,7 @@ void MusicWriter_DRO_v1::changeSpeed(uint32_t usPerTick)
 }
 
 void MusicWriter_DRO_v1::nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	assert(this->usPerTick > 0); // make sure this has been set already
 

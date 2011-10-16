@@ -44,13 +44,13 @@ std::vector<std::string> MusicType_CMF::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_CMF::isInstance(istream_sptr psMusic) const
-	throw (std::ios::failure)
+MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
+	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c01
 	char sig[4];
-	psMusic->seekg(0, std::ios::beg);
+	psMusic->seekg(0, stream::start);
 	psMusic->read(sig, 4);
 	if (strncmp(sig, "CTMF", 4) != 0) return MusicType::DefinitelyNo;
 
@@ -65,14 +65,14 @@ MusicType::Certainty MusicType_CMF::isInstance(istream_sptr psMusic) const
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_CMF::create(ostream_sptr output, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicWriterPtr MusicType_CMF::create(stream::output_sptr output, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicWriterPtr(new MusicWriter_CMF(output));
 }
 
-MusicReaderPtr MusicType_CMF::open(istream_sptr input, SuppData& suppData) const
-	throw (std::ios::failure)
+MusicReaderPtr MusicType_CMF::open(stream::input_sptr input, SuppData& suppData) const
+	throw (stream::error)
 {
 	return MusicReaderPtr(new MusicReader_CMF(input));
 }
@@ -85,8 +85,8 @@ SuppFilenames MusicType_CMF::getRequiredSupps(const std::string& filenameMusic) 
 }
 
 
-MusicReader_CMF::MusicReader_CMF(istream_sptr input)
-	throw (std::ios::failure) :
+MusicReader_CMF::MusicReader_CMF(stream::input_sptr input)
+	throw (stream::error) :
 		MusicReader_GenericMIDI(MIDIFlags::BasicMIDIOnly),
 		input(input),
 		patches(new OPLPatchBank())
@@ -94,7 +94,7 @@ MusicReader_CMF::MusicReader_CMF(istream_sptr input)
 	// Skip CTMF header.  This is an absolute seek as it will be by far the most
 	// common situation and avoids a lot of complexity because the header includes
 	// absolute file offsets, which we thus won't have to adjust.
-	this->input->seekg(4, std::ios::beg); // skip CTMF header
+	this->input->seekg(4, stream::start); // skip CTMF header
 
 	uint16_t ver, offInst, ticksPerQuarter, ticksPerSecond;
 	uint16_t offTitle, offComposer, offRemarks;
@@ -113,7 +113,7 @@ MusicReader_CMF::MusicReader_CMF(istream_sptr input)
 	this->setusPerQuarterNote(ticksPerQuarter * 1000000 / ticksPerSecond);
 
 	// Skip channel-in-use table as we don't need it
-	this->input->seekg(16, std::ios::cur);
+	this->input->seekg(16, stream::cur);
 
 	// Rest of header depends on file version
 	uint16_t numInstruments;
@@ -134,13 +134,13 @@ MusicReader_CMF::MusicReader_CMF(istream_sptr input)
 				>> u16le(numInstruments)
 			;
 			// Skip uint16le tempo value (unknown use)
-			this->input->seekg(2, std::ios::cur);
+			this->input->seekg(2, stream::cur);
 			break;
 	}
 
 	// Read the instruments
 	this->patches->setPatchCount(numInstruments);
-	this->input->seekg(offInst, std::ios::beg);
+	this->input->seekg(offInst, stream::start);
 	for (int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr patch(new OPLPatch());
 		uint8_t inst[16];
@@ -178,7 +178,7 @@ MusicReader_CMF::MusicReader_CMF(istream_sptr input)
 	/// CMF defaults to any numbers beyond the supplied bank.
 
 	// Pass the MIDI data on to the parent
-	this->input->seekg(this->offMusic, std::ios::beg);
+	this->input->seekg(this->offMusic, stream::start);
 	this->setMIDIStream(input);
 }
 
@@ -196,14 +196,13 @@ PatchBankPtr MusicReader_CMF::getPatchBank()
 void MusicReader_CMF::rewind()
 	throw ()
 {
-	this->input->clear(); // clear any errors (e.g. EOF)
-	this->input->seekg(this->offMusic, std::ios::beg);
+	this->input->seekg(this->offMusic, stream::start);
 	return;
 }
 
 
-MusicWriter_CMF::MusicWriter_CMF(ostream_sptr output)
-	throw (std::ios::failure) :
+MusicWriter_CMF::MusicWriter_CMF(stream::output_sptr output)
+	throw (stream::error) :
 		MusicWriter_GenericMIDI(MIDIFlags::BasicMIDIOnly),
 		output(output)
 {
@@ -233,7 +232,7 @@ void MusicWriter_CMF::setPatchBank(const PatchBankPtr& instruments)
 }
 
 void MusicWriter_CMF::start()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->output->write(
 		"CTMF"
@@ -317,26 +316,26 @@ void MusicWriter_CMF::start()
 }
 
 void MusicWriter_CMF::finish()
-	throw (std::ios::failure)
+	throw (stream::error)
 {
 	this->MusicWriter_GenericMIDI::finish();
 
 	uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
 	unsigned long ticksPerus = this->getusPerQuarterNote() / ticksPerQuarter;
 	uint16_t ticksPerSecond = 1000000 / ticksPerus;
-	this->output->seekp(10, std::ios::beg);
+	this->output->seekp(10, stream::start);
 	this->output
 		<< u16le(ticksPerQuarter)
 		<< u16le(ticksPerSecond)
 	;
 
-	this->output->seekp(20, std::ios::beg);
+	this->output->seekp(20, stream::start);
 	this->output->write((char *)this->channelsInUse, 16);
 	return;
 }
 
 void MusicWriter_CMF::handleEvent(NoteOnEvent *ev)
-	throw (std::ios::failure, EChannelMismatch)
+	throw (stream::error, EChannelMismatch)
 {
 	// We need to override this event handler to do channel mapping appropriate
 	// for OPL instruments instead of MIDI ones.

@@ -42,14 +42,14 @@ class MusicType_MID_Type0: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -60,13 +60,13 @@ class MusicType_MID_Type0: virtual public MusicType {
 class MusicReader_MID_Type0: virtual public MusicReader_GenericMIDI {
 
 	protected:
-		istream_sptr input;       ///< MIDI file to read
+		stream::input_sptr input;       ///< MIDI file to read
 		int offMusic; /// @todo temp (use array of tracks)
 
 	public:
 
-		MusicReader_MID_Type0(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_MID_Type0(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_MID_Type0()
 			throw ();
@@ -80,20 +80,20 @@ class MusicReader_MID_Type0: virtual public MusicReader_GenericMIDI {
 class MusicWriter_MID_Type0: virtual public MusicWriter_GenericMIDI {
 
 	protected:
-		ostream_sptr output;                  ///< Where to write MIDI file
+		stream::output_sptr output;                  ///< Where to write MIDI file
 
 	public:
-		MusicWriter_MID_Type0(ostream_sptr output)
-			throw (std::ios::failure);
+		MusicWriter_MID_Type0(stream::output_sptr output)
+			throw (stream::error);
 
 		virtual ~MusicWriter_MID_Type0()
 			throw ();
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 };
 

@@ -25,7 +25,8 @@
 #include <vector>
 #include <map>
 
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 #include <camoto/suppitem.hpp>
 #include <camoto/gamemusic/music.hpp>
 
@@ -75,8 +76,8 @@ class MusicType {
 		 * @param  psMusic A C++ iostream of the file to test.
 		 * @return A single confidence value from \ref MusicType::Certainty.
 		 */
-		virtual Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure) = 0;
+		virtual Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error) = 0;
 
 		/// Create a blank song in this format.
 		/**
@@ -89,8 +90,8 @@ class MusicType {
 		 * @return A pointer to an instance of the MusicWriter class, just as if a
 		 *         valid empty file had been opened by open().
 		 */
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure) = 0;
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error) = 0;
 
 		/// Open a music file.
 		/**
@@ -104,8 +105,8 @@ class MusicType {
 		 *         anyway, to make it possible to "force" a file to be opened by a
 		 *         particular format handler.
 		 */
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure) = 0;
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error) = 0;
 
 		/// Get a list of any required supplemental files.
 		/**

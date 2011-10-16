@@ -24,7 +24,8 @@
 #include <boost/shared_ptr.hpp>
 #include <vector>
 
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 #include <camoto/gamemusic/musictype.hpp>
 
 namespace camoto {

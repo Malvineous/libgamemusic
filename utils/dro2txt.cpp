@@ -35,6 +35,7 @@
 #include <iostream>
 #include <iomanip>
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/stream_file.hpp>
 #include <camoto/gamemusic.hpp>
 
 /// Define this to display frequencies as "block/fnum" instead of milliHertz
@@ -205,25 +206,32 @@ void diffPercState(uint8_t *o, uint8_t *n, int p)
 
 int main(void)
 {
-	char sig[8];
-	std::cin.read(sig, 8);
-	if (strncmp(sig, "DBRAWOPL", 8) != 0) {
-		std::cerr << "ERROR: Input file is not in DOSBox .dro format." << std::endl;
-		return 1;
-	}
-	uint16_t verMajor, verMinor;
-	std::cin >> u16le(verMajor) >> u16le(verMinor);
-	if ((verMajor != 2) || (verMinor != 0)) {
-		std::cerr << "ERROR: Only DOSBox .dro version 2.0 files are supported." << std::endl;
-		return 1;
-	}
-	std::cin.seekg(11, std::ios::cur);
+	stream::input_sptr cin = stream::open_stdin();
 	uint8_t cmdShortDelay, cmdLongDelay, lenCodemap;
-	std::cin
-		>> u8(cmdShortDelay)
-		>> u8(cmdLongDelay)
-		>> u8(lenCodemap)
-	;
+	try {
+		char sig[8];
+		cin->read(sig, 8);
+		if (strncmp(sig, "DBRAWOPL", 8) != 0) {
+			std::cerr << "ERROR: Input file is not in DOSBox .dro format." << std::endl;
+			return 1;
+		}
+		uint16_t verMajor, verMinor;
+		cin >> u16le(verMajor) >> u16le(verMinor);
+		if ((verMajor != 2) || (verMinor != 0)) {
+			std::cerr << "ERROR: Only DOSBox .dro version 2.0 files are supported." << std::endl;
+			return 1;
+		}
+		cin->seekg(11, stream::cur);
+		cin
+			>> u8(cmdShortDelay)
+				>> u8(cmdLongDelay)
+				>> u8(lenCodemap)
+			;
+	} catch (const stream::incomplete_read&) {
+		std::cerr << "ERROR: Input file is not in DOSBox .dro format (short read)."
+			<< std::endl;
+		return 1;
+	}
 	uint8_t nextOplState[2][256];
 	memset(nextOplState, 0, sizeof(nextOplState));
 
@@ -237,23 +245,24 @@ int main(void)
 
 	bool first = true;
 
-	std::cin.read((char *)codeMap, lenCodemap);
-	while (!std::cin.eof()) {
+	try {
+		cin->read((char *)codeMap, lenCodemap);
+		for (;;) {
 		uint8_t code;
-		std::cin >> u8(code);
+		cin >> u8(code);
 		if (code == cmdShortDelay) {
 			uint8_t delay;
-			std::cin >> u8(delay);
+			cin >> u8(delay);
 			nextDelay += delay + 1;
 		} else if (code == cmdLongDelay) {
 			uint16_t delay;
-			std::cin >> u16le(delay);
+			cin >> u16le(delay);
 			nextDelay += delay + 1;
 		} else {
 			int chip = code >> 7; // high bit
 			uint8_t reg = codeMap[code & 0x7F];
 			uint8_t val;
-			std::cin >> u8(val);
+			cin >> u8(val);
 
 			// Cache this value
 			nextOplState[chip][reg] = val;
@@ -317,6 +326,9 @@ int main(void)
 			}
 			PRINT_DELAY;
 		}
+	}
+	} catch (const stream::incomplete_read&) {
+		// complete
 	}
 	return 0;
 }

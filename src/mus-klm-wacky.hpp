@@ -41,14 +41,14 @@ class MusicType_KLM: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -61,8 +61,8 @@ class MusicType_KLM: virtual public MusicType {
 class MusicReader_KLM: virtual public MusicReader {
 
 	public:
-		MusicReader_KLM(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_KLM(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_KLM()
 			throw ();
@@ -71,10 +71,10 @@ class MusicReader_KLM: virtual public MusicReader {
 			throw ();
 
 		virtual EventPtr readNextEvent()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 	protected:
-		istream_sptr input;                  ///< KLM file to read
+		stream::input_sptr input;                  ///< KLM file to read
 		OPLPatchBankPtr patches;             ///< List of instruments
 		uint16_t tempo;                      ///< Tempo from file header
 		bool setTempo;                       ///< Has the tempo event been returned yet?
@@ -92,8 +92,8 @@ class MusicReader_KLM: virtual public MusicReader {
 class MusicWriter_KLM: virtual public MusicWriter {
 
 	public:
-		MusicWriter_KLM(ostream_sptr output)
-			throw (std::ios::failure);
+		MusicWriter_KLM(stream::output_sptr output)
+			throw (stream::error);
 
 		virtual ~MusicWriter_KLM()
 			throw ();
@@ -102,35 +102,35 @@ class MusicWriter_KLM: virtual public MusicWriter {
 			throw (EBadPatchType);
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(TempoEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch);
+			throw (stream::error, EChannelMismatch);
 
 		virtual void handleEvent(NoteOffEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(PitchbendEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(ConfigurationEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 	protected:
-		ostream_sptr output;         ///< Where to write KLM file
+		stream::output_sptr output;         ///< Where to write KLM file
 		OPLPatchBankPtr patches;     ///< List of instruments
 		unsigned long lastTick;      ///< Tick value from previous event
 		uint8_t patchMap[KLM_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
 
 	/// Write out the current delay, if there is one (curTick != lastTick)
 	void writeDelay(unsigned long curTick)
-		throw (std::ios::failure);
+		throw (stream::error);
 
 };
 

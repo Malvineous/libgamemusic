@@ -24,7 +24,8 @@
 #include <deque>
 #include <camoto/gamemusic/music.hpp>
 #include <camoto/gamemusic/patchbank-opl.hpp>
-#include <camoto/types.hpp>
+#include <camoto/stream.hpp>
+#include <stdint.h>
 
 namespace camoto {
 namespace gamemusic {
@@ -72,7 +73,7 @@ class MusicReader_GenericOPL: virtual public MusicReader {
 			throw ();
 
 		virtual EventPtr readNextEvent()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// MusicReader_GenericOPL functions
 
@@ -82,7 +83,7 @@ class MusicReader_GenericOPL: virtual public MusicReader {
 		 *   or false if the end of the song has been reached.
 		 */
 		bool populateEventBuffer()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		/// Change the tempo of the song.
 		/**
@@ -117,7 +118,7 @@ class MusicReader_GenericOPL: virtual public MusicReader {
 		 * @param  val  The value to write to the register.
 		 */
 		virtual bool nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 	private:
 
@@ -176,22 +177,22 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 		 * If overriding this function, before to call this version of it first!
 		 */
 		virtual void finish()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(TempoEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(NoteOnEvent *ev)
-			throw (std::ios::failure, EChannelMismatch, EBadPatchType);
+			throw (stream::error, EChannelMismatch, EBadPatchType);
 
 		virtual void handleEvent(NoteOffEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(PitchbendEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		virtual void handleEvent(ConfigurationEvent *ev)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		// MusicReader_GenericOPL functions
 
@@ -212,7 +213,7 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 		 *   processing reg/val, depending on the value of delayType.
 		 */
 		virtual void nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (std::ios::failure) = 0;
+			throw (stream::error) = 0;
 
 	private:
 		/// Update oplState then call nextPair()
@@ -220,7 +221,7 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 		 * @param  delay  the number of ticks to wait *before* processing reg/val
 		 */
 		void writeNextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 		/// Write one operator's patch settings (modulator or carrier)
 		/**
@@ -228,7 +229,7 @@ class MusicWriter_GenericOPL: virtual public MusicWriter {
 		 */
 		void writeOpSettings(int chipIndex, int oplChannel, int opNum,
 			OPLPatchPtr i, int velocity)
-			throw (std::ios::failure);
+			throw (stream::error);
 
 };
 

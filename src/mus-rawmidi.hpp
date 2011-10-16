@@ -41,14 +41,14 @@ class MusicType_RawMIDI: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(istream_sptr psMusic) const
-			throw (std::ios::failure);
+		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+			throw (stream::error);
 
-		virtual MusicWriterPtr create(ostream_sptr output, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+			throw (stream::error);
 
-		virtual MusicReaderPtr open(istream_sptr input, SuppData& suppData) const
-			throw (std::ios::failure);
+		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error);
 
 		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
 			throw ();
@@ -59,12 +59,12 @@ class MusicType_RawMIDI: virtual public MusicType {
 class MusicReader_RawMIDI: virtual public MusicReader_GenericMIDI {
 
 	protected:
-		istream_sptr input;  ///< Stream of data to read
+		stream::input_sptr input;  ///< Stream of data to read
 
 	public:
 
-		MusicReader_RawMIDI(istream_sptr input)
-			throw (std::ios::failure);
+		MusicReader_RawMIDI(stream::input_sptr input)
+			throw (stream::error);
 
 		virtual ~MusicReader_RawMIDI()
 			throw ();
@@ -79,14 +79,14 @@ class MusicWriter_RawMIDI: virtual public MusicWriter_GenericMIDI {
 
 	public:
 
-		MusicWriter_RawMIDI(ostream_sptr output)
+		MusicWriter_RawMIDI(stream::output_sptr output)
 			throw ();
 
 		virtual ~MusicWriter_RawMIDI()
 			throw ();
 
 		virtual void start()
-			throw (std::ios::failure);
+			throw (stream::error);
 
 };
 
