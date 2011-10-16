@@ -131,7 +131,7 @@ ISINSTANCE_TEST(c01,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Music offset past EOF
@@ -144,7 +144,7 @@ ISINSTANCE_TEST(c02,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Invalid 0xF0 event type
@@ -157,7 +157,7 @@ ISINSTANCE_TEST(c03,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Invalid normal event type
@@ -170,7 +170,7 @@ ISINSTANCE_TEST(c04,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Truncated event
@@ -180,7 +180,7 @@ ISINSTANCE_TEST(c05,
 	"\x30\x00"
 	"\x10\x44"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Bad instrument in reg 0xE0
@@ -193,7 +193,7 @@ ISINSTANCE_TEST(c06,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Bad instrument in 0xE3
@@ -206,7 +206,7 @@ ISINSTANCE_TEST(c07,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // Bad instrument in 0xC0
@@ -219,7 +219,7 @@ ISINSTANCE_TEST(c08,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_NO
+	gm::MusicType::DefinitelyNo
 );
 
 // All valid instrument bits enabled
@@ -232,5 +232,5 @@ ISINSTANCE_TEST(c09,
 	"\x00"
 	"\xff"
 	,
-	gm::EC_DEFINITELY_YES
+	gm::MusicType::DefinitelyYes
 );

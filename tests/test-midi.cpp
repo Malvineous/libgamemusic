@@ -20,6 +20,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+#include <camoto/stream_string.hpp>
 #include <camoto/util.hpp> // createString()
 #include <camoto/gamemusic.hpp>
 #include "../src/mus-generic-midi.hpp"
@@ -30,37 +31,30 @@ namespace gm = camoto::gamemusic;
 
 struct midi_fixture: public default_sample {
 
-	typedef boost::shared_ptr<std::stringstream> sstr_ptr;
-
-	sstr_ptr baseData;
-	camoto::iostream_sptr baseStream;
+	stream::string_sptr base;
 	gm::MusicReaderPtr musIn;
 	gm::MusicWriterPtr musOut;
-	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
+		//std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 	gm::PatchBankPtr bank;
 
 	midi_fixture() :
-		baseData(new std::stringstream),
-		baseStream(this->baseData)
+		base(new stream::string())
 	{
-		this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
 	}
 
 	void init_read(const std::string& data)
 	{
-		(*this->baseData) << data;
+		this->base << data;
 
 		BOOST_REQUIRE_NO_THROW(
-			this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-
 			gm::ManagerPtr pManager = gm::getManager();
 			this->pTestType = pManager->getMusicTypeByCode("rawmidi");
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
 
 		camoto::SuppData suppData;
-		this->musIn = this->pTestType->open(this->baseStream, suppData);
+		this->musIn = this->pTestType->open(this->base, suppData);
 		BOOST_REQUIRE_MESSAGE(this->musIn, "Could not create music reader class");
 
 		this->bank = this->musIn->getPatchBank();
@@ -70,15 +64,13 @@ struct midi_fixture: public default_sample {
 	void init_write()
 	{
 		BOOST_REQUIRE_NO_THROW(
-			this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-
 			gm::ManagerPtr pManager = gm::getManager();
 			this->pTestType = pManager->getMusicTypeByCode("rawmidi");
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
 
 		camoto::SuppData suppData;
-		this->musOut = this->pTestType->create(this->baseStream, suppData);
+		this->musOut = this->pTestType->create(this->base, suppData);
 		BOOST_REQUIRE_MESSAGE(this->musOut, "Could not create music writer class");
 
 		gm::MIDIPatchBankPtr pb(new gm::MIDIPatchBank());
@@ -94,7 +86,7 @@ struct midi_fixture: public default_sample {
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
 		this->musOut->finish();
-		return this->default_sample::is_equal(strExpected, this->baseData->str());
+		return this->default_sample::is_equal(strExpected, this->base->str());
 	}
 
 };

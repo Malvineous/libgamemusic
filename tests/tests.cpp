@@ -101,29 +101,3 @@ boost::test_tools::predicate_result default_sample::is_equal(
 
 	return true;
 }
-
-void stringStreamTruncate(std::stringstream *ss, int len)
-{
-	if (len < ss->str().length()) {
-		// Shrinking
-		std::string orig = ss->str();
-		ss->clear(); // reset state, leave string alone
-		ss->str(orig.substr(0, len)); // set new string
-	} else {
-		// Enlarging
-		std::streamsize pos;
-		// Work around C++ stringstream bug that returns invalid offset when empty.
-		// https://issues.apache.org/jira/browse/STDCXX-332
-		if (!ss->str().empty()) {
-			ss->seekp(0, std::ios::end);
-			pos = ss->tellp();
-			assert(pos > 0);
-		} else {
-			pos = 0;
-		}
-
-		*ss << std::string(len - pos, '\0');
-		assert(ss->tellp() == len);
-	}
-	return;
-}

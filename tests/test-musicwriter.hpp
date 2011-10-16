@@ -21,16 +21,13 @@
 #include <boost/test/unit_test.hpp>
 
 #include <boost/algorithm/string.hpp> // for case-insensitive string compare
-#include <boost/iostreams/copy.hpp>
 #include <boost/bind.hpp>
+#include <camoto/stream_string.hpp>
 #include <camoto/gamemusic.hpp>
 #include <iostream>
 #include <iomanip>
 
 #include "tests.hpp"
-
-// Local headers that will not be installed
-//#include <camoto/segmented_stream.hpp>
 
 using namespace camoto;
 namespace gm = camoto::gamemusic;
@@ -44,54 +41,34 @@ namespace gm = camoto::gamemusic;
 #define TEST_RESULT(n)     testdata_ ## n
 
 #define FIXTURE_NAME       TEST_VAR(write_sample)
-//#define EMPTY_FIXTURE_NAME TEST_VAR(sample_empty)
 #define SUITE_NAME         TEST_VAR(write_suite)
-//#define EMPTY_SUITE_NAME   TEST_VAR(suite_empty)
-//#define INITIALSTATE_NAME  TEST_RESULT(initialstate)
 #define INITIALSTATE_NAME  TEST_RESULT(noteonoff)
-
-// Allow a string constant to be passed around with embedded nulls
-#define makeString(x)  std::string((x), sizeof((x)) - 1)
 
 struct FIXTURE_NAME: public default_sample {
 
-	typedef boost::shared_ptr<std::stringstream> sstr_ptr;
-
-	sstr_ptr baseData;
-	void *_do; // unused var, but allows a statement to run in constructor init
-	camoto::iostream_sptr baseStream;
+	stream::string_sptr base;
 	gm::MusicWriterPtr music;
 	camoto::SuppData suppData;
-	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 
 	FIXTURE_NAME() :
-		baseData(new std::stringstream),
-		baseStream(this->baseData)
+		base(new stream::string())
 	{
 		#ifdef HAS_FAT
 		{
-			boost::shared_ptr<std::stringstream> suppSS(new std::stringstream);
-			suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-			(*suppSS) << makeString(TEST_RESULT(FAT_initialstate));
-			camoto::iostream_sptr suppStream(suppSS);
-			camoto::SuppItem si;
-			si.stream = suppStream;
-			si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1);
-			this->suppData[gm::EST_FAT] = si;
-			this->suppBase[gm::EST_FAT] = suppSS;
+			stream::string_sptr suppStream(new stream::string());
+			suppStream << makeString(TEST_RESULT(FAT_initialstate));
+			this->suppData[gm::EST_FAT] = suppStream;
 		}
 		#endif
 
 		BOOST_REQUIRE_NO_THROW(
-			this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-
 			gm::ManagerPtr pManager = gm::getManager();
 			this->pTestType = pManager->getMusicTypeByCode(MUSIC_TYPE);
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE);
 
-		this->music = this->pTestType->create(this->baseStream, this->suppData);
+		this->music = this->pTestType->create(this->base, this->suppData);
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
 
 	}
@@ -156,13 +133,16 @@ struct FIXTURE_NAME: public default_sample {
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
 		this->music->finish();
-		return this->default_sample::is_equal(strExpected, this->baseData->str());
+		return this->default_sample::is_equal(strExpected, this->base->str());
 	}
 
 	boost::test_tools::predicate_result is_supp_equal(camoto::SuppItem::Type type, const std::string& strExpected)
 	{
 		this->music->finish();
-		return this->default_sample::is_equal(strExpected, this->suppBase[type]->str());
+		stream::inout_sptr b = this->suppData[type];
+		stream::string_sptr s = boost::dynamic_pointer_cast<stream::string>(b);
+		assert(s);
+		return this->default_sample::is_equal(strExpected, s->str());
 	}
 
 	/// Test a rhythm-mode instrument

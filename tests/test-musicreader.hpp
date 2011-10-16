@@ -21,16 +21,13 @@
 #include <boost/test/unit_test.hpp>
 
 #include <boost/algorithm/string.hpp> // for case-insensitive string compare
-#include <boost/iostreams/copy.hpp>
 #include <boost/bind.hpp>
+#include <camoto/stream_string.hpp>
 #include <camoto/gamemusic.hpp>
 #include <iostream>
 #include <iomanip>
 
 #include "tests.hpp"
-
-// Local headers that will not be installed
-//#include <camoto/segmented_stream.hpp>
 
 using namespace camoto;
 namespace gm = camoto::gamemusic;
@@ -44,61 +41,41 @@ namespace gm = camoto::gamemusic;
 #define TEST_RESULT(n)     testdata_ ## n
 
 #define FIXTURE_NAME       TEST_VAR(read_sample)
-//#define EMPTY_FIXTURE_NAME TEST_VAR(read_sample_empty)
 #define SUITE_NAME         TEST_VAR(read_suite)
-//#define EMPTY_SUITE_NAME   TEST_VAR(read_suite_empty)
-//#define INITIALSTATE_NAME  TEST_RESULT(initialstate)
 #define INITIALSTATE_NAME  TEST_RESULT(noteonoff)
-
-// Allow a string constant to be passed around with embedded nulls
-#define makeString(x)  std::string((x), sizeof((x)) - 1)
 
 struct FIXTURE_NAME: public default_sample {
 
-	typedef boost::shared_ptr<std::stringstream> sstr_ptr;
-
-	sstr_ptr baseData;
-	camoto::iostream_sptr baseStream;
+	stream::string_sptr base;
 	gm::MusicReaderPtr music;
 	camoto::SuppData suppData;
-	std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
 	gm::MusicTypePtr pTestType;
 	gm::PatchBankPtr bank;
 
 	FIXTURE_NAME() :
-		baseData(new std::stringstream),
-		baseStream(this->baseData)
+		base(new stream::string())
 	{
-		this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
 	}
 
 	void init(const std::string& data)
 	{
-		(*this->baseData) << data;
+		this->base << data;
 
 		#ifdef HAS_FAT
 		{
-			boost::shared_ptr<std::stringstream> suppSS(new std::stringstream);
-			suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-			(*suppSS) << makeString(TEST_RESULT(FAT_initialstate));
-			camoto::iostream_sptr suppStream(suppSS);
-			camoto::SuppItem si;
-			si.stream = suppStream;
-			si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1);
-			this->suppData[gm::EST_FAT] = si;
-			this->suppBase[gm::EST_FAT] = suppSS;
+			stream::string_sptr suppStream(new stream::string());
+			suppStream << makeString(TEST_RESULT(FAT_initialstate));
+			this->suppData[gm::EST_FAT] = suppStream;
 		}
 		#endif
 
 		BOOST_REQUIRE_NO_THROW(
-			this->baseData->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit);
-
 			gm::ManagerPtr pManager = gm::getManager();
 			this->pTestType = pManager->getMusicTypeByCode(MUSIC_TYPE);
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE);
 
-		this->music = this->pTestType->open(this->baseStream, this->suppData);
+		this->music = this->pTestType->open(this->base, this->suppData);
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
 
 		this->bank = this->music->getPatchBank();
@@ -193,11 +170,10 @@ BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 		gm::MusicTypePtr pTestType(pManager->getMusicTypeByCode(MUSIC_TYPE)); \
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE); \
 		\
-		boost::shared_ptr<std::stringstream> psstrBase(new std::stringstream); \
-		(*psstrBase) << makeString(d); \
-		camoto::iostream_sptr psBase = boost::dynamic_pointer_cast<std::iostream>(psstrBase); \
+		stream::string_sptr testBase(new stream::string()); \
+		testBase << makeString(d); \
 		\
-		BOOST_CHECK_EQUAL(pTestType->isInstance(psBase), r); \
+		BOOST_CHECK_EQUAL(pTestType->isInstance(testBase), r); \
 	}
 
 ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
@@ -212,7 +188,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 		boost::shared_ptr<std::stringstream> suppSS(new std::stringstream); \
 		suppSS->exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit); \
 		(*suppSS) << makeString(d); \
-		camoto::iostream_sptr suppStream(suppSS); \
+		stream::inout_sptr suppStream(suppSS); \
 		camoto::SuppItem si; \
 		si.stream = suppStream; \
 		si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1); \
@@ -242,14 +218,14 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 		/* Prepare an invalid map */ \
 		boost::shared_ptr<std::stringstream> psstrBase(new std::stringstream); \
 		(*psstrBase) << makeString(d); \
-		camoto::iostream_sptr psBase(psstrBase); \
+		stream::inout_sptr psBase(psstrBase); \
 		\
 		camoto::SuppData suppData; \
 		INVALIDDATA_FATCODE(f) \
 		\
 		BOOST_CHECK_THROW( \
 			gm::MapPtr pMap(pTestType->open(psBase, suppData)), \
-			std::ios::failure \
+			stream::error \
 		); \
 	}
 
