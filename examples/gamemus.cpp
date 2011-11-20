@@ -164,7 +164,7 @@ finishTesting:
 		for (camoto::SuppFilenames::iterator i = suppList.begin(); i != suppList.end(); i++) {
 			stream::file_sptr suppStream(new stream::file());
 			try {
-				suppStream->open(i->second.c_str());
+				suppStream->open(i->second);
 				suppData[i->first] = suppStream;
 			} catch (stream::open_error& e) {
 				std::cerr << "Error opening supplemental file " << i->second << ": " << e.what()

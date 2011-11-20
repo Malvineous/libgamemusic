@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
 #include <math.h> // pow
 #include <boost/pointer_cast.hpp>
 #include <camoto/gamemusic/patchbank-singletype.hpp>
