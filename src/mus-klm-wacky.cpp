@@ -323,26 +323,28 @@ EventPtr MusicReader_KLM::readNextEvent()
 		// 6 -> 10, 7 -> 9 ... 10 -> 6
 		//if (channel > 5) channel = 10 - (channel - 6);
 		//if (channel > 5) channel = 9+ (channel - 6);
+		int gmchannel;
 		switch (channel) {
-			case 6: channel = 10; break;
-			case 7: channel = 12; break;//9
-			case 8: channel = 11; break;
-			case 9: channel = 13; break;
-			case 10: channel = 9; break;//12
+			case 6: gmchannel = 13; break;
+			case 7: gmchannel = 12; break;
+			case 8: gmchannel = 11; break;
+			case 9: gmchannel = 10; break;
+			case 10: gmchannel = 9; break;
+			default: gmchannel = channel + 1; break;
 		}
 
 		switch (code & 0xF0) {
 			case 0x00: { // note off
 				NoteOffEvent *ev = new NoteOffEvent();
 				gev.reset(ev);
-				ev->channel = channel;
+				ev->channel = gmchannel;
 				this->noteOn[channel] = false;
 				break;
 			}
 			case 0x10: { // set frequency
 				uint8_t a0, b0;
 				bool doNoteOn = true;
-				if (code < 0x17) { // TODO: Should be chan six, but needs to be 7?
+				if (code < 0x17) { // Chans 0-5 + bass drum 6
 					this->input >> u8(a0) >> u8(b0);
 					int fnum = ((b0 & 0x03) << 8) | a0;
 					int block = (b0 >> 2) & 0x07;
@@ -354,13 +356,13 @@ EventPtr MusicReader_KLM::readNextEvent()
 						// Note is already playing, do a pitchbend
 						PitchbendEvent *ev = new PitchbendEvent();
 						gev.reset(ev);
-						ev->channel = channel;
+						ev->channel = gmchannel;
 						ev->milliHertz = this->freqMap[channel];
 					} else {
 						// Note is not playing, do a note-on
 						NoteOnEvent *ev = new NoteOnEvent();
 						gev.reset(ev);
-						ev->channel = channel;
+						ev->channel = gmchannel;
 						ev->instrument = this->patchMap[channel];
 						ev->milliHertz = this->freqMap[channel];
 						ev->velocity = this->volMap[channel];
@@ -369,7 +371,7 @@ EventPtr MusicReader_KLM::readNextEvent()
 				} else {
 					NoteOffEvent *ev = new NoteOffEvent();
 					gev.reset(ev);
-					ev->channel = channel;
+					ev->channel = gmchannel;
 					this->noteOn[channel] = false;
 					break;
 				}
@@ -392,7 +394,7 @@ EventPtr MusicReader_KLM::readNextEvent()
 			case 0x40: { // note on
 				NoteOnEvent *ev = new NoteOnEvent();
 				gev.reset(ev);
-				ev->channel = channel;
+				ev->channel = gmchannel;
 				ev->instrument = this->patchMap[channel];
 				ev->milliHertz = this->freqMap[channel];
 				ev->velocity = this->volMap[channel];
@@ -401,11 +403,18 @@ EventPtr MusicReader_KLM::readNextEvent()
 			}
 			case 0xF0: {
 				switch (code) {
-					case 0xFD: // normal delay
+					case 0xFD: { // normal delay
 						uint8_t data;
 						this->input >> u8(data);
 						this->tick += data;
 						break;
+					}
+					case 0xFE: { // large delay
+						uint16_t data;
+						this->input >> u16le(data);
+						this->tick += data;
+						break;
+					}
 					case 0xFF: // end of song
 						return EventPtr();
 					default:
