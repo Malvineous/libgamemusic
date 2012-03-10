@@ -31,8 +31,17 @@ EXTRA_libgamemusic_la_SOURCES += mus-mid-type0.hpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 
-AM_CPPFLAGS = $(DEBUG_CPPFLAGS) $(BOOST_CPPFLAGS) -I $(top_srcdir)/include $(libgamecommon_CFLAGS) $(WARNINGS)
-AM_CXXFLAGS = $(DEBUG_CXXFLAGS)
+AM_CPPFLAGS  = $(BOOST_CPPFLAGS)
+AM_CPPFLAGS += -I $(top_srcdir)/include
+AM_CPPFLAGS += $(libgamecommon_CPPFLAGS)
+AM_CPPFLAGS += $(WARNINGS)
 
-libgamemusic_la_LDFLAGS = $(AM_LDFLAGS) -version-info 0:0:0
-libgamemusic_la_LIBADD = $(BOOST_SYSTEM_LIBS) $(BOOST_FILESYSTEM_LIBS) $(libgamecommon_LIBS)
+AM_CXXFLAGS  = $(DEBUG_CXXFLAGS)
+AM_CXXFLAGS += $(libgamecommon_CFLAGS)
+
+libgamemusic_la_LDFLAGS  = $(AM_LDFLAGS)
+libgamemusic_la_LDFLAGS += -version-info 0:0:0
+
+libgamemusic_la_LIBADD  = $(BOOST_SYSTEM_LIBS)
+libgamemusic_la_LIBADD += $(BOOST_FILESYSTEM_LIBS)
+libgamemusic_la_LIBADD += $(libgamecommon_LIBS)
