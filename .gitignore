@@ -34,6 +34,7 @@ doxygen/full/
 # Compiled binaries
 examples/gamemus
 tests/tests
+utils/dro2txt
 
 # SWIG output files
 python/gamemusic.py

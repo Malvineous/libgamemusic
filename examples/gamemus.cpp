@@ -2,7 +2,7 @@
  * @file   gamemus.cpp
  * @brief  Command-line interface to libgamemusic.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,7 +37,7 @@ using namespace camoto;
 #define RET_OK                 0
 // Bad arguments (missing/invalid parameters)
 #define RET_BADARGS            1
-// Major error (couldn't open archive file, etc.)
+// Major error (couldn't open file, etc.)
 #define RET_SHOWSTOPPER        2
 // More info needed (-t auto didn't work, specify a type)
 #define RET_BE_MORE_SPECIFIC   3
@@ -80,7 +80,7 @@ bool split(const std::string& in, char delim, std::string *out1, std::string *ou
  *
  * @throws int on failure (one of the RET_* values)
  */
-gm::MusicReaderPtr openMusicFile(const std::string& strFilename,
+gm::MusicPtr openMusicFile(const std::string& strFilename,
 	const char *typeArg, const std::string& strType, gm::ManagerPtr pManager,
 	bool bForceOpen)
 	throw (int)
@@ -158,7 +158,7 @@ finishTesting:
 	}
 
 	// See if the format requires any supplemental files
-	camoto::SuppFilenames suppList = pMusicType->getRequiredSupps(strFilename);
+	camoto::SuppFilenames suppList = pMusicType->getRequiredSupps(psMusic, strFilename);
 	camoto::SuppData suppData;
 	if (suppList.size() > 0) {
 		for (camoto::SuppFilenames::iterator i = suppList.begin(); i != suppList.end(); i++) {
@@ -174,11 +174,11 @@ finishTesting:
 		}
 	}
 
-	// Open the archive file
-	gm::MusicReaderPtr pMusicIn(pMusicType->open(psMusic, suppData));
-	assert(pMusicIn);
+	// Open the file
+	gm::MusicPtr pMusic = pMusicType->read(psMusic, suppData);
+	assert(pMusic);
 
-	return pMusicIn;
+	return pMusic;
 }
 
 int main(int iArgC, char *cArgV[])
@@ -239,7 +239,7 @@ int main(int iArgC, char *cArgV[])
 	gm::ManagerPtr pManager(gm::getManager());
 
 	bool bScript = false; // show output suitable for script parsing?
-	bool bForceOpen = false; // open anyway even if archive not in given format?
+	bool bForceOpen = false; // open anyway even if not in given format?
 	bool bUsePitchbends = true; // pass pitchbend events with -c
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
@@ -258,12 +258,12 @@ int main(int iArgC, char *cArgV[])
 				strFilename = i->value[0];
 			} else if (i->string_key.compare("help") == 0) {
 				std::cout <<
-					"Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>\n"
+					"Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>\n"
 					"This program comes with ABSOLUTELY NO WARRANTY.  This is free software,\n"
 					"and you are welcome to change and redistribute it under certain conditions;\n"
 					"see <http://www.gnu.org/licenses/> for details.\n"
 					"\n"
-					"Utility to manipulate archive files used by games to store data files.\n"
+					"Utility to manipulate music files used by games.\n"
 					"Build date " __DATE__ " " __TIME__ << "\n"
 					"\n"
 					"Usage: gamemus [options] <infile> [actions...]\n" << poVisible << "\n"
@@ -331,34 +331,27 @@ int main(int iArgC, char *cArgV[])
 			std::cerr << "Error: no filename given.  Use --help for help." << std::endl;
 			return RET_BADARGS;
 		}
-		std::cout << "Opening " << strFilename << " as type "
+		if (!bScript) std::cout << "Opening " << strFilename << " as type "
 			<< (strType.empty() ? "<autodetect>" : strType) << std::endl;
 
-		gm::MusicReaderPtr pMusicIn;
+		gm::MusicPtr pMusic;
 		try {
-			pMusicIn = openMusicFile(strFilename, "-t/--type", strType, pManager, bForceOpen);
+			pMusic = openMusicFile(strFilename, "-t/--type", strType, pManager, bForceOpen);
 		} catch (int ret) {
 			return ret;
 		}
-
-		// Default to using the instruments from the source file.  We don't always
-		// need the patch bank, but without it the instruments won't have been
-		// loaded and assertion failures will happen all over the place!
-		gm::PatchBankPtr instruments = pMusicIn->getPatchBank();
-
-		int iRet = RET_OK;
 
 		// Run through the actions on the command line
 		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
 			if (i->string_key.compare("list") == 0) {
 
-				int i = 0;
-				for (; ; i++) {
-					gm::EventPtr next = pMusicIn->readNextEvent();
-					if (!next) break; // end of song
-					std::cout << i << ": " << next->getContent() << "\n";
+				int n = 0;
+				for (gm::EventVector::const_iterator i = pMusic->events->begin(); i != pMusic->events->end(); i++, n++) {
+					if (bScript) std::cout << "index=" << n << ";";
+					else std::cout << n << ": ";
+					std::cout << (*i)->getContent() << "\n";
 				}
-				std::cout << i << " events listed." << std::endl;
+				if (!bScript) std::cout << n << " events listed." << std::endl;
 
 			} else if (i->string_key.compare("convert") == 0) {
 				std::string strOutFile;
@@ -369,7 +362,7 @@ int main(int iArgC, char *cArgV[])
 					return RET_BADARGS;
 				}
 
-				if (!instruments) {
+				if (!pMusic->patches) {
 					std::cerr << "Unable to convert, the source file had no "
 						"instruments!  Please supply some with -n." << std::endl;
 					return RET_SHOWSTOPPER;
@@ -397,44 +390,25 @@ int main(int iArgC, char *cArgV[])
 				// (e.g. Vinyl will need to create an external instrument file, whereas
 				// Kenslab has one but won't need to use it for this.)
 				camoto::SuppData suppData;
-				gm::MusicWriterPtr pMusicOut(pMusicOutType->create(psMusicOut, suppData));
-				assert(pMusicOut);
+				unsigned int flags = 0;
 
-				if (!bUsePitchbends) pMusicOut->setFlags(gm::MusicWriter::IntegerNotesOnly);
+				if (!bUsePitchbends) flags |= gm::MusicType::IntegerNotesOnly;
 
 				try {
-					pMusicOut->setPatchBank(instruments);
-				} catch (gm::EBadPatchType) {
-					std::cerr << "ERROR: Output format " << strOutType << " does not "
-						"support the instruments used in the input file." << std::endl;
+					pMusicOutType->write(psMusicOut, suppData, pMusic, flags);
+					std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
+				} catch (const gm::format_limitation& e) {
+					std::cerr << "ERROR: Unable to write this song in format "
+						<< strOutType << ": " << e.what() << std::endl;
 					// TODO: delete output file
 					return RET_UNCOMMON_FAILURE;
 				}
-				// Write the output file's header
-				pMusicOut->start();
-
-				try {
-					for (;;) {
-						gm::EventPtr next = pMusicIn->readNextEvent();
-						if (!next) break; // end of song
-						next->processEvent(pMusicOut.get());
-					}
-				} catch (...) {
-					// Write the output file's footer to prevent an assertion failure
-					pMusicOut->finish();
-					throw;
-				}
-
-				// Write the output file's footer
-				pMusicOut->finish();
-
-				std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
 
 			} else if (i->string_key.compare("list-instruments") == 0) {
-				int count = instruments->getPatchCount();
+				int count = pMusic->patches->getPatchCount();
 				std::cout << "Listing " << count << " instruments:\n";
 				for (int i = 0; i < count; i++) {
-					gm::PatchPtr next = instruments->getPatch(i);
+					gm::PatchPtr next = pMusic->patches->getPatch(i);
 					std::cout << " #" << i << ": ";
 					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(next);
 					if (oplNext) {
@@ -466,31 +440,30 @@ int main(int iArgC, char *cArgV[])
 					strInstType.clear();
 				}
 
-				gm::MusicReaderPtr pInst;
+				gm::MusicPtr pInst;
 				try {
 					pInst = openMusicFile(strInstFile, "-n/--newinst", strInstType, pManager, bForceOpen);
 				} catch (int ret) {
 					return ret;
 				}
 
-				gm::PatchBankPtr newinst = pInst->getPatchBank();
-				int newCount = newinst->getPatchCount();
-				int oldCount = instruments->getPatchCount();
+				int newCount = pInst->patches->getPatchCount();
+				int oldCount = pMusic->patches->getPatchCount();
 				if (newCount < oldCount) {
 					std::cout << "Warning: " << strInstFile << " has less instruments "
 						"than the original song! (" << newCount << " vs " << oldCount
 						<< ")" << std::endl;
 					// Recycle the new instruments until there are the same as there were
 					// originally.
-					newinst->setPatchCount(oldCount);
+					pInst->patches->setPatchCount(oldCount);
 					for (int i = newCount; i < oldCount; i++) {
 						std::cout << " > Reusing new instrument #"
 							<< ((i - newCount) % newCount) + 1 << " as #" << i + 1 << "/"
 							<< oldCount << std::endl;
-						newinst->setPatch(i, newinst->getPatch((i - newCount) % newCount));
+						pInst->patches->setPatch(i, pInst->patches->getPatch((i - newCount) % newCount));
 					}
 				}
-				instruments = newinst;
+				pMusic->patches = pInst->patches;
 
 				std::cout << "Loaded replacement instruments from " << strInstFile
 					<< std::endl;
@@ -523,5 +496,5 @@ int main(int iArgC, char *cArgV[])
 		return RET_UNCOMMON_FAILURE;
 	}
 
-	return 0;
+	return RET_OK;
 }

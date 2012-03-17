@@ -42,6 +42,7 @@
 	"\xed\x71" \
 	"\xcb\x91" \
 	"\x06\xf1" \
+	\
 	"\x21\xbd" "\x10\x00" \
 	"\x20\xbd" \
 	"\xff\xff"
@@ -54,6 +55,7 @@
 	"\xed\x75" \
 	"\xcb\x95" \
 	"\x06\xf5" \
+	\
 	"\x22\xbd" "\x10\x00" \
 	"\x20\xbd" \
 	"\xff\xff"
@@ -66,6 +68,8 @@
 	"\xed\x72" \
 	"\xcb\x92" \
 	"\x06\xf2" \
+	\
+	"\x09\xc8" \
 	\
 	"\x44\xa8" \
 	"\x12\xb8" \
@@ -82,6 +86,8 @@
 	"\xed\x74" \
 	"\xcb\x94" \
 	"\x06\xf4" \
+	\
+	"\x09\xc7" \
 	\
 	"\x44\xa7" \
 	"\x12\xb7" \
@@ -105,6 +111,8 @@
 	"\xcb\x93" \
 	"\x06\xf3" \
 	\
+	"\x09\xc6" \
+	\
 	"\x44\xa6" \
 	"\x12\xb6" \
 	\
@@ -114,8 +122,8 @@
 
 #define MUSIC_CLASS fmt_mus_raw_rdos
 #define MUSIC_TYPE  "raw-rdos"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -128,5 +136,5 @@
 ISINSTANCE_TEST(c01,
 	"RAWADATO"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );

@@ -2,7 +2,7 @@
  * @file   patchbank-singletype.hpp
  * @brief  Declaration of a PatchBank that only supports a single Patch type.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ class SingleTypePatchBank: virtual public PatchBank {
 			throw (EBadPatchType)
 		{
 			this->setPatchCount(base.getPatchCount());
-			for (int i = 0; i < base.getPatchCount(); ++i) {
+			for (unsigned int i = 0; i < base.getPatchCount(); ++i) {
 				this->setPatch(i, base.getPatch(i));
 				/*TPatchPtr oplPatch = boost::dynamic_pointer_cast<TPatch>(base.getPatch(i));
 				if (!oplPatch) throw EBadPatchType();

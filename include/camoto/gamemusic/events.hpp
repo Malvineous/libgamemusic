@@ -2,7 +2,7 @@
  * @file   events.hpp
  * @brief  Declaration of all the Event types.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,14 +43,6 @@ const int MAX_CHANNELS = 256;
  * The entries here will be valid for all music types.
  */
 struct Event {
-
-	/// The number of ticks (since the start of the song) when this event should
-	/// be actioned
-	uint32_t absTime;
-
-	/// Channel number (1+, channel 0 means a global event affecting all channels)
-	int channel;
-
 	/// Helper function (for debugging) to return all the data as a string
 	virtual std::string getContent() const
 		throw ();
@@ -59,13 +51,23 @@ struct Event {
 	/// event as the parameter.
 	virtual void processEvent(EventHandler *handler)
 		throw (std::exception) = 0;
+
+	/// The number of ticks (since the start of the song) when this event should
+	/// be actioned.
+	unsigned long absTime;
+
+	/// Channel number (1+, channel 0 means a global event affecting all channels)
+	unsigned int channel;
 };
 
 /// Shared pointer to an event
 typedef boost::shared_ptr<Event> EventPtr;
 
 /// Vector of shared event pointers
-typedef std::vector<EventPtr> VC_EVENTPTR;
+typedef std::vector<EventPtr> EventVector;
+
+/// Shared pointer to a list of events
+typedef boost::shared_ptr<EventVector> EventVectorPtr;
 
 
 /// Changing the tempo changes the rate at which the ticks tick.
@@ -78,7 +80,7 @@ typedef std::vector<EventPtr> VC_EVENTPTR;
 struct TempoEvent: virtual public Event
 {
 	/// Number of microseconds per tick.
-	int usPerTick;
+	unsigned long usPerTick;
 
 	virtual std::string getContent() const
 		throw ();
@@ -96,21 +98,21 @@ struct TempoEvent: virtual public Event
  */
 struct NoteOnEvent: virtual public Event
 {
-	/// Instrument to play this note with.  This is an index into the vector
-	/// returned by Music::getInstruments().
-	int instrument;
-
-	/// Note frequency (440000 == 440Hz)
-	int milliHertz;
-
-	/// Velocity.  0 == unused/default, 1 == quiet, 255 = loud
-	uint8_t velocity;
-
 	virtual std::string getContent() const
 		throw ();
 
 	virtual void processEvent(EventHandler *handler)
 		throw (std::exception);
+
+	/// Instrument to play this note with.  This is an index into the vector
+	/// returned by Music::getInstruments().
+	unsigned int instrument;
+
+	/// Note frequency (440000 == 440Hz)
+	unsigned int milliHertz;
+
+	/// Velocity.  0 == unused/default, 1 == quiet, 255 = loud
+	uint8_t velocity;
 };
 
 
@@ -247,7 +249,7 @@ class EChannelMismatch: virtual public std::exception {
 class EventHandler
 {
 	public:
-		virtual void handleEvent(TempoEvent *ev)
+		virtual void handleEvent(const TempoEvent *ev)
 			throw (stream::error) = 0;
 
 		/// A note is being played.
@@ -258,17 +260,21 @@ class EventHandler
 		 * @throws EBadPatchType if the note could not be played with the given
 		 *   instrument (e.g. not enough instruments in patch bank.)
 		 */
-		virtual void handleEvent(NoteOnEvent *ev)
+		virtual void handleEvent(const NoteOnEvent *ev)
 			throw (stream::error, EChannelMismatch, EBadPatchType) = 0;
 
-		virtual void handleEvent(NoteOffEvent *ev)
+		virtual void handleEvent(const NoteOffEvent *ev)
 			throw (stream::error) = 0;
 
-		virtual void handleEvent(PitchbendEvent *ev)
+		virtual void handleEvent(const PitchbendEvent *ev)
 			throw (stream::error) = 0;
 
-		virtual void handleEvent(ConfigurationEvent *ev)
+		virtual void handleEvent(const ConfigurationEvent *ev)
 			throw (stream::error) = 0;
+
+		void handleAllEvents(const EventVectorPtr& events)
+			throw (stream::error, EChannelMismatch, EBadPatchType);
+
 };
 
 

@@ -35,16 +35,6 @@
 namespace camoto {
 namespace gamemusic {
 
-#ifdef DEBUG
-static bool registered_exit_func = false;
-void exitFunc()
-{
-	std::cerr << "\e[44m --- Instance counts --- \e[49m\n";
-	refcount_dump(IMFMusicType);
-	refcount_dump(CMFMusicType);
-}
-#endif
-
 ManagerPtr getManager()
 	throw ()
 {
@@ -54,12 +44,6 @@ ManagerPtr getManager()
 Manager::Manager()
 	throw ()
 {
-#ifdef DEBUG
-	if (!registered_exit_func) {
-		atexit(exitFunc);
-		registered_exit_func = true;
-	}
-#endif
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type0()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_WLF_Type0()));
@@ -79,7 +63,7 @@ Manager::~Manager()
 {
 }
 
-MusicTypePtr Manager::getMusicType(int index)
+MusicTypePtr Manager::getMusicType(unsigned int index)
 	throw ()
 {
 	if (index >= this->musicTypes.size()) return MusicTypePtr();

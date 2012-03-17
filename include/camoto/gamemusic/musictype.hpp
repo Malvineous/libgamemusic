@@ -1,9 +1,9 @@
 /**
  * @file   musictype.hpp
- * @brief  MusicType class, used to identify and open an instance of a
+ * @brief  MusicType class, used to identify, read and write an instance of a
  *         particular music format.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,9 +24,9 @@
 
 #include <vector>
 #include <map>
-
-#include <camoto/stream.hpp>
 #include <stdint.h>
+#include <camoto/error.hpp>
+#include <camoto/stream.hpp>
 #include <camoto/suppitem.hpp>
 #include <camoto/gamemusic/music.hpp>
 
@@ -34,6 +34,19 @@
 namespace camoto {
 /// Namespace for this library
 namespace gamemusic {
+
+/// Exception thrown when a file format cannot store the required data.
+class format_limitation: public error
+{
+	public:
+		/// Constructor.
+		/**
+		 * @param msg
+		 *   Error description for UI messages.
+		 */
+		format_limitation(const std::string& msg)
+			throw ();
+};
 
 /// Interface to a particular music format.
 class MusicType {
@@ -46,6 +59,12 @@ class MusicType {
 			Unsure,        ///< The checks were inconclusive, it could go either way
 			PossiblyYes,   ///< Everything checked out OK, but there's no signature
 			DefinitelyYes, ///< This format has a signature and it matched
+		};
+
+		/// Output control flags.
+		enum Flags {
+			Default          = 0x00,  ///< No special treatment
+			IntegerNotesOnly = 0x01,  ///< Disable pitchbends
 		};
 
 		/// Get a short code to identify this file format, e.g. "imf-idsoftware"
@@ -73,40 +92,67 @@ class MusicType {
 
 		/// Check a stream to see if it's in this music format.
 		/**
-		 * @param  psMusic A C++ iostream of the file to test.
+		 * @param input
+		 *   The file to test.
+		 *
 		 * @return A single confidence value from \ref MusicType::Certainty.
 		 */
-		virtual Certainty isInstance(stream::input_sptr psMusic) const
+		virtual Certainty isInstance(stream::input_sptr input) const
 			throw (stream::error) = 0;
 
-		/// Create a blank song in this format.
+		/// Read a music file in this format.
+		/**
+		 * @pre Recommended that isInstance() has returned > DefinitelyNo.
+		 *
+		 * @param input
+		 *   The music file to read.
+		 *
+		 * @param suppData
+		 *   Any supplemental data required by this format (see getRequiredSupps()).
+		 *
+		 * @return A pointer to an instance of the Music class.  Will throw an
+		 *   exception if the data is invalid (likely if isInstance() returned
+		 *   DefinitelyNo) however it will try its best to read the data anyway, to
+		 *   make it possible to "force" a file to be opened by a particular format
+		 *   handler.
+		 *
+		 * @throw stream::error
+		 *   I/O error reading from input stream (e.g. file truncated)
+		 */
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
+			throw (stream::error) = 0;
+
+		/// Write a song in this file format.
 		/**
 		 * This function writes out the necessary signatures and headers to create
 		 * a valid blank music in this format.
 		 *
-		 * @param  psMusic A blank stream to store the new music in.
-		 * @param  suppData Any supplemental data required by this format (see
-		 *         getRequiredSupps()).
-		 * @return A pointer to an instance of the MusicWriter class, just as if a
-		 *         valid empty file had been opened by open().
+		 * @param output
+		 *   A blank stream to store the new song in.
+		 *
+		 * @param suppData
+		 *   Any supplemental data required by this format (see getRequiredSupps()).
+		 *
+		 * @param music
+		 *   The actual song data to write.
+		 *
+		 * @param flags
+		 *   One or more \ref Flags values affecting the type of data written.
+		 *
+		 * @throw stream::error
+		 *   I/O error writing to output stream (e.g. disk full)
+		 *
+		 * @throw format_limitation
+		 *   This file format cannot store the requested data (e.g. a standard MIDI
+		 *   file being asked to store PCM instruments.)  This will be a common
+		 *   failure mode, so the error message should be presented to the user as
+		 *   it will indicate what they are required to do to remedy the problem.
+		 *
+		 * @post The stream will be truncated to the correct size.
 		 */
-		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
-			throw (stream::error) = 0;
-
-		/// Open a music file.
-		/**
-		 * @pre    Recommended that isInstance() has returned > EC_DEFINITELY_NO.
-		 * @param  psMusic The music file.
-		 * @param  suppData Any supplemental data required by this format (see
-		 *         getRequiredSupps()).
-		 * @return A pointer to an instance of the MusicReader class.  Will throw an
-		 *         exception if the data is invalid (i.e. if isInstance() returned
-		 *         EC_DEFINITELY_NO) however it will try its best to read the data
-		 *         anyway, to make it possible to "force" a file to be opened by a
-		 *         particular format handler.
-		 */
-		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error) = 0;
+		virtual void write(stream::output_sptr output, SuppData& suppData,
+			MusicPtr music, unsigned int flags) const
+			throw (stream::error, format_limitation) = 0;
 
 		/// Get a list of any required supplemental files.
 		/**
@@ -116,18 +162,33 @@ class MusicType {
 		 * supplementary files, so the caller can open them and pass them along
 		 * to the music manipulation classes.
 		 *
-		 * @param  filenameMusic The filename of the music (no path.)  This is
-		 *         for supplemental files which share the same base name as the
-		 *         music, but a different filename extension.
+		 * @param input
+		 *   Optional stream containing an existing file (or a NULL pointer if a
+		 *   new file is to be created.)  This is used for file formats which store
+		 *   filenames internally, allowing those filenames to be read out and
+		 *   returned.  For newly created files (when this parameter is NULL),
+		 *   default filenames are synthesised based on filenameMusic.
+		 *
+		 * @param filenameMusic
+		 *   The filename of the music file (no path.)  This is for supplemental
+		 *   files which share the same base name as the music, but a different
+		 *   filename extension.
+		 *
 		 * @return A (possibly empty) map associating required supplemental file
-		 *         types with their filenames.  For each returned value the file
-		 *         should be opened and placed in a SuppItem instance.  The
-		 *         SuppItem is then added to an \ref MP_SUPPDATA map where it can
-		 *         be passed to newMusic() or open().  Note that the filenames
-		 *         returned can have relative paths, and may even have an absolute
-		 *         path, if one was passed in with filenameMusic.
+		 *   types with their filenames.  For each returned value the file should be
+		 *   opened and placed in a SuppItem instance.  The SuppItem is then added
+		 *   to an \ref MP_SUPPDATA map where it can be passed to create() or
+		 *   open().  Note that the filenames returned can have relative paths.
 		 */
-		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
+			const std::string& filenameMusic) const
+			throw () = 0;
+
+		/// Discover valid metadata supported by this file format.
+		/**
+		 *  @see camoto::Metadata::getMetadataList()
+		 */
+		virtual Metadata::MetadataTypes getMetadataList() const
 			throw () = 0;
 
 };

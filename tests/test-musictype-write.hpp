@@ -1,8 +1,8 @@
 /**
- * @file   test-musicwriter.hpp
- * @brief  Generic test code for MusicWriter class descendents.
+ * @file   test-musictype-write.hpp
+ * @brief  Generic test code for MusicType class descendents writing out files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "tests.hpp"
 
 using namespace camoto;
-namespace gm = camoto::gamemusic;
+using namespace camoto::gamemusic;
 
 // Defines to allow code reuse
 #define COMBINE_CLASSNAME_EXP(c, n)  c ## _ ## n
@@ -47,9 +47,9 @@ namespace gm = camoto::gamemusic;
 struct FIXTURE_NAME: public default_sample {
 
 	stream::string_sptr base;
-	gm::MusicWriterPtr music;
+	MusicPtr music;
 	camoto::SuppData suppData;
-	gm::MusicTypePtr pTestType;
+	MusicTypePtr pTestType;
 
 	FIXTURE_NAME() :
 		base(new stream::string())
@@ -58,19 +58,18 @@ struct FIXTURE_NAME: public default_sample {
 		{
 			stream::string_sptr suppStream(new stream::string());
 			suppStream << makeString(TEST_RESULT(FAT_initialstate));
-			this->suppData[gm::EST_FAT] = suppStream;
+			this->suppData[EST_FAT] = suppStream;
 		}
 		#endif
 
 		BOOST_REQUIRE_NO_THROW(
-			gm::ManagerPtr pManager = gm::getManager();
+			ManagerPtr pManager = getManager();
 			this->pTestType = pManager->getMusicTypeByCode(MUSIC_TYPE);
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE);
 
-		this->music = this->pTestType->create(this->base, this->suppData);
-		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
-
+		this->music.reset(new Music());
+		this->music->events.reset(new EventVector());
 	}
 
 	void init(bool setInstruments)
@@ -78,9 +77,9 @@ struct FIXTURE_NAME: public default_sample {
 		if (setInstruments) {
 #if INSTRUMENT_TYPE == 0
 			// Set some default instruments
-			gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
+			OPLPatchBankPtr instruments(new OPLPatchBank());
 			instruments->setPatchCount(1);
-			gm::OPLPatchPtr defInst(new gm::OPLPatch);
+			OPLPatchPtr defInst(new OPLPatch());
 			defInst->m.enableTremolo = defInst->c.enableTremolo = true;
 			defInst->m.enableVibrato = defInst->c.enableVibrato = false;
 			defInst->m.enableSustain = defInst->c.enableSustain = true;
@@ -107,38 +106,34 @@ struct FIXTURE_NAME: public default_sample {
 			defInst->feedback = 2;
 			instruments->setPatch(0, defInst);
 #elif INSTRUMENT_TYPE == 1
-			gm::MIDIPatchBankPtr instruments(new gm::MIDIPatchBank());
+			MIDIPatchBankPtr instruments(new MIDIPatchBank());
 			instruments->setPatchCount(1);
-			gm::MIDIPatchPtr defInst(new gm::MIDIPatch);
+			MIDIPatchPtr defInst(new MIDIPatch());
 			defInst->midiPatch = 0;
 			defInst->percussion = false;
 			instruments->setPatch(0, defInst);
 #else
 #error Unknown instrument type
 #endif
-			this->music->setPatchBank(instruments);
+			this->music->patches = instruments;
 		}
 
-		// Write the file header
-		this->music->start();
-
 		// Set a default tempo
-		gm::TempoEvent *pevTempo = new gm::TempoEvent;
-		gm::EventPtr evTempo(pevTempo);
+		TempoEvent *pevTempo = new TempoEvent;
+		EventPtr evTempo(pevTempo);
 		pevTempo->absTime = 0;
 		pevTempo->usPerTick = INITIAL_TEMPO;
-		evTempo->processEvent(this->music.get());
+		this->music->events->push_back(evTempo);
 	}
 
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
-		this->music->finish();
+		this->pTestType->write(this->base, this->suppData, this->music, MusicType::Default);
 		return this->default_sample::is_equal(strExpected, this->base->str());
 	}
 
 	boost::test_tools::predicate_result is_supp_equal(camoto::SuppItem::Type type, const std::string& strExpected)
 	{
-		this->music->finish();
 		stream::inout_sptr b = this->suppData[type];
 		stream::string_sptr s = boost::dynamic_pointer_cast<stream::string>(b);
 		assert(s);
@@ -155,11 +150,13 @@ struct FIXTURE_NAME: public default_sample {
 	 */
 	void testRhythm(int rhythm, int opIndex)
 	{
-		gm::OPLPatchBankPtr instruments(new gm::OPLPatchBank);
+		OPLPatchBankPtr instruments(new OPLPatchBank());
 		instruments->setPatchCount(1);
-		gm::OPLPatchPtr newInst(new gm::OPLPatch);
+		OPLPatchPtr newInst(new OPLPatch());
 		newInst->rhythm = rhythm;
-		gm::OPLOperator *op;
+		newInst->feedback = 4;
+		newInst->connection = true;
+		OPLOperator *op;
 setInstrumentAgain:
 		if (opIndex == 0) op = &newInst->m;
 		else op = &newInst->c;
@@ -180,23 +177,23 @@ setInstrumentAgain:
 			goto setInstrumentAgain;
 		}
 		instruments->setPatch(0, newInst);
-		this->music->setPatchBank(instruments);
+		this->music->patches = instruments;
 
 		this->init(false); // set tempo but not instruments
 
-		gm::NoteOnEvent *pevOn = new gm::NoteOnEvent();
-		gm::EventPtr evOn(pevOn);
+		NoteOnEvent *pevOn = new NoteOnEvent();
+		EventPtr evOn(pevOn);
 		pevOn->milliHertz = 440000;
 		pevOn->absTime = 0;
 		pevOn->channel = 8 + rhythm;
 		pevOn->instrument = 0;
-		evOn->processEvent(this->music.get());
+		this->music->events->push_back(evOn);
 
-		gm::NoteOffEvent *pevOff = new gm::NoteOffEvent();
-		gm::EventPtr evOff(pevOff);
+		NoteOffEvent *pevOff = new NoteOffEvent();
+		EventPtr evOff(pevOff);
 		pevOff->absTime = 0x10;
 		pevOff->channel = 8 + rhythm;
-		evOff->processEvent(this->music.get());
+		this->music->events->push_back(evOff);
 	}
 
 };
@@ -209,19 +206,19 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(write_noteonoff))
 
 	this->init(true); // set instruments and tempo
 
-	gm::NoteOnEvent *pevOn = new gm::NoteOnEvent();
-	gm::EventPtr evOn(pevOn);
+	NoteOnEvent *pevOn = new NoteOnEvent();
+	EventPtr evOn(pevOn);
 	pevOn->absTime = 0;
 	pevOn->channel = 0;
 	pevOn->milliHertz = 440000;
 	pevOn->instrument = 0;
-	evOn->processEvent(this->music.get());
+	this->music->events->push_back(evOn);
 
-	gm::NoteOffEvent *pevOff = new gm::NoteOffEvent();
-	gm::EventPtr evOff(pevOff);
+	NoteOffEvent *pevOff = new NoteOffEvent();
+	EventPtr evOff(pevOff);
 	pevOff->absTime = 0x10;
 	pevOff->channel = 0;
-	evOff->processEvent(this->music.get());
+	this->music->events->push_back(evOff);
 
 	BOOST_CHECK_MESSAGE(
 		is_equal(makeString(TEST_RESULT(noteonoff))),

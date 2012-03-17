@@ -1,8 +1,8 @@
 /**
- * @file   test-musicreader.hpp
- * @brief  Generic test code for MusicReader class descendents.
+ * @file   test-musictype-read.hpp
+ * @brief  Generic test code for MusicType class descendents reading in files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include "tests.hpp"
 
 using namespace camoto;
-namespace gm = camoto::gamemusic;
+using namespace camoto::gamemusic;
 
 // Defines to allow code reuse
 #define COMBINE_CLASSNAME_EXP(c, n)  c ## _ ## n
@@ -47,10 +47,9 @@ namespace gm = camoto::gamemusic;
 struct FIXTURE_NAME: public default_sample {
 
 	stream::string_sptr base;
-	gm::MusicReaderPtr music;
-	camoto::SuppData suppData;
-	gm::MusicTypePtr pTestType;
-	gm::PatchBankPtr bank;
+	MusicPtr music;
+	SuppData suppData;
+	MusicTypePtr pTestType;
 
 	FIXTURE_NAME() :
 		base(new stream::string())
@@ -60,26 +59,25 @@ struct FIXTURE_NAME: public default_sample {
 	void init(const std::string& data)
 	{
 		this->base << data;
+		this->base->seekg(0, stream::start);
 
 		#ifdef HAS_FAT
 		{
 			stream::string_sptr suppStream(new stream::string());
 			suppStream << makeString(TEST_RESULT(FAT_initialstate));
-			this->suppData[gm::EST_FAT] = suppStream;
+			this->suppData[EST_FAT] = suppStream;
 		}
 		#endif
 
 		BOOST_REQUIRE_NO_THROW(
-			gm::ManagerPtr pManager = gm::getManager();
+			ManagerPtr pManager = getManager();
 			this->pTestType = pManager->getMusicTypeByCode(MUSIC_TYPE);
 		);
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE);
 
-		this->music = this->pTestType->open(this->base, this->suppData);
+		this->music = this->pTestType->read(this->base, this->suppData);
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
-
-		this->bank = this->music->getPatchBank();
-		BOOST_REQUIRE_MESSAGE(this->bank, "Music reader didn't supply an instrument bank");
+		BOOST_REQUIRE_MESSAGE(this->music->patches, "Music reader didn't supply an instrument bank");
 	}
 
 	/// Test a rhythm-mode instrument
@@ -92,35 +90,32 @@ struct FIXTURE_NAME: public default_sample {
 	 */
 	void testRhythm(int rhythm, int opIndex)
 	{
-		gm::EventPtr evOn = this->music->readNextEvent();
-		BOOST_REQUIRE_MESSAGE(evOn, "Test data contains no events!");
+		BOOST_REQUIRE_GT(this->music->events->size(), 0);
 
-		gm::NoteOnEvent *pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
-
-		if (!pevNoteOn) {
-			// First event wasn't note-on, keep reading until we reach one.  This
-			// allows extra initial events (like tempo) to be ignored.
-			do {
-				evOn = this->music->readNextEvent();
-				pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
-			} while ((evOn) && (!pevNoteOn));
+		NoteOnEvent *pevNoteOn = NULL;
+		EventVector::const_iterator i;
+		for (i = this->music->events->begin();
+			i != this->music->events->end();
+			i++
+		) {
+			pevNoteOn = dynamic_cast<NoteOnEvent *>(i->get());
+			if (pevNoteOn) break;
 		}
-
 		BOOST_REQUIRE_MESSAGE(pevNoteOn, "No note-on events found");
 
 		// Note must play immediately at start of song
 		BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
 
-		gm::OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<gm::OPLPatchBank>(this->bank);
+		OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<OPLPatchBank>(this->music->patches);
 		BOOST_REQUIRE_MESSAGE(instruments, "Test fault: Tried to run OPL test for "
 			"music format that doesn't have OPL instruments");
 
-		gm::OPLPatchPtr inst = instruments->getTypedPatch(0);
+		OPLPatchPtr inst = instruments->getTypedPatch(0);
 		// Make sure instrument is the correct rhythm-mode one
 		BOOST_REQUIRE_EQUAL(inst->rhythm, rhythm);
 
 		// Make sure the correct parameters have been set
-		gm::OPLOperator *op;
+		OPLOperator *op;
 checkInstrumentAgain:
 		if (opIndex == 0) op = &inst->m;
 		else op = &inst->c;
@@ -141,11 +136,11 @@ checkInstrumentAgain:
 			goto checkInstrumentAgain;
 		}
 
-		gm::EventPtr evOff = this->music->readNextEvent();
+		EventPtr evOff = *(++i);
 		BOOST_REQUIRE_MESSAGE(evOff,
 			"Test data didn't contain an event following the note-on!");
 
-		gm::NoteOffEvent *pevNoteOff = dynamic_cast<gm::NoteOffEvent *>(evOff.get());
+		NoteOffEvent *pevNoteOff = dynamic_cast<NoteOffEvent *>(evOff.get());
 		BOOST_REQUIRE_MESSAGE(pevNoteOff,
 			"Event following note-on was not a note-off");
 
@@ -166,8 +161,8 @@ BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 	{ \
 		BOOST_TEST_MESSAGE("isInstance check (" MUSIC_TYPE "; " #c ")"); \
 		\
-		gm::ManagerPtr pManager(gm::getManager()); \
-		gm::MusicTypePtr pTestType(pManager->getMusicTypeByCode(MUSIC_TYPE)); \
+		ManagerPtr pManager(getManager()); \
+		MusicTypePtr pTestType(pManager->getMusicTypeByCode(MUSIC_TYPE)); \
 		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type " MUSIC_TYPE); \
 		\
 		stream::string_sptr testBase(new stream::string()); \
@@ -176,7 +171,7 @@ BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 		BOOST_CHECK_EQUAL(pTestType->isInstance(testBase), r); \
 	}
 
-ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
+ISINSTANCE_TEST(c00, INITIALSTATE_NAME, MusicType::DefinitelyYes);
 
 
 // Define an INVALIDDATA_TEST macro which we use to confirm the reader correctly
@@ -192,7 +187,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 		camoto::SuppItem si; \
 		si.stream = suppStream; \
 		si.fnTruncate = boost::bind<void>(stringStreamTruncate, suppSS.get(), _1); \
-		suppData[gm::EST_FAT] = si; \
+		suppData[EST_FAT] = si; \
 	}
 #else
 #	define INVALIDDATA_FATCODE(d)
@@ -206,14 +201,14 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 
 #define INVALIDDATA_TEST_FULL(c, d, f) \
 	/* Run an isInstance test first to make sure the data is accepted */ \
-	ISINSTANCE_TEST(invaliddata_ ## c, d, gm::MusicType::DefinitelyYes); \
+	ISINSTANCE_TEST(invaliddata_ ## c, d, MusicType::DefinitelyYes); \
 	\
 	BOOST_AUTO_TEST_CASE(TEST_NAME(invaliddata_ ## c)) \
 	{ \
 		BOOST_TEST_MESSAGE("invalidData check (" MUSIC_TYPE "; " #c ")"); \
 		\
-		boost::shared_ptr<gm::Manager> pManager(gm::getManager()); \
-		gm::MapTypePtr pTestType(pManager->getMapTypeByCode(MUSIC_TYPE)); \
+		boost::shared_ptr<Manager> pManager(getManager()); \
+		MapTypePtr pTestType(pManager->getMapTypeByCode(MUSIC_TYPE)); \
 		\
 		/* Prepare an invalid map */ \
 		boost::shared_ptr<std::stringstream> psstrBase(new std::stringstream); \
@@ -224,7 +219,7 @@ ISINSTANCE_TEST(c00, INITIALSTATE_NAME, gm::MusicType::DefinitelyYes);
 		INVALIDDATA_FATCODE(f) \
 		\
 		BOOST_CHECK_THROW( \
-			gm::MapPtr pMap(pTestType->open(psBase, suppData)), \
+			MapPtr pMap(pTestType->open(psBase, suppData)), \
 			stream::error \
 		); \
 	}
@@ -235,31 +230,26 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(noteonoff))
 
 	this->init(makeString(testdata_noteonoff));
 
-	gm::EventPtr evOn = this->music->readNextEvent();
-	BOOST_REQUIRE_MESSAGE(evOn, "Test data contains no events!");
-
-	gm::NoteOnEvent *pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
-
-	if (!pevNoteOn) {
-		// First event wasn't note-on, keep reading until we reach one.  This
-		// allows extra initial events (like tempo) to be ignored.
-		do {
-			evOn = this->music->readNextEvent();
-			pevNoteOn = dynamic_cast<gm::NoteOnEvent *>(evOn.get());
-		} while ((evOn) && (!pevNoteOn));
+	NoteOnEvent *pevNoteOn = NULL;
+	EventVector::const_iterator i;
+	for (i = this->music->events->begin();
+		i != this->music->events->end();
+		i++
+	) {
+		pevNoteOn = dynamic_cast<NoteOnEvent *>(i->get());
+		if (pevNoteOn) break;
 	}
-
 	BOOST_REQUIRE_MESSAGE(pevNoteOn, "No note-on events found");
 
 	// Allow a certain amount of leeway, as frequency values can only be
 	// approximated by many music formats.
 	BOOST_REQUIRE_CLOSE(pevNoteOn->milliHertz / 1000.0, 440.0, 0.01);
 
-	gm::EventPtr evOff = this->music->readNextEvent();
+	EventPtr evOff = *(++i);
 	BOOST_REQUIRE_MESSAGE(evOff,
 		"Test data didn't contain an event following the note-on!");
 
-	gm::NoteOffEvent *pevNoteOff = dynamic_cast<gm::NoteOffEvent *>(evOff.get());
+	NoteOffEvent *pevNoteOff = dynamic_cast<NoteOffEvent *>(evOff.get());
 	BOOST_REQUIRE_MESSAGE(pevNoteOff,
 		"Event following note-on was not a note-off");
 

@@ -16,7 +16,7 @@
  * very different .dro files can still compare as identical if they both sound
  * exactly the same, despite being very different at the byte level.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,21 +40,6 @@
 
 /// Define this to display frequencies as "block/fnum" instead of milliHertz
 //#define DISPLAY_FNUM
-
-
-#define OPLBIT_KEYON    0x20 ///< Bit in BASE_KEYON_FREQ register for turning a note on
-
-/// Supplied with a channel, return the offset from a base OPL register for the
-/// Modulator cell (e.g. channel 4's modulator is at offset 0x09.  Since 0x60 is
-/// the attack/decay function, register 0x69 will thus set the attack/decay for
-/// channel 4's modulator.)  Channels go from 0 to 8 inclusive.
-#define OPLOFFSET_MOD(channel)   (((channel) / 3) * 8 + ((channel) % 3))
-#define OPLOFFSET_CAR(channel)   (OPLOFFSET_MOD(channel) + 3)
-
-/// Supplied with an operator offset, return the OPL channel it is associated
-/// with (0-8).  Note that this only works in 2-operator mode, the OPL3's 4-op
-/// mode requires a different formula.
-#define OPL_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
 
 using namespace camoto;
 namespace gm = camoto::gamemusic;

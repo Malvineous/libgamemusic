@@ -2,7 +2,7 @@
  * @file   events.cpp
  * @brief  Implementation of all Event types.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -129,6 +129,9 @@ std::string ConfigurationEvent::getContent() const
 		case EnableRhythm:
 			ss << "enableRhythm";
 			break;
+		case EnableWaveSel:
+			ss << "enableWaveSel";
+			break;
 	}
 	ss << ";value=" << this->value;
 	return ss.str();
@@ -164,4 +167,13 @@ const char *EChannelMismatch::what() const
 		this->msg = ss.str();
 	}
 	return this->msg.c_str();
+}
+
+void EventHandler::handleAllEvents(const EventVectorPtr& events)
+	throw (stream::error, EChannelMismatch, EBadPatchType)
+{
+	for (EventVector::const_iterator i = events->begin(); i != events->end(); i++) {
+		i->get()->processEvent(this);
+	}
+	return;
 }

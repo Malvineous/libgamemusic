@@ -2,7 +2,7 @@
  * @file   patch-opl.hpp
  * @brief  Derived Patch for OPL patches.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,9 +21,10 @@
 #ifndef _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_
 #define _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_
 
+#include <iomanip>
+#include <stdint.h>
 #include <camoto/gamemusic/patch.hpp>
 #include <camoto/stream.hpp>
-#include <stdint.h>
 
 namespace camoto {
 namespace gamemusic {
@@ -169,11 +170,16 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 /// Shared pointer to a Patch.
 typedef boost::shared_ptr<OPLPatch> OPLPatchPtr;
 
+/// Convert the OPLPatch::rhythm value into text for error messages.
+const char *rhythmToText(int rhythm);
+
 } // namespace gamemusic
 } // namespace camoto
 
 /// ostream handler for printing patches as ASCII
 std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatch& p);
+
+/// ostream handler for printing patches as ASCII
 std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatchPtr p);
 
 #endif // _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_

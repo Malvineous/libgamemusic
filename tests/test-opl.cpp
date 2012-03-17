@@ -22,7 +22,7 @@
 
 #include <camoto/util.hpp> // createString()
 #include <camoto/gamemusic.hpp>
-#include <camoto/gamemusic/mus-generic-opl.hpp>
+#include <camoto/gamemusic/eventconverter-opl.hpp>
 #include "tests.hpp"
 
 using namespace camoto;
@@ -60,4 +60,20 @@ BOOST_AUTO_TEST_CASE(freqToNote)
 	check_freq(  97006, 1023, 1);
 	check_freq( 194013, 1023, 2);
 	check_freq(6208431, 1023, 7);
+}
+
+BOOST_AUTO_TEST_CASE(oplCalc)
+{
+	BOOST_CHECK_EQUAL(OPLOFFSET_MOD(1-1), 0x00);
+	BOOST_CHECK_EQUAL(OPLOFFSET_MOD(5-1), 0x09);
+	BOOST_CHECK_EQUAL(OPLOFFSET_MOD(9-1), 0x12);
+	BOOST_CHECK_EQUAL(OPLOFFSET_CAR(1-1), 0x03);
+	BOOST_CHECK_EQUAL(OPLOFFSET_CAR(5-1), 0x0C);
+	BOOST_CHECK_EQUAL(OPLOFFSET_CAR(9-1), 0x15);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x00), 1-1);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x09), 5-1);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x12), 9-1);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x03), 1-1);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x0C), 5-1);
+	BOOST_CHECK_EQUAL(OPL_OFF2CHANNEL(0x15), 9-1);
 }
