@@ -83,6 +83,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		unsigned int flags;        ///< One or more OPLWriteFlags
 
 		unsigned long lastTempo;   ///< Last tempo value (to avoid duplicate events)
+		unsigned long cachedDelay; ///< Delay saved when reg write was skipped
 		uint8_t oplState[2][256];  ///< Current register values
 };
 
@@ -103,7 +104,8 @@ OPLEncoder::OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
 	  delayType(delayType),
 	  fnumConversion(fnumConversion),
 	  flags(flags),
-	  lastTempo(0)
+	  lastTempo(0),
+	  cachedDelay(0)
 {
 	// Initialise all OPL registers to zero (this is assumed the initial state
 	// upon playback)
@@ -132,8 +134,22 @@ void OPLEncoder::encode(const MusicPtr music)
 void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 	throw (stream::error)
 {
-	/// @todo Optimise before calling writeNextPair()
-	this->cb->writeNextPair(oplEvent);
+	if (this->oplState[oplEvent->chipIndex][oplEvent->reg] != oplEvent->val) {
+		// Value has changed, update
+		if (this->cachedDelay) {
+			OPLEvent c = *oplEvent;
+			c.delay += this->cachedDelay;
+			this->cachedDelay = 0;
+			this->cb->writeNextPair(&c);
+		} else {
+			this->cb->writeNextPair(oplEvent);
+		}
+		this->oplState[oplEvent->chipIndex][oplEvent->reg] = oplEvent->val;
+	} else {
+		// Value was already set, don't write redundant data, but remember the
+		// delay so it can be added to the next write.
+		this->cachedDelay += oplEvent->delay;
+	}
 	return;
 }
 
