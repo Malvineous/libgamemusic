@@ -1,8 +1,8 @@
 /**
- * @file   test-mus-imf-idsoftware.cpp
+ * @file   test-mus-imf-idsoftware-type0.cpp
  * @brief  Test code for type-0 id Software IMF files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,8 +44,8 @@
 
 #define MUSIC_CLASS fmt_mus_imf_idsoftware_type0
 #define MUSIC_TYPE  "imf-idsoftware-type0"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -58,7 +58,7 @@
 ISINSTANCE_TEST(c01,
 	"\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Invalid register
@@ -66,7 +66,7 @@ ISINSTANCE_TEST(c02,
 	"\x00\x00\x00\x00"
 	"\xF9\x00\x00\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Delay too large
@@ -74,7 +74,7 @@ ISINSTANCE_TEST(c03,
 	"\x00\x00\x00\x00"
 	"\xBD\x20\x00\xF0"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Type-0 file with nonzero length
@@ -82,5 +82,5 @@ ISINSTANCE_TEST(c04,
 	"\x04\x00\x00\x00"
 	"\x12\x34\x56\x78"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );

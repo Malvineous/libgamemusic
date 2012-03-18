@@ -2,7 +2,7 @@
  * @file   test-mus-imf-idsoftware-common.hpp
  * @brief  Test code shared between both types of id Software IMF files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,6 +72,8 @@
 	"\x92\xcb" "\x00\x00" \
 	"\xf2\x06" "\x00\x00" \
 	\
+	"\xc8\x09" "\x00\x00" \
+	\
 	"\xa8\x44" "\x00\x00" \
 	"\xb8\x12" "\x00\x00" \
 	\
@@ -85,6 +87,8 @@
 	"\x74\xed" "\x00\x00" \
 	"\x94\xcb" "\x00\x00" \
 	"\xf4\x06" "\x00\x00" \
+	\
+	"\xc7\x09" "\x00\x00" \
 	\
 	"\xa7\x44" "\x00\x00" \
 	"\xb7\x12" "\x00\x00" \
@@ -105,6 +109,8 @@
 	"\x73\xed" "\x00\x00" \
 	"\x93\xcb" "\x00\x00" \
 	"\xf3\x06" "\x00\x00" \
+	\
+	"\xc6\x09" "\x00\x00" \
 	\
 	"\xa6\x44" "\x00\x00" \
 	"\xb6\x12" "\x00\x00" \

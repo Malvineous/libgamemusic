@@ -2,7 +2,7 @@
  * @file   test-mus-imf-idsoftware-type1.cpp
  * @brief  Test code for type-1 id Software IMF files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,21 +37,21 @@
 	imf_rhythm_cymbal
 
 #define testdata_rhythm_tom \
-	"\x28\x00" \
+	"\x2c\x00" \
 	imf_rhythm_tom
 
 #define testdata_rhythm_snare \
-	"\x28\x00" \
+	"\x2c\x00" \
 	imf_rhythm_snare
 
 #define testdata_rhythm_bassdrum \
-	"\x3c\x00" \
+	"\x40\x00" \
 	imf_rhythm_bassdrum
 
 #define MUSIC_CLASS fmt_mus_imf_idsoftware_type1
 #define MUSIC_TYPE  "imf-idsoftware-type1"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -64,7 +64,7 @@
 ISINSTANCE_TEST(c01,
 	"\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Invalid register
@@ -73,7 +73,7 @@ ISINSTANCE_TEST(c02,
 	"\x00\x00\x00\x00"
 	"\xF9\x00\x00\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Delay too large
@@ -82,7 +82,7 @@ ISINSTANCE_TEST(c03,
 	"\x00\x00\x00\x00"
 	"\xBD\x20\x00\xF0"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Type-1 file with zero length
@@ -91,7 +91,7 @@ ISINSTANCE_TEST(c04,
 	"\x00\x00\x00\x00"
 	"\x12\x34\x56\x78"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Type-1 file with wrong length
@@ -100,15 +100,13 @@ ISINSTANCE_TEST(c05,
 	"\x00\x00\x00\x00"
 	"\x12\x34\x56\x78"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Make sure weird short files don't get picked up
-/* TODO: Deal with later when logic for trailing tags has been decided
 ISINSTANCE_TEST(c06,
 	"\x01\x00"
 	"\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
-*/
