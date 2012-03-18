@@ -23,6 +23,7 @@
 #include <boost/algorithm/string.hpp> // for case-insensitive string compare
 #include <boost/bind.hpp>
 #include <camoto/stream_string.hpp>
+#include <camoto/util.hpp> // for TOSTRING
 #include <camoto/gamemusic.hpp>
 #include <iostream>
 #include <iomanip>
@@ -126,6 +127,16 @@ struct FIXTURE_NAME: public default_sample {
 		this->music->events->push_back(evTempo);
 	}
 
+	/// Read the given data in as a music instance
+	void read(const std::string& data)
+	{
+		this->base << data;
+
+		this->music = this->pTestType->read(this->base, this->suppData);
+		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
+		this->base->truncate(0);
+	}
+
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
 		this->pTestType->write(this->base, this->suppData, this->music, MusicType::Default);
@@ -197,6 +208,25 @@ setInstrumentAgain:
 	}
 
 };
+
+#define TEST_BEFORE_AFTER(name, before, after)	\
+\
+BOOST_FIXTURE_TEST_SUITE(TEST_VAR(write_suite), TEST_VAR(write_sample)) \
+\
+BOOST_AUTO_TEST_CASE(TEST_NAME(before_after_ ## name)) \
+{ \
+	BOOST_TEST_MESSAGE("Testing before/after: " TOSTRING(name)); \
+\
+	this->read(makeString(before)); \
+\
+	BOOST_CHECK_MESSAGE( \
+		is_equal(makeString(after)), \
+		"Before/after test failed" \
+	); \
+} \
+\
+BOOST_AUTO_TEST_SUITE_END()
+
 
 BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 
@@ -307,4 +337,3 @@ BOOST_AUTO_TEST_SUITE_END()
 
 #undef FIXTURE_NAME
 #undef SUITE_NAME
-
