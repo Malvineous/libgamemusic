@@ -2,7 +2,7 @@
  * @file   test-mus-klm-wacky.cpp
  * @brief  Test code for Wacky Wheels KLM files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -110,8 +110,8 @@
 
 #define MUSIC_CLASS fmt_mus_klm_wacky
 #define MUSIC_TYPE  "klm-wacky"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -131,7 +131,7 @@ ISINSTANCE_TEST(c01,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Music offset past EOF
@@ -144,7 +144,7 @@ ISINSTANCE_TEST(c02,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Invalid 0xF0 event type
@@ -157,7 +157,7 @@ ISINSTANCE_TEST(c03,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Invalid normal event type
@@ -170,7 +170,7 @@ ISINSTANCE_TEST(c04,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Truncated event
@@ -180,7 +180,7 @@ ISINSTANCE_TEST(c05,
 	"\x30\x00"
 	"\x10\x44"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Bad instrument in reg 0xE0
@@ -193,7 +193,7 @@ ISINSTANCE_TEST(c06,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Bad instrument in 0xE3
@@ -206,7 +206,7 @@ ISINSTANCE_TEST(c07,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Bad instrument in 0xC0
@@ -219,7 +219,7 @@ ISINSTANCE_TEST(c08,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // All valid instrument bits enabled
@@ -232,5 +232,5 @@ ISINSTANCE_TEST(c09,
 	"\x00"
 	"\xff"
 	,
-	gm::MusicType::DefinitelyYes
+	MusicType::DefinitelyYes
 );
