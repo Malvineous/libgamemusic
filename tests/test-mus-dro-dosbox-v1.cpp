@@ -2,7 +2,7 @@
  * @file   test-mus-dro-dosbox-v1.cpp
  * @brief  Test code for DOSBox raw OPL capture files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,12 +56,14 @@
 
 #define testdata_rhythm_tom \
 	"DBRAWOPL" "\x00\x00\x01\x00" \
-	"\x10\x00\x00\x00" "\x14\x00\x00\x00" "\x00\x00\x00\x00" \
+	"\x10\x00\x00\x00" "\x16\x00\x00\x00" "\x00\x00\x00\x00" \
 	"\x32\xae" \
 	"\x52\x7f" \
 	"\x72\xed" \
 	"\x92\xcb" \
 	"\xf2\x06" \
+	\
+	"\xc8\x09" \
 	\
 	"\xa8\x44" \
 	"\xb8\x12" \
@@ -71,12 +73,14 @@
 
 #define testdata_rhythm_snare \
 	"DBRAWOPL" "\x00\x00\x01\x00" \
-	"\x10\x00\x00\x00" "\x14\x00\x00\x00" "\x00\x00\x00\x00" \
+	"\x10\x00\x00\x00" "\x16\x00\x00\x00" "\x00\x00\x00\x00" \
 	"\x34\xae" \
 	"\x54\x7f" \
 	"\x74\xed" \
 	"\x94\xcb" \
 	"\xf4\x06" \
+	\
+	"\xc7\x09" \
 	\
 	"\xa7\x44" \
 	"\xb7\x12" \
@@ -86,7 +90,7 @@
 
 #define testdata_rhythm_bassdrum \
 	"DBRAWOPL" "\x00\x00\x01\x00" \
-	"\x10\x00\x00\x00" "\x1e\x00\x00\x00" "\x00\x00\x00\x00" \
+	"\x10\x00\x00\x00" "\x20\x00\x00\x00" "\x00\x00\x00\x00" \
 	"\x30\xae" \
 	"\x50\x7f" \
 	"\x70\xed" \
@@ -99,6 +103,8 @@
 	"\x93\xcb" \
 	"\xf3\x06" \
 	\
+	"\xc6\x09" \
+	\
 	"\xa6\x44" \
 	"\xb6\x12" \
 	\
@@ -107,8 +113,8 @@
 
 #define MUSIC_CLASS fmt_mus_dro_dosbox_v1
 #define MUSIC_TYPE  "dro-dosbox-v1"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -121,12 +127,12 @@
 ISINSTANCE_TEST(c01,
 	"DBRAWOPP" "\x00\x00\x01\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Wrong version
 ISINSTANCE_TEST(c02,
 	"DBRAWOPL" "\x00\x00\x02\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );

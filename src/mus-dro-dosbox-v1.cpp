@@ -2,7 +2,7 @@
  * @file   mus-dro-dosbox-v1.cpp
  * @brief  Support for the first version of the DOSBox Raw OPL .DRO format.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,10 +19,178 @@
  */
 
 #include <camoto/iostream_helpers.hpp>
+#include "decode-opl.hpp"
+#include "encode-opl.hpp"
+#include "metadata-malv.hpp"
 #include "mus-dro-dosbox-v1.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
+
+/// Length of each .dro tick in microseconds
+#define DRO_CLOCK  1000
+
+/// Decode data in a .dro file to provide register/value pairs.
+class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
+{
+	public:
+		OPLReaderCallback_DRO_v1(stream::input_sptr input)
+			throw (stream::error)
+			: input(input),
+			  first(true),
+			  chipIndex(0)
+		{
+			this->input->seekg(16, stream::start);
+			this->input >> u32le(this->lenData);
+			// Skip to start of OPL data
+			this->input->seekg(24, stream::start);
+		}
+
+		virtual bool readNextPair(OPLEvent *oplEvent)
+			throw (stream::error)
+		{
+			if (this->lenData == 0) return false;
+			oplEvent->delay = 0;
+
+			if (this->first) {
+				// First call, set tempo
+				this->first = false;
+				oplEvent->tempo = DRO_CLOCK;
+				oplEvent->reg = 0;
+				oplEvent->val = 0;
+				oplEvent->chipIndex = 0;
+				return true; // empty event w/ initial tempo
+			}
+
+			try {
+				uint8_t code;
+nextCode:
+				if (this->lenData == 0) return false;
+				this->input >> u8(code);
+				this->lenData--;
+				switch (code) {
+					case 0x00: // short delay
+						this->input >> u8(code);
+						this->lenData--;
+						oplEvent->delay += code + 1;
+						goto nextCode;
+					case 0x01: { // long delay
+						uint16_t amt;
+						this->input >> u16le(amt);
+						this->lenData--;
+						oplEvent->delay += amt + 1;
+						goto nextCode;
+					}
+					case 0x02:
+						this->chipIndex = 0;
+						goto nextCode;
+					case 0x03:
+						this->chipIndex = 1;
+						goto nextCode;
+					case 0x04: // escape
+						this->input
+							>> u8(oplEvent->reg)
+							>> u8(oplEvent->val)
+						;
+						this->lenData -= 2;
+						break;
+					default: // normal reg
+						oplEvent->reg = code;
+						this->input >> u8(oplEvent->val);
+						this->lenData--;
+						break;
+				}
+			} catch (const stream::incomplete_read&) {
+				return false;
+			}
+			oplEvent->chipIndex = this->chipIndex;
+			return true;
+		}
+
+	protected:
+		stream::input_sptr input;   ///< Input file
+		bool first;                 ///< Is this the first time readNextPair() has been called?
+		unsigned int chipIndex;     ///< Index of the currently selected OPL chip
+		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
+};
+
+
+/// Encode OPL register/value pairs into .dro file data.
+class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
+{
+	public:
+		OPLWriterCallback_DRO_v1(stream::output_sptr output)
+			throw (stream::error)
+			: output(output),
+			  lastChipIndex(0),
+			  usPerTick(DRO_CLOCK),
+			  msSongLength(0)
+		{
+		}
+
+		virtual void writeNextPair(const OPLEvent *oplEvent)
+			throw (stream::error)
+		{
+			// Convert ticks into a DRO delay value (which is actually milliseconds)
+			unsigned long delay = oplEvent->delay * this->usPerTick / DRO_CLOCK;
+			// Write out the delay in one or more lots of 65535, 255 or less.
+			while (delay > 0) {
+				if (delay > 256) {
+					uint16_t ld = (delay > 65536) ? 65535 : delay - 1;
+					// Write out a 'long' delay
+					this->output
+						<< u8(1)
+						<< u16le(ld)
+					;
+					delay -= ld + 1;
+					this->msSongLength += ld + 1;
+					continue;
+				}
+				assert(delay <= 256);
+				this->output
+					<< u8(0) // delay command
+					<< u8(delay - 1) // delay value
+				;
+				this->msSongLength += delay;
+				break; // delay would == 0
+			}
+
+			if (oplEvent->chipIndex != this->lastChipIndex) {
+				assert(oplEvent->chipIndex < 2);
+				this->output << u8(0x02 + oplEvent->chipIndex);
+				this->lastChipIndex = oplEvent->chipIndex;
+			}
+			if (oplEvent->reg < 0x05) {
+				// Need to escape this reg
+				this->output
+					<< u8(4)
+				;
+				// Now the following byte will be treated as a register
+				// regardless of its value.
+			}
+			this->output
+				<< u8(oplEvent->reg)
+				<< u8(oplEvent->val)
+			;
+			return;
+		}
+
+		virtual void writeTempoChange(unsigned long usPerTick)
+			throw (stream::error)
+		{
+			assert(usPerTick != 0);
+			this->usPerTick = usPerTick;
+			return;
+		}
+
+	protected:
+		stream::output_sptr output; ///< Output file
+		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
+		unsigned long usPerTick;    ///< Latest microseconds per tick value (tempo)
+
+	public:
+		uint32_t msSongLength;      ///< Song length in milliseconds
+};
 
 std::string MusicType_DRO_v1::getCode() const
 	throw ()
@@ -44,218 +212,93 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 	return vcExtensions;
 }
 
-MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr input) const
 	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c01
 	char sig[8];
-	psMusic->seekg(0, stream::start);
-	psMusic->read(sig, 8);
-	if (strncmp(sig, "DBRAWOPL", 8) != 0) return MusicType::DefinitelyNo;
+	input->seekg(0, stream::start);
+	input->read(sig, 8);
+	if (strncmp(sig, "DBRAWOPL", 8) != 0) return DefinitelyNo;
 
 	// Make sure the header says it's version 0.1
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c02
 	uint16_t verMajor, verMinor;
-	psMusic >> u16le(verMajor) >> u16le(verMinor);
-	if ((verMajor != 0) || (verMinor != 1)) return MusicType::DefinitelyNo;
+	input >> u16le(verMajor) >> u16le(verMinor);
+	if ((verMajor != 0) || (verMinor != 1)) return DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_DRO_v1::create(stream::output_sptr output, SuppData& suppData) const
+MusicPtr MusicType_DRO_v1::read(stream::input_sptr input, SuppData& suppData) const
 	throw (stream::error)
 {
-	return MusicWriterPtr(new MusicWriter_DRO_v1(output));
+	// Make sure we're at the start, as we'll often be near the end if
+	// isInstance() was just called.
+	input->seekg(0, stream::start);
+
+	OPLReaderCallback_DRO_v1 cb(input);
+	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT);
+
+	// See if there are any tags present
+	readMalvMetadata(input, music->metadata);
+
+	return music;
 }
 
-MusicReaderPtr MusicType_DRO_v1::open(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
+void MusicType_DRO_v1::write(stream::output_sptr output, SuppData& suppData,
+	MusicPtr music, unsigned int flags) const
+	throw (stream::error, format_limitation)
 {
-	return MusicReaderPtr(new MusicReader_DRO_v1(input));
+	output->write("DBRAWOPL\x00\x00\x01\x00", 12);
+
+	// Write out some placeholders, which will be overwritten later
+	output
+		<< u32le(0) // Song length in milliseconds
+		<< u32le(0) // Song length in bytes
+		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
+	;
+
+	// Call the generic OPL writer.
+	OPLWriterCallback_DRO_v1 cb(output);
+	oplEncode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, flags, music);
+
+	// Update the placeholder we wrote in the constructor with the file size
+	int size = output->tellp();
+	size -= 24; // don't count the header
+
+	// Write out any metadata
+	writeMalvMetadata(output, music->metadata);
+
+	// Set final filesize to this
+	output->truncate_here();
+
+	output->seekp(12, stream::start);
+	output
+		<< u32le(cb.msSongLength) // Song length in milliseconds (one tick == 1ms)
+		<< u32le(size) // Song length in bytes
+//		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
+	;
+
+	return;
 }
 
-SuppFilenames MusicType_DRO_v1::getRequiredSupps(const std::string& filenameMusic) const
+SuppFilenames MusicType_DRO_v1::getRequiredSupps(stream::input_sptr input,
+	const std::string& filenameMusic) const
 	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
-MusicReader_DRO_v1::MusicReader_DRO_v1(stream::input_sptr input)
-	throw (stream::error) :
-		MusicReader_GenericOPL(DelayIsPreData),
-		input(input),
-		chipIndex(0)
-{
-	this->rewind();
-	this->changeSpeed(1000); // 1000us (1ms) per tick
-}
-
-MusicReader_DRO_v1::~MusicReader_DRO_v1()
+Metadata::MetadataTypes MusicType_DRO_v1::getMetadataList() const
 	throw ()
 {
+	Metadata::MetadataTypes types;
+	types.push_back(Metadata::Title);
+	types.push_back(Metadata::Author);
+	types.push_back(Metadata::Description);
+	return types;
 }
-
-void MusicReader_DRO_v1::rewind()
-	throw ()
-{
-	this->input->seekg(16, stream::start);
-	this->input >> u32le(this->lenData);
-	this->input->seekg(24, stream::start);
-	return;
-}
-
-bool MusicReader_DRO_v1::nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-	throw (stream::error)
-{
-	*delay = 0;
-	*reg = 0; *val = 0; // in case of trailing delay
-	try {
-		uint8_t code;
-nextCode:
-		if (this->lenData == 0) return false; // end of song
-		this->input >> u8(code);
-		this->lenData--;
-		switch (code) {
-			case 0x00: // short delay
-				this->input >> u8(code);
-				this->lenData--;
-				*delay += code + 1;
-				goto nextCode;
-			case 0x01: { // long delay
-				uint16_t amt;
-				this->input >> u16le(amt);
-				this->lenData -= 2;
-				*delay += amt + 1;
-				goto nextCode;
-			}
-			case 0x02:
-				this->chipIndex = 0;
-				goto nextCode;
-			case 0x03:
-				this->chipIndex = 1;
-				goto nextCode;
-			case 0x04: // escape
-				this->input
-					>> u8(*reg)
-					>> u8(*val)
-				;
-				this->lenData -= 2;
-				break;
-			default: // normal reg
-				*reg = code;
-				this->input >> u8(*val);
-				this->lenData--;
-				break;
-		}
-	} catch (const stream::incomplete_read&) {
-		return false;
-	}
-	*chipIndex = this->chipIndex;
-	return true; // read some data
-}
-
-// TODO: metadata functions
-
-
-MusicWriter_DRO_v1::MusicWriter_DRO_v1(stream::output_sptr output)
-	throw () :
-		MusicWriter_GenericOPL(DelayIsPreData),
-		output(output),
-		numTicks(0),
-		usPerTick(0),
-		lastChipIndex(0)
-{
-}
-
-MusicWriter_DRO_v1::~MusicWriter_DRO_v1()
-	throw ()
-{
-}
-
-void MusicWriter_DRO_v1::start()
-	throw (stream::error)
-{
-	this->output->write("DBRAWOPL\x00\x00\x01\x00", 12);
-
-	// Write out some placeholders, which will be overwritten later
-	this->output
-		<< u32le(0) // Song length in milliseconds
-		<< u32le(0) // Song length in bytes
-		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
-	;
-	return;
-}
-
-void MusicWriter_DRO_v1::finish()
-	throw (stream::error)
-{
-	this->MusicWriter_GenericOPL::finish();
-
-	// Update the placeholder we wrote in the constructor with the file size
-	int size = this->output->tellp();
-	size -= 24; // don't count the header
-
-	// TODO: write out metadata here
-
-	this->output->seekp(12, stream::start);
-	this->output
-		<< u32le(this->numTicks) // Song length in milliseconds (one tick == 1ms)
-		<< u32le(size) // Song length in bytes
-//		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
-	;
-	return;
-}
-
-void MusicWriter_DRO_v1::changeSpeed(uint32_t usPerTick)
-	throw ()
-{
-	this->usPerTick = usPerTick;
-	return;
-}
-
-void MusicWriter_DRO_v1::nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-	throw (stream::error)
-{
-	assert(this->usPerTick > 0); // make sure this has been set already
-
-	// Convert ticks into a DRO delay value (which is actually milliseconds)
-	delay = delay * this->usPerTick / 1000;
-
-	if (delay > 256) {
-		// Write out a 'long' delay
-		this->output
-			<< u8(1)
-			<< u16le(delay - 1)
-		;
-	} else if (delay > 0) {
-		// Write out a 'short' delay
-		this->output
-			<< u8(0)
-			<< u8(delay - 1)
-		;
-	}
-	if (chipIndex != this->lastChipIndex) {
-		assert(chipIndex < 2);
-		this->output << u8(0x02 + chipIndex);
-		this->lastChipIndex = chipIndex;
-	}
-	if (reg < 0x05) {
-		// Need to escape this reg
-		this->output
-			<< u8(4)
-		;
-		// Now the following byte will be treated as a register
-		// regardless of its value.
-	}
-	this->output
-		<< u8(reg)
-		<< u8(val)
-	;
-	this->numTicks += delay;
-	return;
-}
-
-// TODO: metadata functions

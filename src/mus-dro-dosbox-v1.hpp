@@ -2,7 +2,7 @@
  * @file   mus-dro-dosbox-v1.hpp
  * @brief  Support for the first version of the DOSBox Raw OPL .DRO format.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@
 #define _CAMOTO_GAMEMUSIC_MUS_DRO_DOSBOX_V1_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
-#include <camoto/gamemusic/mus-generic-opl.hpp>
 
 namespace camoto {
 namespace gamemusic {
@@ -41,76 +40,22 @@ class MusicType_DRO_v1: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+		virtual Certainty isInstance(stream::input_sptr input) const
 			throw (stream::error);
 
-		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
 			throw (stream::error);
 
-		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error);
+		virtual void write(stream::output_sptr output, SuppData& suppData,
+			MusicPtr music, unsigned int flags) const
+			throw (stream::error, format_limitation);
 
-		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
+			const std::string& filenameMusic) const
 			throw ();
 
-};
-
-/// MusicReader class that understands DRO music files.
-class MusicReader_DRO_v1: virtual public MusicReader_GenericOPL {
-
-	protected:
-		stream::input_sptr input;  ///< Stream of data to read
-		int lenData;         ///< Length of data to read (must be signed as -1 is possible)
-		int chipIndex;       ///< Index of the currently selected OPL chip
-
-	public:
-
-		MusicReader_DRO_v1(stream::input_sptr input)
-			throw (stream::error);
-
-		virtual ~MusicReader_DRO_v1()
+		virtual Metadata::MetadataTypes getMetadataList() const
 			throw ();
-
-		virtual void rewind()
-			throw ();
-
-		virtual bool nextPair(uint32_t *delay, uint8_t *chipIndex, uint8_t *reg, uint8_t *val)
-			throw (stream::error);
-
-		// TODO: metadata functions
-};
-
-/// MusicWriter class that can produce DRO music files.
-class MusicWriter_DRO_v1: virtual public MusicWriter_GenericOPL {
-
-	protected:
-		stream::output_sptr output; ///< Stream to write data into
-		uint32_t numTicks;   ///< Total number of ticks in the song
-		int usPerTick;       ///< Latest microseconds per tick value (tempo)
-		int lastChipIndex;   ///< Index of the currently selected OPL chip
-
-	public:
-
-		MusicWriter_DRO_v1(stream::output_sptr output)
-			throw ();
-
-		virtual ~MusicWriter_DRO_v1()
-			throw ();
-
-		virtual void start()
-			throw (stream::error);
-
-		virtual void finish()
-			throw (stream::error);
-
-		virtual void changeSpeed(uint32_t usPerTick)
-			throw ();
-
-		virtual void nextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (stream::error);
-
-		// TODO: metadata functions
-
 };
 
 } // namespace gamemusic
