@@ -1,8 +1,8 @@
 /**
  * @file   mus-mid-type0.cpp
- * @brief  MusicReader and MusicWriter classes for single-track MIDI files.
+ * @brief  Support for Type-0 (single track) MIDI files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,9 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/iostream_helpers.hpp>
+#include "decode-midi.hpp"
+#include "encode-midi.hpp"
 #include "mus-mid-type0.hpp"
 
 using namespace camoto;
@@ -68,37 +69,15 @@ MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic)
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_MID_Type0::create(stream::output_sptr output, SuppData& suppData) const
+MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData) const
 	throw (stream::error)
-{
-	return MusicWriterPtr(new MusicWriter_MID_Type0(output));
-}
-
-MusicReaderPtr MusicType_MID_Type0::open(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
-{
-	return MusicReaderPtr(new MusicReader_MID_Type0(input));
-}
-
-SuppFilenames MusicType_MID_Type0::getRequiredSupps(const std::string& filenameMusic) const
-	throw ()
-{
-	// No supplemental types/empty list
-	return SuppFilenames();
-}
-
-
-MusicReader_MID_Type0::MusicReader_MID_Type0(stream::input_sptr input)
-	throw (stream::error) :
-		MusicReader_GenericMIDI(MIDIFlags::Default),
-		input(input)
 {
 	// Skip MThd header.
-	this->input->seekg(4, stream::start);
+	input->seekg(4, stream::start);
 
 	uint32_t len;
 	uint16_t type, numTracks, ticksPerQuarter;
-	this->input
+	input
 		>> u32be(len)
 		>> u16be(type)
 		>> u16be(numTracks)
@@ -106,54 +85,26 @@ MusicReader_MID_Type0::MusicReader_MID_Type0(stream::input_sptr input)
 	;
 
 	// Skip over any remaining data in the MThd block (should be none)
-	this->input->seekg(len - 6, stream::cur);
-
-	this->setTicksPerQuarterNote(ticksPerQuarter);
-	//this->setusPerQuarterNote(ticksPerQuarter * 1000000 / ticksPerSecond);
+	input->seekg(len - 6, stream::cur);
 
 	// Read the MTrk header
-	this->input->seekg(4, stream::cur); // skip "MTrk", assume it's fine
+	input->seekg(4, stream::cur); // skip "MTrk", assume it's fine
 	uint32_t lenData;
-	this->input >> u32be(lenData);
+	input >> u32be(lenData);
 
-	this->offMusic = 16 + len;
+	/// @todo Clip input to lenData
 
-	// Pass the MIDI data on to the parent
-	assert(this->input->tellg() == this->offMusic);
+	MusicPtr music = midiDecode(input, MIDIFlags::Default, ticksPerQuarter,
+		MIDI_DEF_uS_PER_QUARTER_NOTE);
 
-	///< @todo Clip input to lenData
-	this->setMIDIStream(input);
+	return music;
 }
 
-MusicReader_MID_Type0::~MusicReader_MID_Type0()
-	throw ()
+void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
+	MusicPtr music, unsigned int flags) const
+	throw (stream::error, format_limitation)
 {
-}
-
-void MusicReader_MID_Type0::rewind()
-	throw ()
-{
-	this->input->seekg(this->offMusic, stream::start);
-	return;
-}
-
-
-MusicWriter_MID_Type0::MusicWriter_MID_Type0(stream::output_sptr output)
-	throw (stream::error) :
-		MusicWriter_GenericMIDI(MIDIFlags::Default),
-		output(output)
-{
-}
-
-MusicWriter_MID_Type0::~MusicWriter_MID_Type0()
-	throw ()
-{
-}
-
-void MusicWriter_MID_Type0::start()
-	throw (stream::error)
-{
-	this->output->write(
+	output->write(
 		"MThd"
 		"\x00\x00\x00\x06" // MThd block length (BE)
 		"\x00\x00" // type-0
@@ -163,23 +114,31 @@ void MusicWriter_MID_Type0::start()
 		"\x00\x00\x00\x00" // MTrk block length placeholder
 	, 22);
 
-	this->setMIDIStream(output);
-	return;
-}
+	unsigned long ticksPerQuarter = 192; ///< @todo Make user configurable
+	unsigned long usPerQuarterNote;
+	midiEncode(output, MIDIFlags::Default, music, ticksPerQuarter, &usPerQuarterNote);
 
-void MusicWriter_MID_Type0::finish()
-	throw (stream::error)
-{
-	this->MusicWriter_GenericMIDI::finish();
-
-	uint32_t mtrkLen = this->output->tellp();
+	uint32_t mtrkLen = output->tellp();
 	mtrkLen -= 22; // 22 == header from start()
 
-	uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
-	this->output->seekp(12, stream::start);
-	this->output << u16be(ticksPerQuarter);
+	output->seekp(12, stream::start);
+	output << u16be(ticksPerQuarter);
 
-	this->output->seekp(18, stream::start);
-	this->output << u32be(mtrkLen);
-	return;
+	output->seekp(18, stream::start);
+	output << u32be(mtrkLen);
+}
+
+SuppFilenames MusicType_MID_Type0::getRequiredSupps(stream::input_sptr input,
+	const std::string& filenameMusic) const
+	throw ()
+{
+	// No supplemental types/empty list
+	return SuppFilenames();
+}
+
+Metadata::MetadataTypes MusicType_MID_Type0::getMetadataList() const
+	throw ()
+{
+	Metadata::MetadataTypes types;
+	return types;
 }

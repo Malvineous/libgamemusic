@@ -2,7 +2,7 @@
  * @file   mus-cmf-creativelabs.hpp
  * @brief  MusicReader and MusicWriter classes for Creative Labs' CMF files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,17 +22,14 @@
 #define _CAMOTO_GAMEMUSIC_MUS_CMF_CREATIVELABS_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
-#include "mus-generic-midi.hpp"
 
 namespace camoto {
 namespace gamemusic {
 
 /// MusicType implementation for CMF files.
-class MusicType_CMF: virtual public MusicType {
-
+class MusicType_CMF: virtual public MusicType
+{
 	public:
-
 		virtual std::string getCode() const
 			throw ();
 
@@ -42,71 +39,22 @@ class MusicType_CMF: virtual public MusicType {
 		virtual std::vector<std::string> getFileExtensions() const
 			throw ();
 
-		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
+		virtual Certainty isInstance(stream::input_sptr input) const
 			throw (stream::error);
 
-		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
 			throw (stream::error);
 
-		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error);
+		virtual void write(stream::output_sptr output, SuppData& suppData,
+			MusicPtr music, unsigned int flags) const
+			throw (stream::error, format_limitation);
 
-		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
+			const std::string& filenameMusic) const
 			throw ();
 
-};
-
-/// MusicReader class that understands CMF files.
-class MusicReader_CMF: virtual public MusicReader_GenericMIDI {
-
-	protected:
-		stream::input_sptr input;       ///< CMF file to read
-		OPLPatchBankPtr patches;  ///< List of instruments
-		uint16_t offMusic;        ///< Offset of music block (for rewind)
-
-	public:
-
-		MusicReader_CMF(stream::input_sptr input)
-			throw (stream::error);
-
-		virtual ~MusicReader_CMF()
+		virtual Metadata::MetadataTypes getMetadataList() const
 			throw ();
-
-		virtual PatchBankPtr getPatchBank()
-			throw ();
-
-		virtual void rewind()
-			throw ();
-
-};
-
-/// MusicWriter class that can produce CMF files.
-class MusicWriter_CMF: virtual public MusicWriter_GenericMIDI {
-
-	protected:
-		stream::output_sptr output;                  ///< Where to write CMF file
-		OPLPatchBankPtr patches;              ///< List of instruments
-		uint8_t channelsInUse[MIDI_CHANNELS]; ///< Which MIDI channels were used
-
-	public:
-		MusicWriter_CMF(stream::output_sptr output)
-			throw (stream::error);
-
-		virtual ~MusicWriter_CMF()
-			throw ();
-
-		virtual void setPatchBank(const PatchBankPtr& instruments)
-			throw (EBadPatchType);
-
-		virtual void start()
-			throw (stream::error);
-
-		virtual void finish()
-			throw (stream::error);
-
-		virtual void handleEvent(NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch);
-
 };
 
 } // namespace gamemusic

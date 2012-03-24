@@ -1,8 +1,8 @@
 /**
  * @file   mus-mid-type0.hpp
- * @brief  MusicReader and MusicWriter classes for single-track MIDI files.
+ * @brief  Support for Type-0 (single track) MIDI files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,17 +22,14 @@
 #define _CAMOTO_GAMEMUSIC_MUS_MID_TYPE0_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
-#include "mus-generic-midi.hpp"
 
 namespace camoto {
 namespace gamemusic {
 
 /// MusicType implementation for MIDI files.
-class MusicType_MID_Type0: virtual public MusicType {
-
+class MusicType_MID_Type0: virtual public MusicType
+{
 	public:
-
 		virtual std::string getCode() const
 			throw ();
 
@@ -45,56 +42,19 @@ class MusicType_MID_Type0: virtual public MusicType {
 		virtual MusicType::Certainty isInstance(stream::input_sptr psMusic) const
 			throw (stream::error);
 
-		virtual MusicWriterPtr create(stream::output_sptr output, SuppData& suppData) const
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
 			throw (stream::error);
 
-		virtual MusicReaderPtr open(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error);
+		virtual void write(stream::output_sptr output, SuppData& suppData,
+			MusicPtr music, unsigned int flags) const
+			throw (stream::error, format_limitation);
 
-		virtual SuppFilenames getRequiredSupps(const std::string& filenameMusic) const
+		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
+			const std::string& filenameMusic) const
 			throw ();
 
-};
-
-/// MusicReader class that understands MIDI files.
-class MusicReader_MID_Type0: virtual public MusicReader_GenericMIDI {
-
-	protected:
-		stream::input_sptr input;       ///< MIDI file to read
-		int offMusic; /// @todo temp (use array of tracks)
-
-	public:
-
-		MusicReader_MID_Type0(stream::input_sptr input)
-			throw (stream::error);
-
-		virtual ~MusicReader_MID_Type0()
+		virtual Metadata::MetadataTypes getMetadataList() const
 			throw ();
-
-		virtual void rewind()
-			throw ();
-
-};
-
-/// MusicWriter class that can produce MIDI files.
-class MusicWriter_MID_Type0: virtual public MusicWriter_GenericMIDI {
-
-	protected:
-		stream::output_sptr output;                  ///< Where to write MIDI file
-
-	public:
-		MusicWriter_MID_Type0(stream::output_sptr output)
-			throw (stream::error);
-
-		virtual ~MusicWriter_MID_Type0()
-			throw ();
-
-		virtual void start()
-			throw (stream::error);
-
-		virtual void finish()
-			throw (stream::error);
-
 };
 
 } // namespace gamemusic

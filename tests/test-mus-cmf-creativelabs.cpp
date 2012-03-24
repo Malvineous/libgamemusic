@@ -115,8 +115,8 @@
 
 #define MUSIC_CLASS fmt_mus_cmf_creativelabs
 #define MUSIC_TYPE  "cmf-creativelabs"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -141,7 +141,7 @@ ISINSTANCE_TEST(c01,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Wrong version
@@ -160,7 +160,7 @@ ISINSTANCE_TEST(c02,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Old version
@@ -178,5 +178,5 @@ ISINSTANCE_TEST(c03,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::MusicType::DefinitelyYes
+	MusicType::DefinitelyYes
 );

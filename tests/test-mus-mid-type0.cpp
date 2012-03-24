@@ -2,7 +2,7 @@
  * @file   test-mus-mid-type0.cpp
  * @brief  Test code for type-0 MIDI files.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,8 +35,8 @@
 
 #define MUSIC_CLASS fmt_mus_mid_type0
 #define MUSIC_TYPE  "mid-type0"
-#include "test-musicreader.hpp"
-#include "test-musicwriter.hpp"
+#include "test-musictype-read.hpp"
+#include "test-musictype-write.hpp"
 
 // Test some invalid formats to make sure they're not identified as valid
 // files.  Note that they can still be opened though (by 'force'), this
@@ -58,7 +58,7 @@ ISINSTANCE_TEST(c01,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );
 
 // Wrong type
@@ -74,5 +74,5 @@ ISINSTANCE_TEST(c02,
 	"\x10\x45\x00" \
 	"\x00\xff\x2f\x00"
 	,
-	gm::MusicType::DefinitelyNo
+	MusicType::DefinitelyNo
 );

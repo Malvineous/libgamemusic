@@ -1,8 +1,8 @@
 /**
  * @file   mus-cmf-creativelabs.cpp
- * @brief  MusicReader and MusicWriter classes for Creative Labs' CMF files.
+ * @brief  Support for Creative Labs' CMF format.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,8 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/gamemusic/patchbank-opl.hpp>
+#include "decode-midi.hpp"
+#include "encode-midi.hpp"
 #include "mus-cmf-creativelabs.hpp"
+
+/// @todo Handle MIDI controller events for transpose up and down
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -65,43 +71,20 @@ MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
 	return MusicType::DefinitelyYes;
 }
 
-MusicWriterPtr MusicType_CMF::create(stream::output_sptr output, SuppData& suppData) const
+MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	throw (stream::error)
-{
-	return MusicWriterPtr(new MusicWriter_CMF(output));
-}
-
-MusicReaderPtr MusicType_CMF::open(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
-{
-	return MusicReaderPtr(new MusicReader_CMF(input));
-}
-
-SuppFilenames MusicType_CMF::getRequiredSupps(const std::string& filenameMusic) const
-	throw ()
-{
-	// No supplemental types/empty list
-	return SuppFilenames();
-}
-
-
-MusicReader_CMF::MusicReader_CMF(stream::input_sptr input)
-	throw (stream::error) :
-		MusicReader_GenericMIDI(MIDIFlags::BasicMIDIOnly),
-		input(input),
-		patches(new OPLPatchBank())
 {
 	// Skip CTMF header.  This is an absolute seek as it will be by far the most
 	// common situation and avoids a lot of complexity because the header includes
 	// absolute file offsets, which we thus won't have to adjust.
-	this->input->seekg(4, stream::start); // skip CTMF header
+	input->seekg(4, stream::start); // skip CTMF header
 
 	uint16_t ver, offInst, ticksPerQuarter, ticksPerSecond;
-	uint16_t offTitle, offComposer, offRemarks;
-	this->input
+	uint16_t offMusic, offTitle, offComposer, offRemarks;
+	input
 		>> u16le(ver)
 		>> u16le(offInst)
-		>> u16le(this->offMusic)
+		>> u16le(offMusic)
 		>> u16le(ticksPerQuarter)
 		>> u16le(ticksPerSecond)
 		>> u16le(offTitle)
@@ -109,18 +92,15 @@ MusicReader_CMF::MusicReader_CMF(stream::input_sptr input)
 		>> u16le(offRemarks)
 	;
 
-	this->setTicksPerQuarterNote(ticksPerQuarter);
-	this->setusPerQuarterNote(ticksPerQuarter * 1000000 / ticksPerSecond);
-
 	// Skip channel-in-use table as we don't need it
-	this->input->seekg(16, stream::cur);
+	input->seekg(16, stream::cur);
 
 	// Rest of header depends on file version
 	uint16_t numInstruments;
 	switch (ver) {
 		case 0x100: {
 			uint8_t temp;
-			this->input
+			input
 				>> u8(temp)
 			;
 			numInstruments = temp;
@@ -130,21 +110,29 @@ MusicReader_CMF::MusicReader_CMF(stream::input_sptr input)
 			std::cerr << "Warning: Unknown CMF version " << (int)(ver >> 8) << '.'
 				<< (int)(ver & 0xFF) << ", proceeding as if v1.1" << std::endl;
 		case 0x101:
-			this->input
+			input
 				>> u16le(numInstruments)
 			;
 			// Skip uint16le tempo value (unknown use)
-			this->input->seekg(2, stream::cur);
+			input->seekg(2, stream::cur);
 			break;
 	}
 
+	// Process the MIDI data
+	input->seekg(offMusic, stream::start);
+	unsigned long usPerQuarterNote = ticksPerQuarter * 1000000 / ticksPerSecond;
+	MusicPtr music = midiDecode(input, MIDIFlags::BasicMIDIOnly, ticksPerQuarter,
+		usPerQuarterNote);
+
 	// Read the instruments
-	this->patches->setPatchCount(numInstruments);
-	this->input->seekg(offInst, stream::start);
-	for (int i = 0; i < numInstruments; i++) {
+	OPLPatchBankPtr oplPatches(new OPLPatchBank());
+	music->patches = oplPatches;
+	oplPatches->setPatchCount(numInstruments);
+	input->seekg(offInst, stream::start);
+	for (unsigned int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr patch(new OPLPatch());
 		uint8_t inst[16];
-		this->input->read((char *)inst, 16);
+		input->read((char *)inst, 16);
 
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
@@ -169,72 +157,43 @@ MusicReader_CMF::MusicReader_CMF(stream::input_sptr input)
 		patch->deepVibrato = false;
 
 		patch->rhythm      = 0;
-		this->patches->setPatch(i, patch);
+		oplPatches->setPatch(i, patch);
 
-		this->patchMap[i] = i;
+		//this->patchMap[i] = i;
+	}
+	for (unsigned int i = numInstruments; i < 128; i++) {
+		/// @todo Default CMF instruments - load from .ibk?
 	}
 
-	/// @todo Scan MIDI data and get a list of all used instruments, and supply
-	/// CMF defaults to any numbers beyond the supplied bank.
+	// Read metadata
+	input->seekg(offTitle, stream::start);
+	input >> nullTerminated(music->metadata[Metadata::Title], 256);
+	input->seekg(offComposer, stream::start);
+	input >> nullTerminated(music->metadata[Metadata::Author], 256);
+	input->seekg(offRemarks, stream::start);
+	input >> nullTerminated(music->metadata[Metadata::Description], 256);
 
-	// Pass the MIDI data on to the parent
-	this->input->seekg(this->offMusic, stream::start);
-	this->setMIDIStream(input);
+	return music;
 }
 
-MusicReader_CMF::~MusicReader_CMF()
-	throw ()
+void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
+	MusicPtr music, unsigned int flags) const
+	throw (stream::error, format_limitation)
 {
-}
-
-PatchBankPtr MusicReader_CMF::getPatchBank()
-	throw ()
-{
-	return this->patches;
-}
-
-void MusicReader_CMF::rewind()
-	throw ()
-{
-	this->input->seekg(this->offMusic, stream::start);
-	return;
-}
-
-
-MusicWriter_CMF::MusicWriter_CMF(stream::output_sptr output)
-	throw (stream::error) :
-		MusicWriter_GenericMIDI(MIDIFlags::BasicMIDIOnly),
-		output(output)
-{
-	memset(this->channelsInUse, 0, sizeof(this->channelsInUse));
-}
-
-MusicWriter_CMF::~MusicWriter_CMF()
-	throw ()
-{
-	// If this assertion fails it means the user forgot to call finish()
-//	assert(this->firstPair == true);
-}
-
-void MusicWriter_CMF::setPatchBank(const PatchBankPtr& instruments)
-	throw (EBadPatchType)
-{
-	this->patches = boost::dynamic_pointer_cast<OPLPatchBank>(instruments);
-	if (!this->patches) {
+	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
+	if (!patches) {
 		// Patch bank isn't an OPL one, see if it can be converted into an
 		// OPLPatchBank.  May throw EBadPatchType.
-		this->patches = OPLPatchBankPtr(new OPLPatchBank(*instruments));
+		patches = OPLPatchBankPtr(new OPLPatchBank(*music->patches));
 	}
-	if (this->patches->getPatchCount() >= MIDI_PATCHES) {
+	if (patches->getPatchCount() >= MIDI_PATCHES) {
 		throw EBadPatchType("CMF files have a maximum of 128 instruments.");
 	}
-	return;
-}
 
-void MusicWriter_CMF::start()
-	throw (stream::error)
-{
-	this->output->write(
+	uint8_t channelsInUse[16];
+	memset(channelsInUse, 0, sizeof(channelsInUse));
+
+	output->write(
 		"CTMF"
 		"\x01\x01" // version 1.1
 	, 6);
@@ -254,37 +213,41 @@ void MusicWriter_CMF::start()
 		}
 	}
 	uint16_t offInst = offNext;
-	uint16_t numInstruments = this->patches->getPatchCount();
+	uint16_t numInstruments = music->patches->getPatchCount();
 	offNext += 16 * numInstruments;
 	uint16_t offMusic = offNext;
 
-	this->output
+	output
 		<< u16le(offInst)
 		<< u16le(offMusic)
 	;
-	this->output->write(
+	output->write(
 		"\x00\x00" // ticks per quarter note
 		"\x00\x00" // ticks per second
 	, 4);
 
 	// Write offset of title, composer and remarks
 	for (int i = 0; i < 3; i++) {
-		this->output << u16le(offText[i]);
+		output << u16le(offText[i]);
 	}
 
 	// Temporary channel-in-use table
-	for (int i = 0; i < 16; i++) this->output << u8(1);
+	for (int i = 0; i < 16; i++) output << u8(1);
 
-	this->output
+	output
 		<< u16le(numInstruments)
 		<< u16le(0) // TODO: default value for 'basic tempo'
 	;
 
 	/// @todo Write title, composer and remarks strings here (null terminated)
 
+	OPLPatchBankPtr oplPatches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
+	if (!oplPatches) {
+		throw format_limitation("CMF files can only contain OPL instruments.");
+	}
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = this->patches->getTypedPatch(i);
+		OPLPatchPtr patch = oplPatches->getTypedPatch(i);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =
@@ -308,32 +271,53 @@ void MusicWriter_CMF::start()
 		//patch->deepTremolo = false;
 		//patch->deepVibrato = false;
 
-		this->output->write((char *)inst, 16);
+		output->write((char *)inst, 16);
 	}
 
-	this->setMIDIStream(output);
-	return;
-}
+	// Call the generic OPL writer.
+	unsigned long ticksPerQuarter = 192;
+	unsigned long usPerQuarterNote;
+	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, ticksPerQuarter, &usPerQuarterNote);
 
-void MusicWriter_CMF::finish()
-	throw (stream::error)
-{
-	this->MusicWriter_GenericMIDI::finish();
+	// Set final filesize to this
+	output->truncate_here();
 
-	uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
-	unsigned long ticksPerus = this->getusPerQuarterNote() / ticksPerQuarter;
+	//uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
+	//unsigned long ticksPerus = this->getusPerQuarterNote() / ticksPerQuarter;
+	//uint16_t ticksPerQuarter = 192;//TEMP
+	unsigned long ticksPerus = usPerQuarterNote / ticksPerQuarter;
 	uint16_t ticksPerSecond = 1000000 / ticksPerus;
-	this->output->seekp(10, stream::start);
-	this->output
+	output->seekp(10, stream::start);
+	output
 		<< u16le(ticksPerQuarter)
 		<< u16le(ticksPerSecond)
 	;
 
-	this->output->seekp(20, stream::start);
-	this->output->write((char *)this->channelsInUse, 16);
+	output->seekp(20, stream::start);
+	output->write((char *)channelsInUse, 16);
+
 	return;
 }
 
+SuppFilenames MusicType_CMF::getRequiredSupps(stream::input_sptr input,
+	const std::string& filenameMusic) const
+	throw ()
+{
+	// No supplemental types/empty list
+	return SuppFilenames();
+}
+
+Metadata::MetadataTypes MusicType_CMF::getMetadataList() const
+	throw ()
+{
+	Metadata::MetadataTypes types;
+	types.push_back(Metadata::Title);
+	types.push_back(Metadata::Author);
+	types.push_back(Metadata::Description);
+	return types;
+}
+
+/*
 void MusicWriter_CMF::handleEvent(NoteOnEvent *ev)
 	throw (stream::error, EChannelMismatch)
 {
@@ -417,3 +401,4 @@ void MusicWriter_CMF::handleEvent(NoteOnEvent *ev)
 	this->lastEvent[midiChannel] = ev->absTime;
 	return;
 }
+*/
