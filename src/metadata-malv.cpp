@@ -35,21 +35,9 @@ void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
 		return;
 	}
 	if (sig == 0x1A) {
-		char tag[256];
-		for (int t = 0; t < 3; t++) {
-			for (int i = 0; i < 256; i++) {
-				input->read(&tag[i], 1);
-				if (tag[i] == 0) break;
-			}
-			tag[255] = 0;
-			Metadata::MetadataType mt;
-			switch (t) {
-				case 0: mt = Metadata::Title; break;
-				case 1: mt = Metadata::Author; break;
-				case 2: mt = Metadata::Description; break;
-			}
-			metadata[mt] = tag;
-		}
+		input >> nullTerminated(metadata[Metadata::Title], 256);
+		input >> nullTerminated(metadata[Metadata::Author], 256);
+		input >> nullTerminated(metadata[Metadata::Description], 256);
 	}
 	return;
 }
@@ -71,7 +59,7 @@ void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& met
 				throw format_limitation("The metadata element 'Title' is longer than "
 					"the maximum 255 character length.");
 			}
-			output->write(itTitle->second.c_str(), itTitle->second.length() + 1); // +1 to write \0
+			output << nullTerminated(itTitle->second, 256);
 		} else {
 			output->write("\0", 1); // empty field
 		}
@@ -81,7 +69,7 @@ void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& met
 				throw format_limitation("The metadata element 'Author' is longer than "
 					"the maximum 255 character length.");
 			}
-			output->write(itComposer->second.c_str(), itComposer->second.length() + 1); // +1 to write \0
+			output << nullTerminated(itComposer->second, 256);
 		} else {
 			output->write("\0", 1); // empty field
 		}
@@ -91,7 +79,7 @@ void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& met
 				throw format_limitation("The metadata element 'Desc' is longer than "
 					"the maximum 255 character length.");
 			}
-			output->write(itDesc->second.c_str(), itDesc->second.length() + 1); // +1 to write \0
+			output << nullTerminated(itDesc->second, 256);
 		} else {
 			output->write("\0", 1); // empty field
 		}
