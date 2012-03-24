@@ -295,6 +295,7 @@ MusicPtr MIDIDecoder::decode()
 							music->events->push_back(gev);
 							break;
 						}
+						/// @todo Handle AM/VIB and transpose controllers (and patch change one?)
 						default:
 							std::cout << "Ignoring unknown MIDI controller 0x" << std::hex
 								<< (int)evdata << std::dec << std::endl;
@@ -304,17 +305,6 @@ MusicPtr MIDIDecoder::decode()
 				}
 				case 0xC0: { // Instrument change (one data byte)
 					this->currentInstrument[midiChannel] = evdata;
-					/*
-					bool found = false;
-					for (unsigned int i = 0; i < MIDI_PATCHES; i++) {
-						if (this->patchMap[i] == evdata) {
-							this->currentInstrument[midiChannel] = i;
-							found = true;
-							break;
-						}
-						}*/
-					// Make sure the instrument has already been mapped by getPatchBank()
-					//assert(found);
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
@@ -373,16 +363,16 @@ MusicPtr MIDIDecoder::decode()
 						case 0xF7: // End of System Exclusive (EOX) - should never be read, should be absorbed by Sysex handling code
 							break;
 
-							// These messages are "real time", meaning they can be sent between the bytes of other messages - but we're
-							// lazy and don't handle these here (hopefully they're not necessary in a MIDI file, and even less likely to
-							// occur in a CMF.)
+							// These messages are "real time", meaning they can be sent
+							// between the bytes of other messages - but we're lazy and don't
+							// handle these here (hopefully they're not necessary in a MIDI
+							// file, and even less likely to occur in a CMF.)
 						case 0xF8: // Timing clock (sent 24 times per quarter note, only when playing)
 						case 0xFA: // Start
 						case 0xFB: // Continue
 						case 0xFE: // Active sensing (sent every 300ms or MIDI connection assumed lost)
 							break;
 						case 0xFC: // Stop
-							//std::cout << "Received Real Time Stop message (0xFC)" << std::endl;
 							eof = true;
 							break;
 						case 0xFF: { // System reset, used as meta-events in a MIDI file

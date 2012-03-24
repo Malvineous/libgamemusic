@@ -35,7 +35,7 @@ namespace gamemusic {
 class EventHandler;
 
 /// All channel numbers in the %Event struct must be less than this value.
-const int MAX_CHANNELS = 256;
+const unsigned int MAX_CHANNELS = 256;
 
 /// Base class to represent events in the file.
 /**
