@@ -23,6 +23,7 @@
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
 #include <camoto/stream_file.hpp>
+#include <stdlib.h>
 #include <iostream>
 #include <fstream>
 
@@ -203,6 +204,9 @@ int main(int iArgC, char *cArgV[])
 
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
+
+		("repeat-instruments,r", po::value<int>(),
+			"repeat the instrument bank until there are this many valid instruments")
 	;
 
 	po::options_description poOptions("Options");
@@ -252,7 +256,7 @@ int main(int iArgC, char *cArgV[])
 				if (!strFilename.empty()) {
 					std::cerr << "Error: unexpected extra parameter (multiple "
 						"filenames given?!)" << std::endl;
-					return 1;
+					return RET_BADARGS;
 				}
 				assert(i->value.size() > 0);  // can't have no values with no name!
 				strFilename = i->value[0];
@@ -398,8 +402,8 @@ int main(int iArgC, char *cArgV[])
 					pMusicOutType->write(psMusicOut, suppData, pMusic, flags);
 					std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
 				} catch (const gm::format_limitation& e) {
-					std::cerr << "ERROR: Unable to write this song in format "
-						<< strOutType << ": " << e.what() << std::endl;
+					std::cerr << PROGNAME ": Unable to write this song in format "
+						<< strOutType << " - " << e.what() << std::endl;
 					// TODO: delete output file
 					return RET_UNCOMMON_FAILURE;
 				}
@@ -447,8 +451,19 @@ int main(int iArgC, char *cArgV[])
 					return ret;
 				}
 
-				int newCount = pInst->patches->getPatchCount();
-				int oldCount = pMusic->patches->getPatchCount();
+				if (!pInst->patches) {
+					std::cerr << "Replacement instrument file given with -n/--newinst "
+						"has no instruments" << std::endl;
+					return RET_BADARGS;
+				}
+
+				unsigned int newCount = pInst->patches->getPatchCount();
+				unsigned int oldCount;
+				if (pMusic->patches) {
+					oldCount = pMusic->patches->getPatchCount();
+				} else {
+					oldCount = 0;
+				}
 				if (newCount < oldCount) {
 					std::cout << "Warning: " << strInstFile << " has less instruments "
 						"than the original song! (" << newCount << " vs " << oldCount
@@ -456,17 +471,40 @@ int main(int iArgC, char *cArgV[])
 					// Recycle the new instruments until there are the same as there were
 					// originally.
 					pInst->patches->setPatchCount(oldCount);
-					for (int i = newCount; i < oldCount; i++) {
+					for (unsigned int i = newCount; i < oldCount; i++) {
+						unsigned int srcInst = (i - newCount) % newCount;
 						std::cout << " > Reusing new instrument #"
-							<< ((i - newCount) % newCount) + 1 << " as #" << i + 1 << "/"
+							<< srcInst + 1 << " as #" << i + 1 << "/"
 							<< oldCount << std::endl;
-						pInst->patches->setPatch(i, pInst->patches->getPatch((i - newCount) % newCount));
+						pInst->patches->setPatch(i, pInst->patches->getPatch(srcInst));
 					}
 				}
+
+				// Repeat the instruments to make sure there are at least the value
+				// given to --repeat-instruments.
 				pMusic->patches = pInst->patches;
 
 				std::cout << "Loaded replacement instruments from " << strInstFile
 					<< std::endl;
+
+			} else if (i->string_key.compare("repeat-instruments") == 0) {
+				if (!pMusic->patches) {
+					std::cerr << "No instruments available to repeat with "
+						"-r/--repeat-instruments" << std::endl;
+					return RET_BADARGS;
+				}
+
+				unsigned int instrumentRepeat = strtod(i->value[0].c_str(), NULL);
+
+				unsigned int oldCount = pMusic->patches->getPatchCount();
+				pMusic->patches->setPatchCount(instrumentRepeat);
+				for (unsigned int i = oldCount; i < instrumentRepeat; i++) {
+					unsigned int srcInst = (i - oldCount) % oldCount;
+					std::cout << " > Repeating instrument #"
+						<< srcInst + 1 << " as #" << i + 1 << "/"
+						<< instrumentRepeat << std::endl;
+					pMusic->patches->setPatch(i, pMusic->patches->getPatch(srcInst));
+				}
 
 			// Ignore --type/-t
 			} else if (i->string_key.compare("type") == 0) {
