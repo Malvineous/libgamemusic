@@ -140,15 +140,14 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 		"\x00\x00\x00\x00" // MTrk block length placeholder
 	, 22);
 
-	unsigned long ticksPerQuarter = 192; ///< @todo Make user configurable
 	unsigned long usPerQuarterNote;
-	midiEncode(output, MIDIFlags::Default, music, ticksPerQuarter, &usPerQuarterNote);
+	midiEncode(output, MIDIFlags::Default, music, &usPerQuarterNote);
 
 	uint32_t mtrkLen = output->tellp();
 	mtrkLen -= 22; // 22 == header from start()
 
 	output->seekp(12, stream::start);
-	output << u16be(ticksPerQuarter);
+	output << u16be(music->ticksPerQuarterNote);
 
 	output->seekp(18, stream::start);
 	output << u32be(mtrkLen);

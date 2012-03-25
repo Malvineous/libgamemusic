@@ -188,6 +188,7 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 	OPLPatchBankPtr patches(new OPLPatchBank());
 	music->patches = patches;
 	music->events.reset(new EventVector());
+	music->ticksPerQuarterNote = 192; ///< @todo see if this value is stored in the file somewhere
 
 	uint16_t tempo;                      ///< Tempo from file header
 	unsigned long tick = 0;              ///< Last event's time

@@ -26,6 +26,9 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+///< A default value to use since most OPL songs don't have a field for this.
+const unsigned int OPL_DEF_TICKS_PER_QUARTER_NOTE = 192;
+
 class OPLDecoder
 {
 	public:
@@ -123,17 +126,17 @@ MusicPtr OPLDecoder::decode()
 	throw (stream::error)
 {
 	MusicPtr music(new Music());
-
-	// Initialise all OPL registers to zero
-	memset(oplState, 0, sizeof(oplState));
-	this->lastTick = 0;
-	unsigned long lastTempo = 0;
-
 	music->patches = this->patches;
 	// The patches inside the Music instance and inside our own instance are now
 	// the same, except of course the Music ones are generic, but our ones are
 	// typed as OPL instruments.
 	music->events.reset(new EventVector());
+	music->ticksPerQuarterNote = OPL_DEF_TICKS_PER_QUARTER_NOTE;
+
+	// Initialise all OPL registers to zero
+	memset(oplState, 0, sizeof(oplState));
+	this->lastTick = 0;
+	unsigned long lastTempo = 0;
 
 	OPLEvent oplev;
 	oplev.tempo = 0;

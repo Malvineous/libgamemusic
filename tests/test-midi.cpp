@@ -68,8 +68,7 @@ struct midi_fixture: public default_sample {
 	{
 		unsigned long usPerQuarterNote;
 		stream::output_sptr s = this->base;
-		midiEncode(s, gm::MIDIFlags::Default, this->music,
-			gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE, &usPerQuarterNote);
+		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerQuarterNote);
 
 		return this->default_sample::is_equal(strExpected, this->base->str());
 	}

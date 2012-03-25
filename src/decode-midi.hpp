@@ -49,7 +49,9 @@ namespace gamemusic {
  *   data is unusual in some way.
  *
  * @param ticksPerQuarterNote
- *   Number of ticks in a quarter-note.  Defaults to 192.
+ *   Number of ticks in a quarter-note.  Default is 192
+ *   (MIDI_DEF_TICKS_PER_QUARTER_NOTE).  This controls how many notes appear
+ *   in each notation bar, among other things.
  *
  * @param usPerQuarterNote
  *   Number of microseconds in a quarter-note.  Defaults to 500,000.

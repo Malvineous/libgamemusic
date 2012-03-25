@@ -47,18 +47,12 @@ namespace gamemusic {
  *   numbers used for patch changes are unaltered (i.e. those in the source
  *   event.)
  *
- * @param ticksPerQuarterNote
- *   Number of MIDI ticks per quarter-note.  This controls how many notes appear
- *   in each notation bar, among other things.  It has no effect on playback
- *   speed.
- *
  * @param usPerQuarterNote
  *   On return, the initial number of microseconds per quarter-note.  This could
  *   have been overridden during the song, but this is the initial value.
  */
 void midiEncode(stream::output_sptr& output, unsigned int midiFlags,
-	MusicPtr music, unsigned long ticksPerQuarterNote,
-	unsigned long *usPerQuarterNote)
+	MusicPtr music,	unsigned long *usPerQuarterNote)
 	throw (stream::error, format_limitation);
 
 } // namespace gamemusic

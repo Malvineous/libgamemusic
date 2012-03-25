@@ -51,6 +51,9 @@ struct Music {
 	/// List of metadata elements set.  Remove from map to unset.
 	Metadata::TypeMap metadata;
 
+	/// Number of ticks in a quarter note (one beat in 4/4 time), for arranging
+	/// the song into measures and bars.
+	unsigned int ticksPerQuarterNote;
 };
 
 /// Shared pointer to a Music instance.

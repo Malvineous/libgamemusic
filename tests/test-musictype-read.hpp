@@ -78,6 +78,10 @@ struct FIXTURE_NAME: public default_sample {
 		this->music = this->pTestType->read(this->base, this->suppData);
 		BOOST_REQUIRE_MESSAGE(this->music, "Could not create music reader class");
 		BOOST_REQUIRE_MESSAGE(this->music->patches, "Music reader didn't supply an instrument bank");
+		BOOST_REQUIRE_MESSAGE(this->music->events, "Music reader didn't supply any events");
+
+		// Make sure some values were set
+		BOOST_REQUIRE_NE(this->music->ticksPerQuarterNote, 0);
 	}
 
 	/// Test a rhythm-mode instrument

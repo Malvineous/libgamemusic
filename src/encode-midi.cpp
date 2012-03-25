@@ -38,17 +38,12 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
 		 *
-		 * @param ticksPerQuarterNote
-		 *   Number of MIDI ticks per quarter-note.  This controls how many notes appear
-		 *   in each notation bar, among other things.  It has no effect on playback
-		 *   speed.
-		 *
 		 * @param usPerQuarterNote
 		 *   On return, the initial number of microseconds per quarter-note.  This could
 		 *   have been overridden during the song, but this is the initial value.
 		 */
 		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags,
-			unsigned long ticksPerQuarterNote, unsigned long *usPerQuarterNote)
+			unsigned long *usPerQuarterNote)
 			throw ();
 
 		/// Destructor.
@@ -101,7 +96,6 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		stream::output_sptr output;        ///< Target stream for SMF MIDI data
 		unsigned int midiFlags;            ///< One or more MIDIFlags
 		uint8_t lastCommand;               ///< Last MIDI command written
-		unsigned long ticksPerQuarterNote; ///< Current song granularity
 		unsigned long *usPerQuarterNote;   ///< Where to store initial tempo
 
 		/// Write an integer in variable-length MIDI notation.
@@ -136,21 +130,20 @@ class MIDIEncoder: virtual private MIDIEventCallback
 
 
 void camoto::gamemusic::midiEncode(stream::output_sptr& output,
-	unsigned int midiFlags, MusicPtr music, unsigned long ticksPerQuarterNote,
-	unsigned long *usPerQuarterNote)
+	unsigned int midiFlags, MusicPtr music, unsigned long *usPerQuarterNote)
 	throw (stream::error, format_limitation)
 {
-	MIDIEncoder encoder(output, midiFlags, ticksPerQuarterNote, usPerQuarterNote);
+	MIDIEncoder encoder(output, midiFlags, usPerQuarterNote);
 	encoder.encode(music);
 	return;
 }
 
 MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags,
-	unsigned long ticksPerQuarterNote, unsigned long *usPerQuarterNote)
+	unsigned long *usPerQuarterNote)
 	throw ()
 	: output(output),
 	  midiFlags(midiFlags),
-	  ticksPerQuarterNote(ticksPerQuarterNote),
+	  lastCommand(0xFF),
 	  usPerQuarterNote(usPerQuarterNote)
 {
 }
@@ -167,7 +160,7 @@ void MIDIEncoder::encode(const MusicPtr music)
 		boost::dynamic_pointer_cast<MIDIPatchBank>(music->patches);
 	// midiPatches may be NULL
 	EventConverter_MIDI conv(this, midiPatches, this->midiFlags,
-		ticksPerQuarterNote);
+		music->ticksPerQuarterNote);
 	conv.handleAllEvents(music->events);
 
 	*this->usPerQuarterNote = conv.getusPerQuarterNote();

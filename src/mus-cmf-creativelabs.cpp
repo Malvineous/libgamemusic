@@ -183,6 +183,8 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 	throw (stream::error, format_limitation)
 {
+	assert(music->ticksPerQuarterNote != 0);
+
 	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
 	if (!patches) {
 		// Patch bank isn't an OPL one, see if it can be converted into an
@@ -278,21 +280,17 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	}
 
 	// Call the generic OPL writer.
-	unsigned long ticksPerQuarter = 192;
 	unsigned long usPerQuarterNote;
-	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, ticksPerQuarter, &usPerQuarterNote);
+	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, &usPerQuarterNote);
 
 	// Set final filesize to this
 	output->truncate_here();
 
-	//uint16_t ticksPerQuarter = this->getTicksPerQuarterNote();
-	//unsigned long ticksPerus = this->getusPerQuarterNote() / ticksPerQuarter;
-	//uint16_t ticksPerQuarter = 192;//TEMP
-	unsigned long ticksPerus = usPerQuarterNote / ticksPerQuarter;
+	unsigned long ticksPerus = usPerQuarterNote / music->ticksPerQuarterNote;
 	uint16_t ticksPerSecond = 1000000 / ticksPerus;
 	output->seekp(10, stream::start);
 	output
-		<< u16le(ticksPerQuarter)
+		<< u16le(music->ticksPerQuarterNote)
 		<< u16le(ticksPerSecond)
 	;
 

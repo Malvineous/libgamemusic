@@ -44,7 +44,8 @@ class MIDIDecoder
 		 *
 		 * @param ticksPerQuarterNote
 		 *   Number of ticks in a quarter-note.  Default is 192
-		 *   (MIDI_DEF_TICKS_PER_QUARTER_NOTE).
+		 *   (MIDI_DEF_TICKS_PER_QUARTER_NOTE).  This controls how many notes appear
+		 *   in each notation bar, among other things.
 		 *
 		 * @param usPerQuarterNote
 		 *   Number of microseconds in a quarter-note.  Default is 500,000
@@ -144,6 +145,7 @@ MusicPtr MIDIDecoder::decode()
 	MusicPtr music(new Music());
 	this->patches.reset(new MIDIPatchBank());
 	music->events.reset(new EventVector());
+	music->ticksPerQuarterNote = this->ticksPerQuarterNote;
 
 	EventPtr gev;
 

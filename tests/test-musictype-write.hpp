@@ -71,6 +71,7 @@ struct FIXTURE_NAME: public default_sample {
 
 		this->music.reset(new Music());
 		this->music->events.reset(new EventVector());
+		this->music->ticksPerQuarterNote = 192;
 	}
 
 	void init(bool setInstruments)
