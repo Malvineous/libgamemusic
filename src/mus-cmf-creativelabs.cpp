@@ -30,6 +30,9 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+/// Number of available channels in a CMF file.
+const int CMF_MAX_CHANNELS = 16;
+
 std::string MusicType_CMF::getCode() const
 	throw ()
 {
@@ -190,7 +193,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		throw EBadPatchType("CMF files have a maximum of 128 instruments.");
 	}
 
-	uint8_t channelsInUse[16];
+	uint8_t channelsInUse[CMF_MAX_CHANNELS];
 	memset(channelsInUse, 0, sizeof(channelsInUse));
 
 	output->write(
@@ -293,6 +296,16 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		<< u16le(ticksPerSecond)
 	;
 
+	// Update the channel-in-use table
+	for (EventVector::iterator i =
+		music->events->begin(); i != music->events->end(); i++)
+	{
+		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
+		if ((ev) && (ev->channel > 0)) {
+			assert((ev->channel - 1) < CMF_MAX_CHANNELS);
+			channelsInUse[ev->channel - 1] = 1;
+		}
+	}
 	output->seekp(20, stream::start);
 	output->write((char *)channelsInUse, 16);
 
