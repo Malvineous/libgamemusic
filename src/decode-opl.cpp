@@ -148,7 +148,7 @@ MusicPtr OPLDecoder::decode()
 #define bitsChanged(b) ((oplev.val ^ oldval) & b)
 
 		uint8_t oplChannel = oplev.reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
-		uint8_t channel = oplChannel + 14 * oplev.chipIndex;
+		uint8_t channel = 1 + oplChannel + 14 * oplev.chipIndex;
 		switch (oplev.reg & 0xF0) {
 			case 0x00:
 				if (oplev.reg == 0x01) {
@@ -219,7 +219,7 @@ MusicPtr OPLDecoder::decode()
 							if (oplState[oplev.chipIndex][0xBD] & (1 << p)) {
 								EventPtr gev(new NoteOffEvent());
 								gev->absTime = this->lastTick;
-								gev->channel = 9 + p;
+								gev->channel = 1 + 9 + p;
 								music->events->push_back(gev);
 							}
 						}

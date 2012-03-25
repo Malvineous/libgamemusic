@@ -123,6 +123,7 @@ struct FIXTURE_NAME: public default_sample {
 		TempoEvent *pevTempo = new TempoEvent;
 		EventPtr evTempo(pevTempo);
 		pevTempo->absTime = 0;
+		pevTempo->channel = 0;
 		pevTempo->usPerTick = INITIAL_TEMPO;
 		this->music->events->push_back(evTempo);
 	}
@@ -196,14 +197,14 @@ setInstrumentAgain:
 		EventPtr evOn(pevOn);
 		pevOn->milliHertz = 440000;
 		pevOn->absTime = 0;
-		pevOn->channel = 8 + rhythm;
+		pevOn->channel = 1 + 8 + rhythm;
 		pevOn->instrument = 0;
 		this->music->events->push_back(evOn);
 
 		NoteOffEvent *pevOff = new NoteOffEvent();
 		EventPtr evOff(pevOff);
 		pevOff->absTime = 0x10;
-		pevOff->channel = 8 + rhythm;
+		pevOff->channel = 1 + 8 + rhythm;
 		this->music->events->push_back(evOff);
 	}
 
@@ -239,7 +240,7 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(write_noteonoff))
 	NoteOnEvent *pevOn = new NoteOnEvent();
 	EventPtr evOn(pevOn);
 	pevOn->absTime = 0;
-	pevOn->channel = 0;
+	pevOn->channel = 1;
 	pevOn->milliHertz = 440000;
 	pevOn->instrument = 0;
 	this->music->events->push_back(evOn);
@@ -247,7 +248,7 @@ BOOST_AUTO_TEST_CASE(TEST_NAME(write_noteonoff))
 	NoteOffEvent *pevOff = new NoteOffEvent();
 	EventPtr evOff(pevOff);
 	pevOff->absTime = 0x10;
-	pevOff->channel = 0;
+	pevOff->channel = 1;
 	this->music->events->push_back(evOff);
 
 	BOOST_CHECK_MESSAGE(

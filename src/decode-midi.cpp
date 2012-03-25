@@ -265,6 +265,7 @@ MusicPtr MIDIDecoder::decode()
 						/// @todo Handle multiple notes on the same channel
 
 						gev->absTime = this->tick;
+						assert(gev->channel != 0);
 						music->events->push_back(gev);
 
 						// Record this note as active on the channel

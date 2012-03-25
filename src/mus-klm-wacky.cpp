@@ -353,7 +353,9 @@ off klm
 		// 6 -> 10, 7 -> 9 ... 10 -> 6
 		//if (channel > 5) channel = 10 - (channel - 6);
 		//if (channel > 5) channel = 9+ (channel - 6);
-		int gmchannel;
+		int gmchannel = 1 + channel;
+		/// @todo Change this to update the instrument patches instead of having magic channel numbers
+/*
 		switch (channel) {
 			case 6: gmchannel = 13; break;
 			case 7: gmchannel = 12; break;
@@ -362,7 +364,7 @@ off klm
 			case 10: gmchannel = 9; break;
 			default: gmchannel = channel + 1; break;
 		}
-
+*/
 		switch (code & 0xF0) {
 			case 0x00: { // note off
 				NoteOffEvent *ev = new NoteOffEvent();
@@ -628,25 +630,27 @@ void EventConverter_KLM::handleEvent(const TempoEvent *ev)
 void EventConverter_KLM::handleEvent(const NoteOnEvent *ev)
 	throw (stream::error, EChannelMismatch, EBadPatchType)
 {
+	assert(ev->channel != 0);
 	if (ev->channel >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");
 
 	this->writeDelay(ev->absTime);
 
 	uint8_t event;
+	uint8_t klmChannel = ev->channel - 1;
 
-	if (ev->instrument != this->patchMap[ev->channel]) {
+	if (ev->instrument != this->patchMap[klmChannel]) {
 		// Change the instrument first
-		event = 0x30 | ev->channel;
+		event = 0x30 | klmChannel;
 		this->output
 			<< u8(event)
-			<< u8(ev->channel)
+			<< u8(klmChannel)
 		;
 	}
 
 	unsigned int fnum, block;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, KLM_FNUM_CONVERSION);
 
-	event = 0x10 | ev->channel;
+	event = 0x10 | klmChannel;
 	uint8_t a0 = fnum & 0xFF;
 	uint8_t b0 =
 		OPLBIT_KEYON  // keyon enabled
@@ -671,7 +675,8 @@ void EventConverter_KLM::handleEvent(const NoteOffEvent *ev)
 
 	this->writeDelay(ev->absTime);
 
-	uint8_t code = 0x00 | ev->channel;
+	uint8_t klmChannel = ev->channel - 1;
+	uint8_t code = 0x00 | klmChannel;
 	this->output << u8(code);
 
 	return;

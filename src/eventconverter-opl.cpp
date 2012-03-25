@@ -71,11 +71,12 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 	throw (stream::error, EChannelMismatch, EBadPatchType)
 {
 	assert(this->inst);
+	assert(ev->channel != 0); // can't do note on on all channels
 
 	unsigned int fnum, block;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 
-	int oplChannel = ev->channel % 14; // TODO: channel map for >9 chans
+	int oplChannel = (ev->channel - 1) % 14; // TODO: channel map for >9 chans
 	int rhythm = 0;
 	int chipIndex = 0; // TODO: calculate from channel map
 
@@ -194,8 +195,8 @@ void EventConverter_OPL::handleEvent(const NoteOffEvent *ev)
 	// files.  We'll need to implement some kind of proper channel map (probably
 	// specified in the UI with the instrument map) so that arbitrary incoming
 	// channels can be mapped to correct OPL instrument/rhythm channels.
-	int oplChannel = ev->channel % 14; // TODO: channel map for >9 chans
-	int chipIndex = ev->channel / 14; // TODO: calculate from channel map
+	int oplChannel = (ev->channel - 1) % 14; // TODO: channel map for >9 chans
+	int chipIndex = (ev->channel - 1) / 14; // TODO: calculate from channel map
 
 
 	int delay = ev->absTime - this->lastTick;
@@ -222,7 +223,7 @@ void EventConverter_OPL::handleEvent(const PitchbendEvent *ev)
 {
 	unsigned int fnum, block;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
-	int oplChannel = ev->channel % 9; // TODO: channel map for >9 chans
+	int oplChannel = (ev->channel - 1) % 9; // TODO: channel map for >9 chans
 	int chipIndex = 0; // TODO: calculate from channel map
 
 	int delay = ev->absTime - this->lastTick;
