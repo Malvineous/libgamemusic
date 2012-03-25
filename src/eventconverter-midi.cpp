@@ -98,6 +98,13 @@ EventConverter_MIDI::~EventConverter_MIDI()
 {
 }
 
+void EventConverter_MIDI::rewind()
+	throw ()
+{
+	this->lastTick = 0;
+	return;
+}
+
 unsigned long EventConverter_MIDI::getusPerQuarterNote()
 	throw ()
 {

@@ -59,6 +59,13 @@ void EventConverter_OPL::setPatchBank(const PatchBankPtr& instruments)
 	return;
 }
 
+void EventConverter_OPL::rewind()
+	throw ()
+{
+	this->lastTick = 0;
+	return;
+}
+
 void EventConverter_OPL::handleEvent(const TempoEvent *ev)
 	throw (stream::error)
 {

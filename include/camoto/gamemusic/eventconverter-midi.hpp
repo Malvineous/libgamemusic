@@ -279,6 +279,14 @@ class EventConverter_MIDI: virtual public EventHandler
 		virtual ~EventConverter_MIDI()
 			throw ();
 
+		/// Prepare to start from the first event.
+		/**
+		 * This function must be called before re-sending an old event, otherwise
+		 * the resulting negative delay will cause an extremely long pause.
+		 */
+		void rewind()
+			throw ();
+
 		unsigned long getusPerQuarterNote()
 			throw ();
 

@@ -143,6 +143,14 @@ class EventConverter_OPL: virtual public EventHandler
 		virtual void setPatchBank(const PatchBankPtr& instruments)
 			throw (EBadPatchType);
 
+		/// Prepare to start from the first event.
+		/**
+		 * This function must be called before re-sending an old event, otherwise
+		 * the resulting negative delay will cause an extremely long pause.
+		 */
+		void rewind()
+			throw ();
+
 		// EventHandler overrides
 
 		virtual void handleEvent(const TempoEvent *ev)
