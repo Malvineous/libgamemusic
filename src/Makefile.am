@@ -22,7 +22,6 @@ libgamemusic_la_SOURCES += patch.cpp
 libgamemusic_la_SOURCES += patch-opl.cpp
 libgamemusic_la_SOURCES += patchbank.cpp
 libgamemusic_la_SOURCES += patchbank-fmt-ibk.cpp
-libgamemusic_la_SOURCES += mus-rawmidi.cpp
 
 EXTRA_libgamemusic_la_SOURCES = decode-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-opl.hpp
@@ -33,7 +32,6 @@ EXTRA_libgamemusic_la_SOURCES += mus-imf-idsoftware.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v1.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-dro-dosbox-v2.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-raw-rdos.hpp
-EXTRA_libgamemusic_la_SOURCES += mus-rawmidi.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-cmf-creativelabs.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-klm-wacky.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-mid-type0.hpp

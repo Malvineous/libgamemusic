@@ -27,7 +27,6 @@
 #include "mus-dro-dosbox-v1.hpp"
 #include "mus-dro-dosbox-v2.hpp"
 #include "mus-raw-rdos.hpp"
-#include "mus-rawmidi.hpp"
 #include "mus-cmf-creativelabs.hpp"
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
@@ -52,7 +51,6 @@ Manager::Manager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_RawMIDI()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
