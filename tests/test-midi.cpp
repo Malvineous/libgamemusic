@@ -23,7 +23,8 @@
 #include <camoto/stream_string.hpp>
 #include <camoto/util.hpp> // createString()
 #include <camoto/gamemusic.hpp>
-#include "../src/mus-generic-midi.hpp"
+#include "../src/decode-midi.hpp"
+#include "../src/encode-midi.hpp"
 #include "tests.hpp"
 
 using namespace camoto;
@@ -32,11 +33,7 @@ namespace gm = camoto::gamemusic;
 struct midi_fixture: public default_sample {
 
 	stream::string_sptr base;
-	gm::MusicReaderPtr musIn;
-	gm::MusicWriterPtr musOut;
-		//std::map<camoto::SuppItem::Type, sstr_ptr> suppBase;
-	gm::MusicTypePtr pTestType;
-	gm::PatchBankPtr bank;
+	gm::MusicPtr music;
 
 	midi_fixture() :
 		base(new stream::string())
@@ -46,46 +43,34 @@ struct midi_fixture: public default_sample {
 	void init_read(const std::string& data)
 	{
 		this->base << data;
+		this->base->seekg(0, stream::start);
 
-		BOOST_REQUIRE_NO_THROW(
-			gm::ManagerPtr pManager = gm::getManager();
-			this->pTestType = pManager->getMusicTypeByCode("rawmidi");
-		);
-		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
-
-		camoto::SuppData suppData;
-		this->musIn = this->pTestType->open(this->base, suppData);
-		BOOST_REQUIRE_MESSAGE(this->musIn, "Could not create music reader class");
-
-		this->bank = this->musIn->getPatchBank();
-		//BOOST_REQUIRE_MESSAGE(this->bank, "Music reader didn't supply an instrument bank");
+		stream::input_sptr s = this->base;
+		this->music = midiDecode(s, gm::MIDIFlags::Default,
+			gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE, gm::MIDI_DEF_uS_PER_QUARTER_NOTE);
 	}
 
 	void init_write()
 	{
-		BOOST_REQUIRE_NO_THROW(
-			gm::ManagerPtr pManager = gm::getManager();
-			this->pTestType = pManager->getMusicTypeByCode("rawmidi");
-		);
-		BOOST_REQUIRE_MESSAGE(pTestType, "Could not find music type rawmidi");
-
-		camoto::SuppData suppData;
-		this->musOut = this->pTestType->create(this->base, suppData);
-		BOOST_REQUIRE_MESSAGE(this->musOut, "Could not create music writer class");
+		this->music.reset(new gm::Music());
+		this->music->events.reset(new gm::EventVector());
 
 		gm::MIDIPatchBankPtr pb(new gm::MIDIPatchBank());
 		pb->setPatchCount(1);
 		gm::MIDIPatchPtr p(new gm::MIDIPatch());
-		p->midiPatch = 0;
+		p->midiPatch = 20; // Instrument #0 is MIDI patch #20
 		p->percussion = false;
 		pb->setPatch(0, p);
-		this->musOut->setPatchBank(pb);
-		this->musOut->start();
+		this->music->patches = pb;
 	}
 
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
-		this->musOut->finish();
+		unsigned long usPerQuarterNote;
+		stream::output_sptr s = this->base;
+		midiEncode(s, gm::MIDIFlags::Default, this->music,
+			gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE, &usPerQuarterNote);
+
 		return this->default_sample::is_equal(strExpected, this->base->str());
 	}
 
@@ -137,14 +122,13 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 
 	this->init_read(makeString("\x00\x90\x45\x40" "\x00\xe0\x00\x38"));
 
-	gm::EventPtr ev = this->musIn->readNextEvent(); // implicit tempo
-	ev = this->musIn->readNextEvent(); // note on
-	ev = this->musIn->readNextEvent(); // pitchbend
-	BOOST_REQUIRE_MESSAGE(ev, "Test data contains no events!");
+	// Make sure enough events were generated
+	BOOST_REQUIRE_GT(this->music->events->size(), 2);
+	gm::EventPtr ev = this->music->events->at(2); // 0=tempo,1=note on,2=pitchbend
 
 	gm::PitchbendEvent *pevTyped = dynamic_cast<gm::PitchbendEvent *>(ev.get());
 	BOOST_REQUIRE_MESSAGE(pevTyped, createString(
-		"Event was wrongly interpreted as " << ev->getContent()));
+		"Pitchbend event was wrongly interpreted as " << ev->getContent()));
 
 	BOOST_REQUIRE_CLOSE(pevTyped->milliHertz / 1000.0, 433.700, 0.01);
 }
@@ -158,26 +142,92 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 	gm::NoteOnEvent *pevNote = new gm::NoteOnEvent();
 	gm::EventPtr ev(pevNote);
 	pevNote->absTime = 0;
-	pevNote->channel = 0;
+	pevNote->channel = 1;
 	pevNote->milliHertz = 440000;
 	pevNote->instrument = 0;
-	ev->processEvent(this->musOut.get());
+	this->music->events->push_back(ev);
 
 	gm::PitchbendEvent *pevTyped = new gm::PitchbendEvent();
 	ev.reset(pevTyped);
 	pevTyped->absTime = 10;
-	pevTyped->channel = 0;
+	pevTyped->channel = 1;
 	pevTyped->milliHertz = 433700;
-	ev->processEvent(this->musOut.get());
+	this->music->events->push_back(ev);
 
 	BOOST_CHECK_MESSAGE(
 		is_equal(makeString(
-			"\x00\xc0\x00"        // set instrument
+			"\x00\xc0\x14"        // set instrument
 			"\x00\x90\x45\x40"    // note on
 			"\x0a\xe0\x00\x38"    // pitchbend
 			"\x00\xff\x2f\x00"    // eof
 		)),
 		"Error generating pitchbend event"
+	);
+
+}
+
+BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
+{
+	BOOST_TEST_MESSAGE("Testing generation of running status events");
+
+	this->init_write();
+
+	gm::NoteOnEvent *pevNote = new gm::NoteOnEvent();
+	gm::EventPtr ev(pevNote);
+	pevNote->absTime = 0;
+	pevNote->channel = 1;
+	pevNote->milliHertz = 440000;
+	pevNote->instrument = 0;
+	this->music->events->push_back(ev);
+
+	gm::NoteOffEvent *pevNoteOff = new gm::NoteOffEvent();
+	ev.reset(pevNoteOff);
+	pevNoteOff->absTime = 0;
+	pevNoteOff->channel = 1;
+	this->music->events->push_back(ev);
+
+	pevNote = new gm::NoteOnEvent();
+	ev.reset(pevNote);
+	pevNote->absTime = 0;
+	pevNote->channel = 2;
+	pevNote->milliHertz = 440000;
+	pevNote->instrument = 0;
+	this->music->events->push_back(ev);
+
+	pevNoteOff = new gm::NoteOffEvent();
+	ev.reset(pevNoteOff);
+	pevNoteOff->absTime = 0;
+	pevNoteOff->channel = 2;
+	this->music->events->push_back(ev);
+
+	pevNote = new gm::NoteOnEvent();
+	ev.reset(pevNote);
+	pevNote->absTime = 0;
+	pevNote->channel = 2;
+	pevNote->milliHertz = 440000;
+	pevNote->instrument = 0;
+	this->music->events->push_back(ev);
+
+	pevNoteOff = new gm::NoteOffEvent();
+	ev.reset(pevNoteOff);
+	pevNoteOff->absTime = 0;
+	pevNoteOff->channel = 2;
+	this->music->events->push_back(ev);
+
+
+	BOOST_CHECK_MESSAGE(
+		is_equal(makeString(
+			"\x00\xc0\x14"        // set instrument
+			"\x00\x90\x45\x40"    // note on
+			"\x00\x45\x00"        // note off
+			"\x00\xc1\x14"        // set instrument
+			"\x00\x91\x45\x40"    // note on
+			"\x00\x45\x00"        // note off
+			"\x00\x45\x40"        // note on
+			"\x00\x45\x00"        // note off
+			"\x00\xff\x2f\x00"    // eof
+		)),
+		"Error generating of running status events"
 	);
 
 }
