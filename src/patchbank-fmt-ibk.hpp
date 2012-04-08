@@ -47,7 +47,7 @@ class PatchBank_IBK: virtual public SingleTypePatchBank<OPLPatch> {
 
 		/// Call parent class to modify patch, then write out to stream
 		virtual void setPatch(unsigned int index, PatchPtr newPatch)
-			throw (EBadPatchType);
+			throw (bad_patch);
 
 };
 

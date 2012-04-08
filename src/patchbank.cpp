@@ -3,7 +3,7 @@
  * @brief  Implementation of top-level PatchBank class, for managing
  *         collections of patches.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,22 +23,6 @@
 
 using namespace camoto::gamemusic;
 
-EBadPatchType::EBadPatchType(const std::string& msg)
-	throw () :
-		msg(msg)
-{
-}
-
-EBadPatchType::~EBadPatchType()
-	throw ()
-{
-}
-
-const char *EBadPatchType::what() const
-	throw ()
-{
-	return this->msg.c_str();
-}
 
 PatchBank::PatchBank()
 	throw ()
@@ -77,7 +61,7 @@ const PatchPtr PatchBank::getPatch(unsigned int index) const
 }
 
 void PatchBank::setPatch(unsigned int index, PatchPtr newPatch)
-	throw (EBadPatchType)
+	throw (bad_patch)
 {
 	assert(index < this->getPatchCount());
 	this->patches[index] = newPatch;

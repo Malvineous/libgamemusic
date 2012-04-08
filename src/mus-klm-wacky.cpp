@@ -53,7 +53,7 @@ class EventConverter_KLM: virtual public EventHandler
 			throw (stream::error);
 
 		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, EBadPatchType);
+			throw (stream::error, EChannelMismatch, bad_patch);
 
 		virtual void handleEvent(const NoteOffEvent *ev)
 			throw (stream::error);
@@ -478,10 +478,10 @@ void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
 	if (!patches) {
 		// Patch bank isn't an OPL one, see if it can be converted into an
-		// OPLPatchBank.  May throw EBadPatchType.
+		// OPLPatchBank.  May throw bad_patch.
 		try {
 			patches = OPLPatchBankPtr(new OPLPatchBank(*music->patches));
-		} catch (const EBadPatchType&) {
+		} catch (const bad_patch&) {
 			throw format_limitation("KLM files can only store OPL instruments.");
 		}
 	}
@@ -629,7 +629,7 @@ void EventConverter_KLM::handleEvent(const TempoEvent *ev)
 }
 
 void EventConverter_KLM::handleEvent(const NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch, EBadPatchType)
+	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	assert(ev->channel != 0);
 	if (ev->channel >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");

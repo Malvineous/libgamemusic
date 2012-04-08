@@ -127,7 +127,7 @@ void OPLEncoder::encode(const MusicPtr music)
 	try {
 		conv.setPatchBank(music->patches);
 		conv.handleAllEvents(music->events);
-	} catch (const EBadPatchType& e) {
+	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}
 	if (this->delayType == DelayIsPostData) {

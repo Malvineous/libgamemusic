@@ -48,7 +48,7 @@ void PatchBank_IBK::setPatchCount(unsigned int newCount)
 }
 
 void PatchBank_IBK::setPatch(unsigned int index, PatchPtr newPatch)
-	throw (EBadPatchType)
+	throw (bad_patch)
 {
 	this->SingleTypePatchBank<OPLPatch>::setPatch(index, newPatch);
 	// TODO: write out newPatch to the stream

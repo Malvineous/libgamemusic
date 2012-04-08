@@ -75,7 +75,7 @@ void EventConverter_OPL::handleEvent(const TempoEvent *ev)
 }
 
 void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch, EBadPatchType)
+	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	assert(this->inst);
 	assert(ev->channel != 0); // can't do note on on all channels
@@ -99,7 +99,7 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 		ss << "Instrument bank too small - tried to play note with instrument #"
 			<< ev->instrument + 1 << " but patch bank only has "
 			<< this->inst->getPatchCount() << " instruments.";
-		throw EBadPatchType(ss.str());
+		throw bad_patch(ss.str());
 	}
 	OPLPatchPtr i = this->inst->getTypedPatch(ev->instrument);
 

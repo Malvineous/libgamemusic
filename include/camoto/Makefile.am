@@ -4,6 +4,7 @@ nobase_library_include_HEADERS += gamemusic/manager.hpp
 nobase_library_include_HEADERS += gamemusic/eventconverter-midi.hpp
 nobase_library_include_HEADERS += gamemusic/eventconverter-opl.hpp
 nobase_library_include_HEADERS += gamemusic/events.hpp
+nobase_library_include_HEADERS += gamemusic/exceptions.hpp
 nobase_library_include_HEADERS += gamemusic/musictype.hpp
 nobase_library_include_HEADERS += gamemusic/music.hpp
 nobase_library_include_HEADERS += gamemusic/opl-util.hpp

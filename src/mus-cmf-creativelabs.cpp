@@ -188,7 +188,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
 	if (!patches) {
 		// Patch bank isn't an OPL one, see if it can be converted into an
-		// OPLPatchBank.  May throw EBadPatchType.
+		// OPLPatchBank.  May throw bad_patch.
 		patches = OPLPatchBankPtr(new OPLPatchBank(*music->patches));
 	}
 	if (patches->getPatchCount() >= MIDI_PATCHES) {

@@ -27,7 +27,7 @@
 
 #include <camoto/stream.hpp>
 #include <stdint.h>
-#include <camoto/gamemusic/patchbank.hpp> // EBadPatchType
+#include <camoto/gamemusic/patchbank.hpp> // bad_patch
 
 namespace camoto {
 namespace gamemusic {
@@ -257,11 +257,11 @@ class EventHandler
 		 * @throws EChannelMismatch if the note could not be played on the given
 		 *   channel (e.g. channel does not support the instrument.)
 		 *
-		 * @throws EBadPatchType if the note could not be played with the given
+		 * @throws bad_patch if the note could not be played with the given
 		 *   instrument (e.g. not enough instruments in patch bank.)
 		 */
 		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, EBadPatchType) = 0;
+			throw (stream::error, EChannelMismatch, bad_patch) = 0;
 
 		virtual void handleEvent(const NoteOffEvent *ev)
 			throw (stream::error) = 0;
@@ -273,7 +273,7 @@ class EventHandler
 			throw (stream::error) = 0;
 
 		void handleAllEvents(const EventVectorPtr& events)
-			throw (stream::error, EChannelMismatch, EBadPatchType);
+			throw (stream::error, EChannelMismatch, bad_patch);
 
 };
 

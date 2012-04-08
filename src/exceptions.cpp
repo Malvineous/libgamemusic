@@ -1,7 +1,6 @@
 /**
- * @file   musictype.cpp
- * @brief  MusicType class, used to identify, read and write an instance of a
- *         particular music format.
+ * @file  exceptions.cpp
+ * @brief Common errors.
  *
  * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -19,9 +18,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <camoto/gamemusic/musictype.hpp>
+#include <camoto/gamemusic/exceptions.hpp>
 
 using namespace camoto::gamemusic;
+
+bad_patch::bad_patch(const std::string& msg)
+	throw () :
+		error(msg)
+{
+}
 
 format_limitation::format_limitation(const std::string& msg)
 	throw () :

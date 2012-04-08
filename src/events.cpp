@@ -170,7 +170,7 @@ const char *EChannelMismatch::what() const
 }
 
 void EventHandler::handleAllEvents(const EventVectorPtr& events)
-	throw (stream::error, EChannelMismatch, EBadPatchType)
+	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	for (EventVector::const_iterator i = events->begin(); i != events->end(); i++) {
 		i->get()->processEvent(this);

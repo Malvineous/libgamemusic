@@ -157,7 +157,7 @@ class EventConverter_OPL: virtual public EventHandler
 			throw (stream::error);
 
 		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, EBadPatchType);
+			throw (stream::error, EChannelMismatch, bad_patch);
 
 		virtual void handleEvent(const NoteOffEvent *ev)
 			throw (stream::error);

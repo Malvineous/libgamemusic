@@ -29,24 +29,12 @@
 #include <camoto/stream.hpp>
 #include <camoto/suppitem.hpp>
 #include <camoto/gamemusic/music.hpp>
+#include <camoto/gamemusic/exceptions.hpp>
 
 /// Main namespace
 namespace camoto {
 /// Namespace for this library
 namespace gamemusic {
-
-/// Exception thrown when a file format cannot store the required data.
-class format_limitation: public error
-{
-	public:
-		/// Constructor.
-		/**
-		 * @param msg
-		 *   Error description for UI messages.
-		 */
-		format_limitation(const std::string& msg)
-			throw ();
-};
 
 /// Interface to a particular music format.
 class MusicType {

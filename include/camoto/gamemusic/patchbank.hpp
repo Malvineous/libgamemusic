@@ -3,7 +3,7 @@
  * @brief  Declaration of top-level PatchBank class, for managing
  *         collections of patches.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,31 +22,14 @@
 #ifndef _CAMOTO_GAMEMUSIC_PATCHBANK_HPP_
 #define _CAMOTO_GAMEMUSIC_PATCHBANK_HPP_
 
-#include <exception>
 #include <string>
 #include <vector>
 #include <boost/shared_ptr.hpp>
 #include <camoto/gamemusic/patch.hpp>
+#include <camoto/gamemusic/exceptions.hpp>
 
 namespace camoto {
 namespace gamemusic {
-
-/// Exception thrown when adding a patch to a bank that doesn't support that
-/// patch type (e.g. adding a sampled patch to an OPL bank)
-class EBadPatchType: public std::exception {
-	protected:
-		std::string msg;
-
-	public:
-		EBadPatchType(const std::string& msg)
-			throw ();
-
-		virtual ~EBadPatchType()
-			throw ();
-
-		virtual const char *what() const
-			throw ();
-};
 
 /// Primary interface to a patchbank (list of patches available for use in a
 /// song)
@@ -115,11 +98,11 @@ class PatchBank {
 		 * type before calling the default function.
 		 *
 		 * @preconditions index < getPatchCount()
-		 * @throws EBadPatchType if the patch type is not supported by this bank
+		 * @throws bad_patch if the patch type is not supported by this bank
 		 *         (e.g. adding a sampled patch to an OPL bank)
 		 */
 		virtual void setPatch(unsigned int index, PatchPtr newPatch)
-			throw (EBadPatchType);
+			throw (bad_patch);
 
 };
 
