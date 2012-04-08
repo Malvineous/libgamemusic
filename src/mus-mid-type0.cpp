@@ -97,32 +97,6 @@ MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData)
 	MusicPtr music = midiDecode(input, MIDIFlags::Default, ticksPerQuarter,
 		MIDI_DEF_uS_PER_QUARTER_NOTE);
 
-	// Run though the events and convert MIDI instruments to local ones,
-	// producing an instrument bank in the process.
-	unsigned int patchMap[MIDI_PATCHES];
-	memset(patchMap, 0xFF, sizeof(patchMap));
-	PatchBankPtr midiPatches(new PatchBank());
-	for (EventVector::iterator i =
-		music->events->begin(); i != music->events->end(); i++)
-	{
-		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
-		if (ev) {
-			if (patchMap[ev->instrument] == 0xFF) {
-				// This instrument hasn't been used yet
-				MIDIPatchPtr newPatch(new MIDIPatch());
-				newPatch->percussion = false;
-				newPatch->midiPatch = ev->instrument;
-				unsigned int n = music->patches->getPatchCount();
-				music->patches->setPatchCount(n + 1);
-				music->patches->setPatch(n, newPatch);
-				patchMap[ev->instrument] = n;
-			}
-			// Use new/previous mapping
-			ev->instrument = patchMap[ev->instrument];
-		}
-	}
-	music->patches = midiPatches;
-
 	return music;
 }
 
