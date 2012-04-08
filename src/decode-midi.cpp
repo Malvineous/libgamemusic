@@ -245,25 +245,23 @@ MusicPtr MIDIDecoder::decode()
 						ev->channel = midiChannel + 1;
 						ev->velocity = velocity;
 						if (((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0) && (midiChannel == 9)) {
-							ev->milliHertz = PERC_FREQ;
-
-							bool found = false;
-							for (unsigned int i = 0; i < MIDI_NOTES; i++) {
-								if (this->percMap[i] == evdata) {
-									ev->instrument = i;
-									found = true;
-									break;
-								}
+							if (this->percMap[evdata] == 0xFF) {
+								// Need to allocate a new instrument for this percussion note
+								MIDIPatchPtr newPatch(new MIDIPatch());
+								newPatch->percussion = true;
+								newPatch->midiPatch = evdata;
+								unsigned int n = this->patches->getPatchCount();
+								this->patches->setPatchCount(n + 1);
+								this->patches->setPatch(n, newPatch);
+								this->percMap[evdata] = n;
 							}
-							// Make sure the instrument has already been mapped by getPatchBank()
-							assert(found);
-
+							ev->milliHertz = PERC_FREQ;
+							ev->instrument = this->percMap[evdata];
 						} else {
 							ev->milliHertz = midiToFreq(evdata);
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
-						// Make sure the instrument has already been mapped by getPatchBank()
-						assert(ev->instrument != 0xFF);
+						assert(ev->instrument < this->patches->getPatchCount());
 
 						/// @todo Handle multiple notes on the same channel
 
@@ -308,7 +306,27 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xC0: { // Instrument change (one data byte)
-					this->currentInstrument[midiChannel] = evdata;
+					bool found = false;
+					for (unsigned int i = 0; i < this->patches->getPatchCount(); i++) {
+						MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(i));
+						if (!p) continue;
+						if (p->percussion) continue;
+						if (p->midiPatch == evdata) {
+							this->currentInstrument[midiChannel] = i;
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						// Have to allocate a new instrument
+						MIDIPatchPtr newPatch(new MIDIPatch());
+						newPatch->percussion = false;
+						newPatch->midiPatch = evdata;
+						unsigned int n = this->patches->getPatchCount();
+						this->patches->setPatchCount(n + 1);
+						this->patches->setPatch(n, newPatch);
+						this->currentInstrument[midiChannel] = n;
+					}
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
