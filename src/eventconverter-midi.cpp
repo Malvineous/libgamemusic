@@ -158,6 +158,10 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 	assert(ev->instrument < this->patches->getPatchCount());
 	patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(ev->instrument));
 
+	// If we're only supposed to play MIDI notes then don't play this note if
+	// there's no MIDI patch.
+	if (!patch && (this->midiFlags & MIDIFlags::MIDIPatchesOnly)) return;
+
 	// Got a MIDI patch
 	if (patch && patch->percussion) {
 		midiChannel = 9;
@@ -214,7 +218,7 @@ void EventConverter_MIDI::handleEvent(const NoteOffEvent *ev)
 	// No need to use the mapping logic here as a channel must always be mapped,
 	// otherwise we will be processing a note-off with no associated note-on.
 	uint8_t midiChannel = this->channelMap[ev->channel];
-	assert(midiChannel != 0xFF);
+	if (midiChannel == 0xFF) return; // unmapped channel
 
 	if (this->activeNote[ev->channel] != 0xFF) {
 		uint32_t delay = ev->absTime - this->lastTick;
@@ -237,6 +241,7 @@ void EventConverter_MIDI::handleEvent(const PitchbendEvent *ev)
 	if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
 
 	uint8_t midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
+	if (midiChannel == 0xFF) return; // unmapped channel
 
 	uint8_t note;
 	int16_t bend;

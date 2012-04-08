@@ -68,6 +68,15 @@ struct MIDIFlags {
 
 		/// Disable pitchbends.
 		IntegerNotesOnly = 8,
+
+		/// Only play notes when there is a MIDI patch available.
+		/**
+		 * The live player uses this to mute any notes that don't have MIDI patches
+		 * (since they will probably have OPL or some other patch instead) but the
+		 * CMF player can't use this because it needs MIDI notes when there are no
+		 * MIDI patches (only OPL ones) available.
+		 */
+		MIDIPatchesOnly = 16,
 	};
 };
 
