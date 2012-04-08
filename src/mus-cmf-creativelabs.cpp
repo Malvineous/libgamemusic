@@ -20,7 +20,7 @@
 
 #include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-cmf-creativelabs.hpp"
@@ -128,7 +128,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		usPerQuarterNote);
 
 	// Read the instruments
-	OPLPatchBankPtr oplPatches(new OPLPatchBank());
+	PatchBankPtr oplPatches(new PatchBank());
 	music->patches = oplPatches;
 	oplPatches->setPatchCount(numInstruments);
 	input->seekg(offInst, stream::start);
@@ -185,14 +185,9 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 {
 	assert(music->ticksPerQuarterNote != 0);
 
-	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
-	if (!patches) {
-		// Patch bank isn't an OPL one, see if it can be converted into an
-		// OPLPatchBank.  May throw bad_patch.
-		patches = OPLPatchBankPtr(new OPLPatchBank(*music->patches));
-	}
-	if (patches->getPatchCount() >= MIDI_PATCHES) {
-		throw EBadPatchType("CMF files have a maximum of 128 instruments.");
+	requirePatches<OPLPatch>(music->patches);
+	if (music->patches->getPatchCount() >= MIDI_PATCHES) {
+		throw bad_patch("CMF files have a maximum of 128 instruments.");
 	}
 
 	uint8_t channelsInUse[CMF_MAX_CHANNELS];
@@ -246,13 +241,10 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 	/// @todo Write title, composer and remarks strings here (null terminated)
 
-	OPLPatchBankPtr oplPatches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
-	if (!oplPatches) {
-		throw format_limitation("CMF files can only contain OPL instruments.");
-	}
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = oplPatches->getTypedPatch(i);
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->getPatch(i));
+		assert(patch);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =

@@ -101,7 +101,7 @@ MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData)
 	// producing an instrument bank in the process.
 	unsigned int patchMap[MIDI_PATCHES];
 	memset(patchMap, 0xFF, sizeof(patchMap));
-	MIDIPatchBankPtr midiPatches(new MIDIPatchBank());
+	PatchBankPtr midiPatches(new PatchBank());
 	for (EventVector::iterator i =
 		music->events->begin(); i != music->events->end(); i++)
 	{

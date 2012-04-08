@@ -22,7 +22,7 @@
 #define _CAMOTO_GAMEMUSIC_EVENTCONVERTER_OPL_HPP_
 
 #include <camoto/gamemusic/events.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/stream.hpp>
 
 namespace camoto {
@@ -68,8 +68,8 @@ struct OPLEvent {
 	uint32_t tempo;
 };
 
-#define OPL_FNUM_DEFAULT  49716.0   ///< Most common conversion value
-#define OPL_FNUM_ROUND    50000.0   ///< Alternate value used occasionally
+const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value
+const float OPL_FNUM_ROUND = 50000.0;    ///< Alternate value used occasionally
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
 class OPLWriterCallback {
@@ -117,6 +117,12 @@ class EventConverter_OPL: virtual public EventHandler
 	public:
 		/// Set encoding parameters.
 		/**
+		 * @param cb
+		 *   Callback to do something with the OPL data bytes.
+		 *
+		 * @param inst
+		 *   Instrument bank.
+		 *
 		 * @param flags
 		 *   One or more OPLWriteFlags to use to control the conversion.
 		 *
@@ -124,24 +130,13 @@ class EventConverter_OPL: virtual public EventHandler
 		 *   Conversion constant to use when converting Hertz into OPL frequency
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
-		EventConverter_OPL(OPLWriterCallback *cb, double fnumConversion,
-			unsigned int flags)
+		EventConverter_OPL(OPLWriterCallback *cb, const PatchBankPtr inst,
+			double fnumConversion, unsigned int flags)
 			throw ();
 
 		/// Destructor.
 		virtual ~EventConverter_OPL()
 			throw ();
-
-		/// Set the instruments to use for note events.
-		/**
-		 * @note Unsupported instruments (i.e. non-OPL instruments, like MIDI) won't
-		 *   generate any errors.  Instead all notes for those instruments will be
-		 *   ignored.  This is to facilitate real time playing of a song with
-		 *   multiple instrument types, without requiring any special code to split
-		 *   the song up by instrument type.
-		 */
-		virtual void setPatchBank(const PatchBankPtr& instruments)
-			throw (EBadPatchType);
 
 		/// Prepare to start from the first event.
 		/**
@@ -170,6 +165,7 @@ class EventConverter_OPL: virtual public EventHandler
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to handle the generated OPL data
+		const PatchBankPtr inst;   ///< Patch bank
 		double fnumConversion;     ///< Conversion value to use in Hz -> fnum calc
 		unsigned int flags;        ///< One or more OPLWriteFlags
 
@@ -177,7 +173,6 @@ class EventConverter_OPL: virtual public EventHandler
 		unsigned long cachedDelay; ///< Delay to add on to next reg write
 		unsigned long postponedDelay; ///< Delay for next event when DelayIsPostData
 		uint8_t oplState[2][256];  ///< Current register values
-		OPLPatchBankPtr inst;      ///< Last set patch bank
 
 		/// Update oplState then call handleNextPair()
 		/**

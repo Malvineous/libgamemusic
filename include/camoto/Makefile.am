@@ -12,6 +12,3 @@ nobase_library_include_HEADERS += gamemusic/patch.hpp
 nobase_library_include_HEADERS += gamemusic/patch-opl.hpp
 nobase_library_include_HEADERS += gamemusic/patch-midi.hpp
 nobase_library_include_HEADERS += gamemusic/patchbank.hpp
-nobase_library_include_HEADERS += gamemusic/patchbank-singletype.hpp
-nobase_library_include_HEADERS += gamemusic/patchbank-opl.hpp
-nobase_library_include_HEADERS += gamemusic/patchbank-midi.hpp

@@ -22,7 +22,6 @@
 #define _CAMOTO_GAMEMUSIC_EVENTCONVERTER_MIDI_HPP_
 
 #include <camoto/gamemusic/music.hpp>
-#include <camoto/gamemusic/patchbank-midi.hpp>
 #include <camoto/gamemusic/events.hpp>
 #include <camoto/stream.hpp>
 
@@ -218,7 +217,7 @@ class EventConverter_MIDI: virtual public EventHandler
 {
 	protected:
 		MIDIEventCallback *cb;             ///< Callback to handle MIDI events
-		MIDIPatchBankPtr patches;          ///< List of instruments
+		const PatchBankPtr patches;        ///< List of instruments
 		unsigned int midiFlags;            ///< Flags supplied in constructor
 		unsigned long lastTick;            ///< Time of last event
 		unsigned long ticksPerQuarterNote; ///< Current song granularity
@@ -272,7 +271,7 @@ class EventConverter_MIDI: virtual public EventHandler
 		 *   in each notation bar, among other things.  It has no effect on playback
 		 *   speed.
 		 */
-		EventConverter_MIDI(MIDIEventCallback *cb, MIDIPatchBankPtr patches,
+		EventConverter_MIDI(MIDIEventCallback *cb, const PatchBankPtr patches,
 			unsigned int midiFlags, unsigned long ticksPerQuarterNote)
 			throw ();
 

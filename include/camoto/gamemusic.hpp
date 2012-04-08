@@ -77,13 +77,12 @@ homepage <http://www.shikadi.net/camoto>.
 }
 
 // These are all in the camoto::gamemusic namespace
+#include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/patch.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 #include <camoto/gamemusic/patchbank.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
-#include <camoto/gamemusic/patchbank-midi.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
 #include <camoto/gamemusic/events.hpp>
 #include <camoto/gamemusic/exceptions.hpp>

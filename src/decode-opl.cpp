@@ -70,7 +70,7 @@ class OPLDecoder
 
 		unsigned long lastTick;    ///< Time of last event
 		uint8_t oplState[2][256];  ///< Current register values
-		OPLPatchBankPtr patches;   ///< Typed patch bank
+		PatchBankPtr patches;      ///< Patch storage
 
 		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel)
 			throw ();
@@ -86,10 +86,10 @@ class OPLDecoder
 		 *
 		 * @return Index of this instrument in the patchbank.
 		 */
-		int savePatch(OPLPatchBankPtr& patches, OPLPatchPtr curPatch)
+		int savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 			throw ();
 
-		EventPtr createNoteOn(OPLPatchBankPtr& patches, uint8_t chipIndex,
+		EventPtr createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 			uint8_t oplChannel, int rhythm, int channel, int b0val)
 			throw ();
 
@@ -113,7 +113,7 @@ OPLDecoder::OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumCo
 	: cb(cb),
 	  delayType(delayType),
 	  fnumConversion(fnumConversion),
-	  patches(new OPLPatchBank())
+	  patches(new PatchBank())
 {
 }
 
@@ -331,13 +331,14 @@ OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 	return curPatch;
 }
 
-int OPLDecoder::savePatch(OPLPatchBankPtr& patches, OPLPatchPtr curPatch)
+int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 	throw ()
 {
 	// See if the patch has already been saved
 	int numPatches = patches->getPatchCount();
 	for (int i = 0; i < numPatches; ++i) {
-		if (*(patches->getTypedPatch(i)) == *curPatch) return i; // patch already saved
+		OPLPatchPtr p = boost::dynamic_pointer_cast<OPLPatch>(patches->getPatch(i));
+		if ((p) && (*p == *curPatch)) return i; // patch already saved
 	}
 
 	// Save the patch
@@ -346,7 +347,7 @@ int OPLDecoder::savePatch(OPLPatchBankPtr& patches, OPLPatchPtr curPatch)
 	return numPatches;
 }
 
-EventPtr OPLDecoder::createNoteOn(OPLPatchBankPtr& patches, uint8_t chipIndex,
+EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 	uint8_t oplChannel, int rhythm, int channel, int b0val
 )
 	throw ()

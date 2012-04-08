@@ -23,14 +23,14 @@
 #include <boost/pointer_cast.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
 
 using namespace camoto::gamemusic;
 
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
-	double fnumConversion, unsigned int flags)
+	const PatchBankPtr inst, double fnumConversion, unsigned int flags)
 	throw ()
 	: cb(cb),
+	  inst(inst),
 	  fnumConversion(fnumConversion),
 	  flags(flags),
 	  lastTick(0),
@@ -45,18 +45,6 @@ EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
 EventConverter_OPL::~EventConverter_OPL()
 	throw ()
 {
-}
-
-void EventConverter_OPL::setPatchBank(const PatchBankPtr& instruments)
-	throw (EBadPatchType)
-{
-	this->inst = boost::dynamic_pointer_cast<OPLPatchBank>(instruments);
-	if (!this->inst) {
-		// Patch bank isn't an OPL one, see if it can be converted into an
-		// OPLPatchBank.  May throw EBadPatchType.
-		this->inst = OPLPatchBankPtr(new OPLPatchBank(*instruments));
-	}
-	return;
 }
 
 void EventConverter_OPL::rewind()
@@ -101,7 +89,10 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 			<< this->inst->getPatchCount() << " instruments.";
 		throw bad_patch(ss.str());
 	}
-	OPLPatchPtr i = this->inst->getTypedPatch(ev->instrument);
+	OPLPatchPtr i = boost::dynamic_pointer_cast<OPLPatch>(this->inst->getPatch(ev->instrument));
+
+	// Don't play this note if there's no patch for it
+	if (!i) return;
 
 	if (oplChannel > 8) {
 		// Rhythm-mode instrument

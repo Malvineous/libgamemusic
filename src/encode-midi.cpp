@@ -156,8 +156,8 @@ MIDIEncoder::~MIDIEncoder()
 void MIDIEncoder::encode(const MusicPtr music)
 	throw (stream::error, format_limitation)
 {
-	MIDIPatchBankPtr midiPatches =
-		boost::dynamic_pointer_cast<MIDIPatchBank>(music->patches);
+	PatchBankPtr midiPatches =
+		boost::dynamic_pointer_cast<PatchBank>(music->patches);
 	// midiPatches may be NULL
 	EventConverter_MIDI conv(this, midiPatches, this->midiFlags,
 		music->ticksPerQuarterNote);

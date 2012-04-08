@@ -122,10 +122,13 @@ OPLEncoder::~OPLEncoder()
 void OPLEncoder::encode(const MusicPtr music)
 	throw (stream::error, format_limitation)
 {
-	EventConverter_OPL conv(this, this->fnumConversion,
+	PatchBankPtr oplPatches = boost::dynamic_pointer_cast<PatchBank>(music->patches);
+	if (!oplPatches) {
+		throw format_limitation("This format can only accept OPL patches.");
+	}
+	EventConverter_OPL conv(this, oplPatches, this->fnumConversion,
 		this->flags);
 	try {
-		conv.setPatchBank(music->patches);
 		conv.handleAllEvents(music->events);
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());

@@ -112,6 +112,28 @@ typedef boost::shared_ptr<PatchBank> PatchBankPtr;
 /// Vector of PatchBank shared pointers.
 typedef std::vector<PatchBankPtr> VC_PATCHBANK;
 
+
+/// Convert Patch types into a string.
+template <class T>
+struct PatchTypeName
+{
+	static const char *name;
+};
+
+/// Require only certain patches in a PatchBankPtr.
+template <class T>
+void requirePatches(const PatchBankPtr& p)
+	throw (format_limitation)
+{
+	for (unsigned int i = 0; i < p->getPatchCount(); i++) {
+		if (!dynamic_cast<T *>(p->getPatch(i).get())) {
+			throw format_limitation("This file format can only store "
+				+ std::string(PatchTypeName<T>::name) + " instruments.");
+		}
+	}
+	return;
+}
+
 } // namespace gamemusic
 } // namespace camoto
 

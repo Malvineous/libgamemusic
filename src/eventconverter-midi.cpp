@@ -21,6 +21,7 @@
 #include <math.h> // pow
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -71,7 +72,7 @@ void camoto::gamemusic::freqToMIDI(unsigned long milliHertz, uint8_t *note,
 
 
 EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
-	MIDIPatchBankPtr patches, unsigned int midiFlags,
+	const PatchBankPtr patches, unsigned int midiFlags,
 	unsigned long ticksPerQuarterNote)
 	throw ()
 	: cb(cb),
@@ -150,15 +151,19 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 	// channel 10.
 	MIDIPatchPtr patch;
 	uint8_t midiChannel = 0xFF, note;
-	if (this->patches) {
-		patch = this->patches->getTypedPatch(ev->instrument);
-		if (patch->percussion) {
-			midiChannel = 9;
-			note = patch->midiPatch;
-			this->channelMap[ev->channel] = 9;
-		}
-	}
-	if ((!patch) || (!patch->percussion)) {
+
+	// No notes if there are no patches.
+	if (!this->patches) return;
+
+	assert(ev->instrument < this->patches->getPatchCount());
+	patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(ev->instrument));
+
+	// Got a MIDI patch
+	if (patch && patch->percussion) {
+		midiChannel = 9;
+		note = patch->midiPatch;
+		this->channelMap[ev->channel] = 9;
+	} else {
 		midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
 		int16_t bend;
 		freqToMIDI(ev->milliHertz, &note, &bend, 0xFF);

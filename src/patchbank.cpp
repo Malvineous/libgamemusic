@@ -20,9 +20,13 @@
  */
 
 #include <camoto/gamemusic/patchbank.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 
 using namespace camoto::gamemusic;
 
+template <> const char *PatchTypeName<OPLPatch>::name = "OPL";
+template <> const char *PatchTypeName<MIDIPatch>::name = "MIDI";
 
 PatchBank::PatchBank()
 	throw ()

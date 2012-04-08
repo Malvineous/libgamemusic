@@ -20,7 +20,7 @@
 
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
-#include <camoto/gamemusic/patchbank-opl.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
 #include "mus-klm-wacky.hpp"
 
@@ -185,7 +185,7 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 	input->seekg(0, stream::start);
 
 	MusicPtr music(new Music());
-	OPLPatchBankPtr patches(new OPLPatchBank());
+	PatchBankPtr patches(new PatchBank());
 	music->patches = patches;
 	music->events.reset(new EventVector());
 	music->ticksPerQuarterNote = 192; ///< @todo see if this value is stored in the file somewhere
@@ -475,29 +475,21 @@ void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 	throw (stream::error, format_limitation)
 {
-	OPLPatchBankPtr patches = boost::dynamic_pointer_cast<OPLPatchBank>(music->patches);
-	if (!patches) {
-		// Patch bank isn't an OPL one, see if it can be converted into an
-		// OPLPatchBank.  May throw bad_patch.
-		try {
-			patches = OPLPatchBankPtr(new OPLPatchBank(*music->patches));
-		} catch (const bad_patch&) {
-			throw format_limitation("KLM files can only store OPL instruments.");
-		}
-	}
-	if (patches->getPatchCount() > 256) {
+	requirePatches<OPLPatch>(music->patches);
+	if (music->patches->getPatchCount() > 256) {
 		throw format_limitation("KLM files have a maximum of 256 instruments.");
 	}
 
-	uint16_t musOffset = 5 + patches->getPatchCount() * 11;
+	uint16_t musOffset = 5 + music->patches->getPatchCount() * 11;
 	output
 		<< u16le(0) // tempo placeholder
 		<< u8(1)    // unknown
 		<< u16le(musOffset)
 	;
-	for (unsigned int i = 0; i < patches->getPatchCount(); i++) {
+	for (unsigned int i = 0; i < music->patches->getPatchCount(); i++) {
 		uint8_t inst[11];
-		OPLPatchPtr patch = patches->getTypedPatch(i);
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->getPatch(i));
+		assert(patch);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[6 + op] =

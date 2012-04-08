@@ -21,6 +21,7 @@
 #include <deque>
 #include <camoto/stream.hpp>
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 #include "decode-midi.hpp"
 
 using namespace camoto;
@@ -75,7 +76,7 @@ class MIDIDecoder
 		unsigned long tick;               ///< Time of next event
 		uint8_t lastEvent;                ///< Last event (for MIDI running status)
 		std::deque<EventPtr> eventBuffer; ///< List of events to return in readNextEvent()
-		MIDIPatchBankPtr patches;         ///< Cached patches populated by getPatchBank()
+		PatchBankPtr patches;             ///< Cached patches populated by getPatchBank()
 		bool setTempo;                    ///< Have we sent the initial tempo event?
 		unsigned int midiFlags;           ///< Flags supplied in constructor
 		unsigned long ticksPerQuarterNote;///< Current song granularity
@@ -143,7 +144,7 @@ MusicPtr MIDIDecoder::decode()
 	throw (stream::error)
 {
 	MusicPtr music(new Music());
-	this->patches.reset(new MIDIPatchBank());
+	this->patches.reset(new PatchBank());
 	music->events.reset(new EventVector());
 	music->ticksPerQuarterNote = this->ticksPerQuarterNote;
 
