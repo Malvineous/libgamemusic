@@ -19,6 +19,7 @@
  */
 
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-mid-type0.hpp"
@@ -104,6 +105,8 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 	throw (stream::error, format_limitation)
 {
+	requirePatches<MIDIPatch>(music->patches);
+
 	output->write(
 		"MThd"
 		"\x00\x00\x00\x06" // MThd block length (BE)
