@@ -73,7 +73,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		virtual void writeNextPair(const OPLEvent *oplEvent)
 			throw (stream::error);
 
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error);
 
 	private:
@@ -184,7 +184,7 @@ void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 	return;
 }
 
-void OPLEncoder::writeTempoChange(unsigned long usPerTick)
+void OPLEncoder::writeTempoChange(tempo_t usPerTick)
 	throw (stream::error)
 {
 	if (usPerTick != this->lastTempo) {

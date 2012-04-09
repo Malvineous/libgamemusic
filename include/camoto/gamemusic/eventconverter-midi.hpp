@@ -183,7 +183,7 @@ class MIDIEventCallback
 		 * @param usPerTick
 		 *   New tempo, in number of microseconds per tick.
 		 */
-		virtual void midiSetTempo(uint32_t delay, uint32_t usPerTick)
+		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick)
 			throw (stream::error) = 0;
 
 };
@@ -234,7 +234,7 @@ class EventConverter_MIDI: virtual public EventHandler
 		unsigned int midiFlags;            ///< Flags supplied in constructor
 		unsigned long lastTick;            ///< Time of last event
 		unsigned long ticksPerQuarterNote; ///< Required for tempo calculation
-		unsigned long usPerTick;           ///< Current song tempo
+		tempo_t usPerTick;                 ///< Current song tempo
 
 		bool deepTremolo;   ///< MIDI controller 0x63 bit 0
 		bool deepVibrato;   ///< MIDI controller 0x63 bit 1

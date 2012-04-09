@@ -162,7 +162,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error)
 		{
 			// Write a tempo change if the tempo has indeed changed

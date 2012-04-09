@@ -175,7 +175,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error)
 		{
 			assert(usPerTick != 0);
@@ -186,7 +186,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 	protected:
 		stream::output_sptr output; ///< Output file
 		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
-		unsigned long usPerTick;    ///< Latest microseconds per tick value (tempo)
+		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
 
 	public:
 		uint32_t msSongLength;      ///< Song length in milliseconds

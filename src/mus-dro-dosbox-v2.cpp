@@ -221,7 +221,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error)
 		{
 			assert(usPerTick != 0);
@@ -260,7 +260,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		}
 
 	protected:
-		unsigned long usPerTick;    ///< Latest microseconds per tick value (tempo)
+		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
 		stream::string_sptr buffer; ///< Buffer to store output data until finish()
 		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 		uint8_t codemapLength;      ///< Number of valid entries in codemap array

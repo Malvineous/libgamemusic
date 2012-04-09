@@ -52,7 +52,7 @@ namespace gamemusic {
  *   have been changed during the song, but this is the initial value.
  */
 void midiEncode(stream::output_sptr& output, unsigned int midiFlags,
-	MusicPtr music,	unsigned long *usPerTick)
+	MusicPtr music,	tempo_t *usPerTick)
 	throw (stream::error, format_limitation);
 
 } // namespace gamemusic

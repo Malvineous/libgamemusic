@@ -272,12 +272,12 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	}
 
 	// Call the generic OPL writer.
-	unsigned long usPerTick;
+	tempo_t usPerTick;
 	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, &usPerTick);
 
 	// Set final filesize to this
 	output->truncate_here();
-	uint16_t ticksPerSecond = 1000000 / usPerTick;
+	uint16_t ticksPerSecond = 1000000.0 / usPerTick;
 	output->seekp(10, stream::start);
 	output
 		<< u16le(music->ticksPerQuarterNote)

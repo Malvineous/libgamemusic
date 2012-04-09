@@ -37,6 +37,9 @@ class EventHandler;
 /// All channel numbers in the %Event struct must be less than this value.
 const unsigned int MAX_CHANNELS = 256;
 
+/// Type to use for all microsecond-per-tick values.
+typedef double tempo_t;
+
 /// Base class to represent events in the file.
 /**
  * Will be extended by descendent classes to hold format-specific data.
@@ -80,7 +83,7 @@ typedef boost::shared_ptr<EventVector> EventVectorPtr;
 struct TempoEvent: virtual public Event
 {
 	/// Number of microseconds per tick.
-	unsigned long usPerTick;
+	tempo_t usPerTick;
 
 	virtual std::string getContent() const
 		throw ();

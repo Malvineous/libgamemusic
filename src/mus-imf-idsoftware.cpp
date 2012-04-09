@@ -126,7 +126,7 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error)
 		{
 			assert(usPerTick != 0);
@@ -137,7 +137,7 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 	protected:
 		stream::output_sptr output; ///< Output file
 		unsigned int speed;         ///< IMF clock rate
-		unsigned long usPerTick;    ///< Latest microseconds per tick value (tempo)
+		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
 };
 
 

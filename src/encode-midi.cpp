@@ -88,7 +88,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 			throw (stream::error);
 
-		virtual void midiSetTempo(uint32_t delay, uint32_t usPerQuarterNote)
+		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick)
 			throw (stream::error);
 
 	protected:
@@ -129,7 +129,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 
 
 void camoto::gamemusic::midiEncode(stream::output_sptr& output,
-	unsigned int midiFlags, MusicPtr music, unsigned long *usPerTick)
+	unsigned int midiFlags, MusicPtr music, tempo_t *usPerTick)
 	throw (stream::error, format_limitation)
 {
 	MIDIEncoder encoder(output, midiFlags);
@@ -271,7 +271,7 @@ void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 	return;
 }
 
-void MIDIEncoder::midiSetTempo(uint32_t delay, uint32_t usPerTick)
+void MIDIEncoder::midiSetTempo(uint32_t delay, tempo_t usPerTick)
 	throw (stream::error)
 {
 	unsigned long usPerQuarterNote = usPerTick * this->ticksPerQuarterNote;

@@ -93,7 +93,7 @@ class OPLWriterCallback {
 		 * @param usPerTick
 		 *   Number of microseconds per tick.
 		 */
-		virtual void writeTempoChange(unsigned long usPerTick)
+		virtual void writeTempoChange(tempo_t usPerTick)
 			throw (stream::error) = 0;
 };
 
