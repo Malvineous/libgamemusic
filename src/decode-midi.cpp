@@ -115,13 +115,17 @@ class MIDIDecoder
 		 * This will add a new entry into the patchbank if the given patch does
 		 * not exist.  Otherwise it will reuse an existing entry in the patchbank.
 		 *
+		 * @param patches
+		 *   PatchBank to search within and possibly append to.
+		 *
 		 * @param midiChannel
 		 *   MIDI channel (0-15).
 		 *
 		 * @param midiPatch
 		 *   MIDI instrument number (0-127).
 		 */
-		void setInstrument(unsigned int midiChannel, unsigned int midiPatch)
+		void setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
+			unsigned int midiPatch)
 			throw ();
 };
 
@@ -160,7 +164,7 @@ MusicPtr MIDIDecoder::decode()
 	throw (stream::error)
 {
 	MusicPtr music(new Music());
-	this->patches.reset(new PatchBank());
+	music->patches.reset(new PatchBank());
 	music->events.reset(new EventVector());
 	music->ticksPerQuarterNote = this->ticksPerQuarterNote;
 
@@ -266,9 +270,9 @@ MusicPtr MIDIDecoder::decode()
 								MIDIPatchPtr newPatch(new MIDIPatch());
 								newPatch->percussion = true;
 								newPatch->midiPatch = evdata;
-								unsigned int n = this->patches->getPatchCount();
-								this->patches->setPatchCount(n + 1);
-								this->patches->setPatch(n, newPatch);
+								unsigned int n = music->patches->getPatchCount();
+								music->patches->setPatchCount(n + 1);
+								music->patches->setPatch(n, newPatch);
 								this->percMap[evdata] = n;
 							}
 							ev->milliHertz = PERC_FREQ;
@@ -277,10 +281,10 @@ MusicPtr MIDIDecoder::decode()
 							ev->milliHertz = midiToFreq(evdata);
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
-						if (ev->instrument >= this->patches->getPatchCount()) {
+						if (ev->instrument >= music->patches->getPatchCount()) {
 							// A note is sounding without a patch change event ever arriving,
 							// so use a default instrument
-							this->setInstrument(midiChannel, MIDI_DEFAULT_PATCH);
+							this->setInstrument(music->patches, midiChannel, MIDI_DEFAULT_PATCH);
 						}
 
 						/// @todo Handle multiple notes on the same channel
@@ -326,7 +330,7 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xC0: { // Instrument change (one data byte)
-					this->setInstrument(midiChannel, evdata);
+					this->setInstrument(music->patches, midiChannel, evdata);
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
@@ -468,12 +472,13 @@ uint32_t MIDIDecoder::readMIDINumber()
 	return val;
 }
 
-void MIDIDecoder::setInstrument(unsigned int midiChannel, unsigned int midiPatch)
+void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
+	unsigned int midiPatch)
 	throw ()
 {
 	bool found = false;
-	for (unsigned int i = 0; i < this->patches->getPatchCount(); i++) {
-		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(i));
+	for (unsigned int i = 0; i < patches->getPatchCount(); i++) {
+		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(patches->getPatch(i));
 		if (!p) continue;
 		if (p->percussion) continue;
 		if (p->midiPatch == midiPatch) {
@@ -487,9 +492,9 @@ void MIDIDecoder::setInstrument(unsigned int midiChannel, unsigned int midiPatch
 		MIDIPatchPtr newPatch(new MIDIPatch());
 		newPatch->percussion = false;
 		newPatch->midiPatch = midiPatch;
-		unsigned int n = this->patches->getPatchCount();
-		this->patches->setPatchCount(n + 1);
-		this->patches->setPatch(n, newPatch);
+		unsigned int n = patches->getPatchCount();
+		patches->setPatchCount(n + 1);
+		patches->setPatch(n, newPatch);
 		this->currentInstrument[midiChannel] = n;
 	}
 	return;
