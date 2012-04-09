@@ -77,10 +77,10 @@ struct FIXTURE_NAME: public default_sample {
 	void init(bool setInstruments)
 	{
 		if (setInstruments) {
-#if INSTRUMENT_TYPE == 0
 			// Set some default instruments
-			OPLPatchBankPtr instruments(new OPLPatchBank());
-			instruments->setPatchCount(1);
+			this->music->patches.reset(new PatchBank());
+			this->music->patches->setPatchCount(1);
+#if INSTRUMENT_TYPE == 0
 			OPLPatchPtr defInst(new OPLPatch());
 			defInst->m.enableTremolo = defInst->c.enableTremolo = true;
 			defInst->m.enableVibrato = defInst->c.enableVibrato = false;
@@ -106,18 +106,14 @@ struct FIXTURE_NAME: public default_sample {
 			defInst->c.waveSelect    = 2;
 
 			defInst->feedback = 2;
-			instruments->setPatch(0, defInst);
 #elif INSTRUMENT_TYPE == 1
-			MIDIPatchBankPtr instruments(new MIDIPatchBank());
-			instruments->setPatchCount(1);
 			MIDIPatchPtr defInst(new MIDIPatch());
 			defInst->midiPatch = 0;
 			defInst->percussion = false;
-			instruments->setPatch(0, defInst);
 #else
 #error Unknown instrument type
 #endif
-			this->music->patches = instruments;
+			this->music->patches->setPatch(0, defInst);
 		}
 
 		// Set a default tempo
@@ -163,7 +159,7 @@ struct FIXTURE_NAME: public default_sample {
 	 */
 	void testRhythm(int rhythm, int opIndex)
 	{
-		OPLPatchBankPtr instruments(new OPLPatchBank());
+		PatchBankPtr instruments(new PatchBank());
 		instruments->setPatchCount(1);
 		OPLPatchPtr newInst(new OPLPatch());
 		newInst->rhythm = rhythm;

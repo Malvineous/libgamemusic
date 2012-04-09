@@ -55,7 +55,7 @@ struct midi_fixture: public default_sample {
 		this->music.reset(new gm::Music());
 		this->music->events.reset(new gm::EventVector());
 
-		gm::MIDIPatchBankPtr pb(new gm::MIDIPatchBank());
+		gm::PatchBankPtr pb(new gm::PatchBank());
 		pb->setPatchCount(1);
 		gm::MIDIPatchPtr p(new gm::MIDIPatch());
 		p->midiPatch = 20; // Instrument #0 is MIDI patch #20

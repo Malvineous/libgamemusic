@@ -110,11 +110,11 @@ struct FIXTURE_NAME: public default_sample {
 		// Note must play immediately at start of song
 		BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
 
-		OPLPatchBankPtr instruments = boost::dynamic_pointer_cast<OPLPatchBank>(this->music->patches);
-		BOOST_REQUIRE_MESSAGE(instruments, "Test fault: Tried to run OPL test for "
+		OPLPatchPtr inst =
+			boost::dynamic_pointer_cast<OPLPatch>(this->music->patches->getPatch(0));
+		BOOST_REQUIRE_MESSAGE(inst, "Test fault: Tried to run OPL test for "
 			"music format that doesn't have OPL instruments");
 
-		OPLPatchPtr inst = instruments->getTypedPatch(0);
 		// Make sure instrument is the correct rhythm-mode one
 		BOOST_REQUIRE_EQUAL(inst->rhythm, rhythm);
 
