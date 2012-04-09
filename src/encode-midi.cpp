@@ -37,13 +37,8 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * @param midiFlags
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
-		 *
-		 * @param usPerQuarterNote
-		 *   On return, the initial number of microseconds per quarter-note.  This could
-		 *   have been overridden during the song, but this is the initial value.
 		 */
-		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags,
-			unsigned long *usPerQuarterNote)
+		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
 			throw ();
 
 		/// Destructor.
@@ -58,6 +53,10 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * @param music
 		 *   The instance to convert to MIDI data.
 		 *
+		 * @return The initial number of microseconds per MIDI tick.  This could
+		 *   have been changed during the song, but this is the initial value to
+		 *   write into any file headers.
+		 *
 		 * @throw stream:error
 		 *   If the output data could not be written for some reason.
 		 *
@@ -65,7 +64,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   If the song could not be converted to MIDI for some reason (e.g. it has
 		 *   sampled instruments.)
 		 */
-		void encode(const MusicPtr music)
+		unsigned long encode(const MusicPtr music)
 			throw (stream::error, format_limitation);
 
 		// MIDIEventCallback
@@ -96,7 +95,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		stream::output_sptr output;        ///< Target stream for SMF MIDI data
 		unsigned int midiFlags;            ///< One or more MIDIFlags
 		uint8_t lastCommand;               ///< Last MIDI command written
-		unsigned long *usPerQuarterNote;   ///< Where to store initial tempo
+		unsigned long ticksPerQuarterNote; ///< Timing information
 
 		/// Write an integer in variable-length MIDI notation.
 		/**
@@ -130,21 +129,23 @@ class MIDIEncoder: virtual private MIDIEventCallback
 
 
 void camoto::gamemusic::midiEncode(stream::output_sptr& output,
-	unsigned int midiFlags, MusicPtr music, unsigned long *usPerQuarterNote)
+	unsigned int midiFlags, MusicPtr music, unsigned long *usPerTick)
 	throw (stream::error, format_limitation)
 {
-	MIDIEncoder encoder(output, midiFlags, usPerQuarterNote);
-	encoder.encode(music);
+	MIDIEncoder encoder(output, midiFlags);
+	*usPerTick = encoder.encode(music);
+	if (*usPerTick == 0) {
+		*usPerTick = MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE;
+	}
 	return;
 }
 
-MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags,
-	unsigned long *usPerQuarterNote)
+MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
 	throw ()
 	: output(output),
 	  midiFlags(midiFlags),
 	  lastCommand(0xFF),
-	  usPerQuarterNote(usPerQuarterNote)
+	  ticksPerQuarterNote(0)
 {
 }
 
@@ -153,21 +154,20 @@ MIDIEncoder::~MIDIEncoder()
 {
 }
 
-void MIDIEncoder::encode(const MusicPtr music)
+unsigned long MIDIEncoder::encode(const MusicPtr music)
 	throw (stream::error, format_limitation)
 {
-	PatchBankPtr midiPatches =
-		boost::dynamic_pointer_cast<PatchBank>(music->patches);
-	// midiPatches may be NULL
-	EventConverter_MIDI conv(this, midiPatches, this->midiFlags,
+	// Remember this for this->midiSetTempo()
+	this->ticksPerQuarterNote = music->ticksPerQuarterNote;
+
+	EventConverter_MIDI conv(this, music->patches, this->midiFlags,
 		music->ticksPerQuarterNote);
 	conv.handleAllEvents(music->events);
 
-	*this->usPerQuarterNote = conv.getusPerQuarterNote();
-
 	// Write an end-of-song event
 	this->output->write("\x00\xFF\x2F\x00", 4);
-	return;
+
+	return conv.first_usPerTick;
 }
 
 void MIDIEncoder::writeMIDINumber(uint32_t value)
@@ -271,9 +271,10 @@ void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 	return;
 }
 
-void MIDIEncoder::midiSetTempo(uint32_t delay, uint32_t usPerQuarterNote)
+void MIDIEncoder::midiSetTempo(uint32_t delay, uint32_t usPerTick)
 	throw (stream::error)
 {
+	unsigned long usPerQuarterNote = usPerTick * this->ticksPerQuarterNote;
 	this->writeMIDINumber(delay);
 	this->output->write("\xFF\x51\x03", 3);
 	this->output

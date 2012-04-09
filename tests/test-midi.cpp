@@ -66,9 +66,9 @@ struct midi_fixture: public default_sample {
 
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
-		unsigned long usPerQuarterNote;
+		unsigned long usPerTick;
 		stream::output_sptr s = this->base;
-		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerQuarterNote);
+		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerTick);
 
 		return this->default_sample::is_equal(strExpected, this->base->str());
 	}

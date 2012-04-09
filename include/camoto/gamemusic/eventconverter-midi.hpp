@@ -43,10 +43,14 @@ const unsigned int MIDI_DEF_TICKS_PER_QUARTER_NOTE = 192;
 /// Default number of microseconds per quarter note.
 const unsigned long MIDI_DEF_uS_PER_QUARTER_NOTE = 500000;
 
-/// Default value to use for note-off events.
+/// Default number of microseconds per MIDI tick.
+const unsigned long MIDI_DEF_uS_PER_TICK =
+	MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE;
+
+/// Default value to use for MIDI note-off events.
 const unsigned int MIDI_DEFAULT_RELEASE_VELOCITY = 64;
 
-/// Default value to use for note-on events.
+/// Default value to use for MIDI note-on events.
 const unsigned int MIDI_DEFAULT_ATTACK_VELOCITY = 64;
 
 /// Flags indicating variations in the type of MIDI data.
@@ -176,10 +180,10 @@ class MIDIEventCallback
 		 *   Delay since previous event, in MIDI ticks.  This is the delay at the
 		 *   old tempo before the tempo change is actioned.
 		 *
-		 * @param usPerQuarterNote
-		 *   New tempo, in number of microseconds per quarter note.
+		 * @param usPerTick
+		 *   New tempo, in number of microseconds per tick.
 		 */
-		virtual void midiSetTempo(uint32_t delay, uint32_t usPerQuarterNote)
+		virtual void midiSetTempo(uint32_t delay, uint32_t usPerTick)
 			throw (stream::error) = 0;
 
 };
@@ -229,17 +233,12 @@ class EventConverter_MIDI: virtual public EventHandler
 		const PatchBankPtr patches;        ///< List of instruments
 		unsigned int midiFlags;            ///< Flags supplied in constructor
 		unsigned long lastTick;            ///< Time of last event
-		unsigned long ticksPerQuarterNote; ///< Current song granularity
+		unsigned long ticksPerQuarterNote; ///< Required for tempo calculation
+		unsigned long usPerTick;           ///< Current song tempo
 
 		bool deepTremolo;   ///< MIDI controller 0x63 bit 0
 		bool deepVibrato;   ///< MIDI controller 0x63 bit 1
 		bool updateDeep;    ///< True if deepTremolo or deepVibrato have changed
-
-		/// Length of a quarter note, in microseconds.
-		unsigned long usPerQuarterNote;
-
-		/// First value assigned to usPerQuarterNote.
-		unsigned long first_usPerQuarterNote;
 
 		/// Current patch on each MIDI channel
 		uint8_t currentPatch[MIDI_CHANNELS];
@@ -260,6 +259,8 @@ class EventConverter_MIDI: virtual public EventHandler
 		unsigned long lastEvent[MIDI_CHANNELS];
 
 	public:
+		unsigned long first_usPerTick;           ///< Initial song tempo
+
 		/// Prepare for event conversion.
 		/**
 		 * @param cb
@@ -293,9 +294,6 @@ class EventConverter_MIDI: virtual public EventHandler
 		 * the resulting negative delay will cause an extremely long pause.
 		 */
 		void rewind()
-			throw ();
-
-		unsigned long getusPerQuarterNote()
 			throw ();
 
 		// EventHandler functions

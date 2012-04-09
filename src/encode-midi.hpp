@@ -47,12 +47,12 @@ namespace gamemusic {
  *   numbers used for patch changes are unaltered (i.e. those in the source
  *   event.)
  *
- * @param usPerQuarterNote
- *   On return, the initial number of microseconds per quarter-note.  This could
- *   have been overridden during the song, but this is the initial value.
+ * @param usPerTick
+ *   On return, the initial number of microseconds per tick.  This could
+ *   have been changed during the song, but this is the initial value.
  */
 void midiEncode(stream::output_sptr& output, unsigned int midiFlags,
-	MusicPtr music,	unsigned long *usPerQuarterNote)
+	MusicPtr music,	unsigned long *usPerTick)
 	throw (stream::error, format_limitation);
 
 } // namespace gamemusic

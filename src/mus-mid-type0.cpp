@@ -114,8 +114,8 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 		"\x00\x00\x00\x00" // MTrk block length placeholder
 	, 22);
 
-	unsigned long usPerQuarterNote;
-	midiEncode(output, MIDIFlags::Default, music, &usPerQuarterNote);
+	unsigned long usPerTick;
+	midiEncode(output, MIDIFlags::Default, music, &usPerTick);
 
 	uint32_t mtrkLen = output->tellp();
 	mtrkLen -= 22; // 22 == header from start()

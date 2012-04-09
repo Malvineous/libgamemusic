@@ -80,11 +80,11 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 	  midiFlags(midiFlags),
 	  lastTick(0),
 	  ticksPerQuarterNote(ticksPerQuarterNote),
+	  usPerTick(0),
 	  deepTremolo(false),
 	  deepVibrato(false),
 	  updateDeep(false),
-	  usPerQuarterNote(MIDI_DEF_uS_PER_QUARTER_NOTE),
-	  first_usPerQuarterNote(0)
+	  first_usPerTick(MIDI_DEF_uS_PER_TICK)
 {
 	memset(this->currentPatch, 0xFF, sizeof(this->currentPatch));
 	memset(this->currentInternalPatch, 0xFF, sizeof(this->currentInternalPatch));
@@ -106,25 +106,19 @@ void EventConverter_MIDI::rewind()
 	return;
 }
 
-unsigned long EventConverter_MIDI::getusPerQuarterNote()
-	throw ()
-{
-	if (this->first_usPerQuarterNote == 0) return MIDI_DEF_uS_PER_QUARTER_NOTE;
-	return this->first_usPerQuarterNote;
-}
-
 void EventConverter_MIDI::handleEvent(const TempoEvent *ev)
 	throw (stream::error)
 {
 	assert(ev->usPerTick > 0);
-	unsigned long n = ev->usPerTick * this->ticksPerQuarterNote;
-	if (this->usPerQuarterNote != n) {
+	if (this->usPerTick != ev->usPerTick) {
 		if (!(this->midiFlags & MIDIFlags::BasicMIDIOnly)) {
-			this->cb->midiSetTempo(ev->absTime - this->lastTick, this->usPerQuarterNote);
+			this->cb->midiSetTempo(ev->absTime - this->lastTick, ev->usPerTick);
+		} else {
+			std::cerr << "TODO: Adjust tempo by changing tick multiplier" << std::endl;
 		}
-		this->usPerQuarterNote = n;
+		this->usPerTick = ev->usPerTick;
 	}
-	if (ev->absTime == 0) this->first_usPerQuarterNote = n;
+	if (ev->absTime == 0) this->first_usPerTick = ev->usPerTick;
 	return;
 }
 
@@ -197,8 +191,10 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 	}
 	assert(midiChannel != 0xFF);
 
-	// Use 64 as the default velocity, otherwise squish it into a 7-bit value.
-	uint8_t velocity = (ev->velocity == 0) ? 64 : (ev->velocity >> 1);
+	// Use a default velocity if none was specified, otherwise squish it into
+	// a 7-bit value.
+	uint8_t velocity =
+		(ev->velocity == 0) ? MIDI_DEFAULT_ATTACK_VELOCITY : (ev->velocity >> 1);
 
 	this->cb->midiNoteOn(delay, midiChannel, note, velocity);
 

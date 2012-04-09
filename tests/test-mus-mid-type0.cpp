@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define INITIAL_TEMPO 1000
+#define INITIAL_TEMPO  (MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE)
 #define INSTRUMENT_TYPE  1 // MIDI
 
 #define testdata_noteonoff \
