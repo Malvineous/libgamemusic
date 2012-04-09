@@ -29,7 +29,11 @@ namespace camoto {
 namespace gamemusic {
 
 /// Descendent of Patch for storing MIDI instrument settings.
-struct MIDIPatch: public Patch {
+struct MIDIPatch: public Patch
+{
+	/// Default constructor sets everything to zero/defaults.
+	MIDIPatch()
+		throw ();
 
 	/// 7-bit number for MIDI instrument patch (0-127 inclusive)
 	uint8_t midiPatch;
@@ -52,5 +56,11 @@ typedef boost::shared_ptr<MIDIPatch> MIDIPatchPtr;
 
 } // namespace gamemusic
 } // namespace camoto
+
+/// ostream handler for printing patches as ASCII
+std::ostream& operator << (std::ostream& s, const camoto::gamemusic::MIDIPatch& p);
+
+/// ostream handler for printing patches as ASCII
+std::ostream& operator << (std::ostream& s, const camoto::gamemusic::MIDIPatchPtr p);
 
 #endif // _CAMOTO_GAMEMUSIC_PATCH_MIDI_HPP_

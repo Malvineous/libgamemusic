@@ -19,6 +19,7 @@ libgamemusic_la_SOURCES += mus-klm-wacky.cpp
 libgamemusic_la_SOURCES += mus-mid-type0.cpp
 libgamemusic_la_SOURCES += opl-util.cpp
 libgamemusic_la_SOURCES += patch.cpp
+libgamemusic_la_SOURCES += patch-midi.cpp
 libgamemusic_la_SOURCES += patch-opl.cpp
 libgamemusic_la_SOURCES += patchbank.cpp
 libgamemusic_la_SOURCES += patchbank-fmt-ibk.cpp
