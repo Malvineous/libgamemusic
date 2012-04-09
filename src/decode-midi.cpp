@@ -30,6 +30,9 @@ using namespace camoto::gamemusic;
 /// Frequency to use for percussion notes.
 const unsigned int PERC_FREQ = 440000;
 
+/// Default to a grand piano until a patch change event arrives.
+const unsigned int MIDI_DEFAULT_PATCH = 0;
+
 /// MusicReader class that understands MIDI data.
 class MIDIDecoder
 {
@@ -107,6 +110,19 @@ class MIDIDecoder
 		uint32_t readMIDINumber()
 			throw (stream::error);
 
+		/// Set the MIDI patch in use on the given channel.
+		/**
+		 * This will add a new entry into the patchbank if the given patch does
+		 * not exist.  Otherwise it will reuse an existing entry in the patchbank.
+		 *
+		 * @param midiChannel
+		 *   MIDI channel (0-15).
+		 *
+		 * @param midiPatch
+		 *   MIDI instrument number (0-127).
+		 */
+		void setInstrument(unsigned int midiChannel, unsigned int midiPatch)
+			throw ();
 };
 
 MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr& input,
@@ -261,7 +277,11 @@ MusicPtr MIDIDecoder::decode()
 							ev->milliHertz = midiToFreq(evdata);
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
-						assert(ev->instrument < this->patches->getPatchCount());
+						if (ev->instrument >= this->patches->getPatchCount()) {
+							// A note is sounding without a patch change event ever arriving,
+							// so use a default instrument
+							this->setInstrument(midiChannel, MIDI_DEFAULT_PATCH);
+						}
 
 						/// @todo Handle multiple notes on the same channel
 
@@ -306,27 +326,7 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xC0: { // Instrument change (one data byte)
-					bool found = false;
-					for (unsigned int i = 0; i < this->patches->getPatchCount(); i++) {
-						MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(i));
-						if (!p) continue;
-						if (p->percussion) continue;
-						if (p->midiPatch == evdata) {
-							this->currentInstrument[midiChannel] = i;
-							found = true;
-							break;
-						}
-					}
-					if (!found) {
-						// Have to allocate a new instrument
-						MIDIPatchPtr newPatch(new MIDIPatch());
-						newPatch->percussion = false;
-						newPatch->midiPatch = evdata;
-						unsigned int n = this->patches->getPatchCount();
-						this->patches->setPatchCount(n + 1);
-						this->patches->setPatch(n, newPatch);
-						this->currentInstrument[midiChannel] = n;
-					}
+					this->setInstrument(midiChannel, evdata);
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
@@ -466,4 +466,31 @@ uint32_t MIDIDecoder::readMIDINumber()
 		if (!(n & 0x80)) break; // last byte has the MSB unset
 	}
 	return val;
+}
+
+void MIDIDecoder::setInstrument(unsigned int midiChannel, unsigned int midiPatch)
+	throw ()
+{
+	bool found = false;
+	for (unsigned int i = 0; i < this->patches->getPatchCount(); i++) {
+		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(i));
+		if (!p) continue;
+		if (p->percussion) continue;
+		if (p->midiPatch == midiPatch) {
+			this->currentInstrument[midiChannel] = i;
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		// Have to allocate a new instrument
+		MIDIPatchPtr newPatch(new MIDIPatch());
+		newPatch->percussion = false;
+		newPatch->midiPatch = midiPatch;
+		unsigned int n = this->patches->getPatchCount();
+		this->patches->setPatchCount(n + 1);
+		this->patches->setPatch(n, newPatch);
+		this->currentInstrument[midiChannel] = n;
+	}
+	return;
 }
