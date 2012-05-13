@@ -31,7 +31,7 @@ using namespace camoto;
 using namespace camoto::gamemusic;
 
 /// Number of available channels in a CMF file.
-const int CMF_MAX_CHANNELS = 16;
+const unsigned int CMF_MAX_CHANNELS = 16;
 
 std::string MusicType_CMF::getCode() const
 	throw ()
