@@ -30,6 +30,7 @@
 #include "mus-cmf-creativelabs.hpp"
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
+#include "mus-ibk-instrumentbank.hpp"
 
 namespace camoto {
 namespace gamemusic {
@@ -43,17 +44,18 @@ ManagerPtr getManager()
 Manager::Manager()
 	throw ()
 {
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_IBK()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type0()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_WLF_Type0()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_WLF_Type1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Duke2()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
 }
 
 Manager::~Manager()
