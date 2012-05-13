@@ -55,14 +55,6 @@ struct FIXTURE_NAME: public default_sample {
 	FIXTURE_NAME() :
 		base(new stream::string())
 	{
-		#ifdef HAS_FAT
-		{
-			stream::string_sptr suppStream(new stream::string());
-			suppStream << makeString(TEST_RESULT(FAT_initialstate));
-			this->suppData[EST_FAT] = suppStream;
-		}
-		#endif
-
 		BOOST_REQUIRE_NO_THROW(
 			ManagerPtr pManager = getManager();
 			this->pTestType = pManager->getMusicTypeByCode(MUSIC_TYPE);
