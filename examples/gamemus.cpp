@@ -430,6 +430,9 @@ int main(int iArgC, char *cArgV[])
 							std::cout << "<unknown patch type>";
 						}
 					}
+					if (!next->name.empty()) {
+						std::cout << " \"" << next->name << '"';
+					}
 					std::cout << "\n";
 				}
 
