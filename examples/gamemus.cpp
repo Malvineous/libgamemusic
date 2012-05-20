@@ -404,7 +404,8 @@ int main(int iArgC, char *cArgV[])
 				} catch (const gm::format_limitation& e) {
 					std::cerr << PROGNAME ": Unable to write this song in format "
 						<< strOutType << " - " << e.what() << std::endl;
-					// TODO: delete output file
+					// Delete empty output file
+					psMusicOut->remove();
 					return RET_UNCOMMON_FAILURE;
 				}
 
