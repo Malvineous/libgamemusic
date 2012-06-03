@@ -48,28 +48,28 @@ struct OPLOperator {
 	/// KSR enabled.
 	bool enableKSR;
 
-	/// The frequency multiplication factor.
+	/// The frequency multiplication factor.  0-15 inclusive.
 	uint8_t freqMult;
 
-	/// The key scale level.
+	/// The key scale level.  0-3 inclusive.
 	uint8_t scaleLevel;
 
-	/// The output level.
+	/// The output level.  0-63 inclusive.
 	uint8_t outputLevel;
 
-	/// The attack rate.
+	/// The attack rate.  0-15 inclusive.
 	uint8_t attackRate;
 
-	/// The decay rate.
+	/// The decay rate.  0-15 inclusive.
 	uint8_t decayRate;
 
-	/// The sustain rate.
+	/// The sustain rate.  0-15 inclusive.
 	uint8_t sustainRate;
 
-	/// The release rate.
+	/// The release rate.  0-15 inclusive.
 	uint8_t releaseRate;
 
-	/// The waveform select.
+	/// The waveform select.  0-7 inclusive.
 	uint8_t waveSelect;
 
 };
@@ -87,7 +87,7 @@ struct OPLPatch: public Patch {
 	/// Modulator settings.
 	OPLOperator m;
 
-	/// The feedback modulation factor for the channel.
+	/// The feedback modulation factor for the channel.  0-7 inclusive.
 	uint8_t feedback;
 
 	/// The synth type connection.
