@@ -410,16 +410,17 @@ int main(int iArgC, char *cArgV[])
 				}
 
 			} else if (i->string_key.compare("list-instruments") == 0) {
-				int count = pMusic->patches->getPatchCount();
-				std::cout << "Listing " << count << " instruments:\n";
-				for (int i = 0; i < count; i++) {
-					gm::PatchPtr next = pMusic->patches->getPatch(i);
-					std::cout << " #" << i << ": ";
-					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(next);
+				std::cout << "Listing " << pMusic->patches->size() << " instruments:\n";
+				unsigned int j = 0;
+				for (gm::PatchBank::const_iterator
+					     i = pMusic->patches->begin(); i != pMusic->patches->end(); i++, j++
+				) {
+					std::cout << " #" << j << ": ";
+					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(*i);
 					if (oplNext) {
 						std::cout << "OPL " << oplNext;
 					} else {
-						gm::MIDIPatchPtr midiNext = boost::dynamic_pointer_cast<gm::MIDIPatch>(next);
+						gm::MIDIPatchPtr midiNext = boost::dynamic_pointer_cast<gm::MIDIPatch>(*i);
 						if (midiNext) {
 							std::cout << "MIDI ";
 							if (midiNext->percussion) {
@@ -431,8 +432,8 @@ int main(int iArgC, char *cArgV[])
 							std::cout << "<unknown patch type>";
 						}
 					}
-					if (!next->name.empty()) {
-						std::cout << " \"" << next->name << '"';
+					if (!(*i)->name.empty()) {
+						std::cout << " \"" << (*i)->name << '"';
 					}
 					std::cout << "\n";
 				}
@@ -461,10 +462,10 @@ int main(int iArgC, char *cArgV[])
 					return RET_BADARGS;
 				}
 
-				unsigned int newCount = pInst->patches->getPatchCount();
+				unsigned int newCount = pInst->patches->size();
 				unsigned int oldCount;
 				if (pMusic->patches) {
-					oldCount = pMusic->patches->getPatchCount();
+					oldCount = pMusic->patches->size();
 				} else {
 					oldCount = 0;
 				}
@@ -474,13 +475,16 @@ int main(int iArgC, char *cArgV[])
 						<< ")" << std::endl;
 					// Recycle the new instruments until there are the same as there were
 					// originally.
-					pInst->patches->setPatchCount(oldCount);
+					pInst->patches->reserve(oldCount);
 					for (unsigned int i = newCount; i < oldCount; i++) {
 						unsigned int srcInst = (i - newCount) % newCount;
 						std::cout << " > Reusing new instrument #"
 							<< srcInst + 1 << " as #" << i + 1 << "/"
 							<< oldCount << std::endl;
-						pInst->patches->setPatch(i, pInst->patches->getPatch(srcInst));
+						// NOTE: This will store the same instrument twice, instead of
+						// making a copy - i.e. modifying one will change the other.
+						// It's OK here since we won't be futher changing instruments.
+						pInst->patches->push_back(pInst->patches->at(srcInst));
 					}
 				}
 
@@ -500,14 +504,17 @@ int main(int iArgC, char *cArgV[])
 
 				unsigned int instrumentRepeat = strtod(i->value[0].c_str(), NULL);
 
-				unsigned int oldCount = pMusic->patches->getPatchCount();
-				pMusic->patches->setPatchCount(instrumentRepeat);
+				unsigned int oldCount = pMusic->patches->size();
+				pMusic->patches->reserve(instrumentRepeat);
 				for (unsigned int i = oldCount; i < instrumentRepeat; i++) {
 					unsigned int srcInst = (i - oldCount) % oldCount;
 					std::cout << " > Repeating instrument #"
 						<< srcInst + 1 << " as #" << i + 1 << "/"
 						<< instrumentRepeat << std::endl;
-					pMusic->patches->setPatch(i, pMusic->patches->getPatch(srcInst));
+					// NOTE: This will store the same instrument twice, instead of
+					// making a copy - i.e. modifying one will change the other.
+					// It's OK here since we won't be futher changing instruments.
+					pMusic->patches->push_back(pMusic->patches->at(srcInst));
 				}
 
 			// Ignore --type/-t

@@ -111,7 +111,7 @@ struct FIXTURE_NAME: public default_sample {
 		BOOST_REQUIRE_EQUAL(pevNoteOn->absTime, 0);
 
 		OPLPatchPtr inst =
-			boost::dynamic_pointer_cast<OPLPatch>(this->music->patches->getPatch(0));
+			boost::dynamic_pointer_cast<OPLPatch>(this->music->patches->at(0));
 		BOOST_REQUIRE_MESSAGE(inst, "Test fault: Tried to run OPL test for "
 			"music format that doesn't have OPL instruments");
 

@@ -149,8 +149,8 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 	// No notes if there are no patches.
 	if (!this->patches) return;
 
-	assert(ev->instrument < this->patches->getPatchCount());
-	patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->getPatch(ev->instrument));
+	assert(ev->instrument < this->patches->size());
+	patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->at(ev->instrument));
 
 	// If we're only supposed to play MIDI notes then don't play this note if
 	// there's no MIDI patch.

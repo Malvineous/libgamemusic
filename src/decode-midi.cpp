@@ -270,10 +270,8 @@ MusicPtr MIDIDecoder::decode()
 								MIDIPatchPtr newPatch(new MIDIPatch());
 								newPatch->percussion = true;
 								newPatch->midiPatch = evdata;
-								unsigned int n = music->patches->getPatchCount();
-								music->patches->setPatchCount(n + 1);
-								music->patches->setPatch(n, newPatch);
-								this->percMap[evdata] = n;
+								this->percMap[evdata] = music->patches->size();
+								music->patches->push_back(newPatch);
 							}
 							ev->milliHertz = PERC_FREQ;
 							ev->instrument = this->percMap[evdata];
@@ -281,7 +279,7 @@ MusicPtr MIDIDecoder::decode()
 							ev->milliHertz = midiToFreq(evdata);
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
-						if (ev->instrument >= music->patches->getPatchCount()) {
+						if (ev->instrument >= music->patches->size()) {
 							// A note is sounding without a patch change event ever arriving,
 							// so use a default instrument
 							this->setInstrument(music->patches, midiChannel, MIDI_DEFAULT_PATCH);
@@ -477,12 +475,13 @@ void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 	throw ()
 {
 	bool found = false;
-	for (unsigned int i = 0; i < patches->getPatchCount(); i++) {
-		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(patches->getPatch(i));
+	int n = 0;
+	for (PatchBank::const_iterator i = patches->begin(); i != patches->end(); i++, n++) {
+		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(*i);
 		if (!p) continue;
 		if (p->percussion) continue;
 		if (p->midiPatch == midiPatch) {
-			this->currentInstrument[midiChannel] = i;
+			this->currentInstrument[midiChannel] = n;
 			found = true;
 			break;
 		}
@@ -492,10 +491,8 @@ void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 		MIDIPatchPtr newPatch(new MIDIPatch());
 		newPatch->percussion = false;
 		newPatch->midiPatch = midiPatch;
-		unsigned int n = patches->getPatchCount();
-		patches->setPatchCount(n + 1);
-		patches->setPatch(n, newPatch);
-		this->currentInstrument[midiChannel] = n;
+		this->currentInstrument[midiChannel] = patches->size();
+		patches->push_back(newPatch);
 	}
 	return;
 }

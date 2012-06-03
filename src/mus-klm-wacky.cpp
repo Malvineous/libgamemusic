@@ -216,7 +216,7 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 
 	// Read the instruments
 	int numInstruments = (offSong - 5) / 11;
-	patches->setPatchCount(numInstruments);
+	patches->reserve(numInstruments);
 	for (int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr patch(new OPLPatch());
 		uint8_t inst[11];
@@ -288,7 +288,7 @@ off klm
 				break;*/
 		}
 ///ENDTEMP
-		patches->setPatch(i, patch);
+		patches->push_back(patch);
 	}
 
 	// Make sure we've reached the start of the song data
@@ -476,19 +476,21 @@ void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 	throw (stream::error, format_limitation)
 {
 	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->getPatchCount() > 256) {
+	if (music->patches->size() > 256) {
 		throw format_limitation("KLM files have a maximum of 256 instruments.");
 	}
 
-	uint16_t musOffset = 5 + music->patches->getPatchCount() * 11;
+	uint16_t musOffset = 5 + music->patches->size() * 11;
 	output
 		<< u16le(0) // tempo placeholder
 		<< u8(1)    // unknown
 		<< u16le(musOffset)
 	;
-	for (unsigned int i = 0; i < music->patches->getPatchCount(); i++) {
+	for (PatchBank::const_iterator
+		i = music->patches->begin(); i != music->patches->end(); i++
+	) {
 		uint8_t inst[11];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->getPatch(i));
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(*i);
 		assert(patch);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {

@@ -56,11 +56,11 @@ struct midi_fixture: public default_sample {
 		this->music->events.reset(new gm::EventVector());
 
 		gm::PatchBankPtr pb(new gm::PatchBank());
-		pb->setPatchCount(1);
+		pb->reserve(1);
 		gm::MIDIPatchPtr p(new gm::MIDIPatch());
 		p->midiPatch = 20; // Instrument #0 is MIDI patch #20
 		p->percussion = false;
-		pb->setPatch(0, p);
+		pb->push_back(p);
 		this->music->patches = pb;
 	}
 

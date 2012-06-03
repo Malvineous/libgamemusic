@@ -71,7 +71,7 @@ struct FIXTURE_NAME: public default_sample {
 		if (setInstruments) {
 			// Set some default instruments
 			this->music->patches.reset(new PatchBank());
-			this->music->patches->setPatchCount(1);
+			this->music->patches->reserve(1);
 #if INSTRUMENT_TYPE == 0
 			OPLPatchPtr defInst(new OPLPatch());
 			defInst->m.enableTremolo = defInst->c.enableTremolo = true;
@@ -105,7 +105,7 @@ struct FIXTURE_NAME: public default_sample {
 #else
 #error Unknown instrument type
 #endif
-			this->music->patches->setPatch(0, defInst);
+			this->music->patches->push_back(defInst);
 		}
 
 		// Set a default tempo
@@ -152,7 +152,7 @@ struct FIXTURE_NAME: public default_sample {
 	void testRhythm(int rhythm, int opIndex)
 	{
 		PatchBankPtr instruments(new PatchBank());
-		instruments->setPatchCount(1);
+		instruments->reserve(1);
 		OPLPatchPtr newInst(new OPLPatch());
 		newInst->rhythm = rhythm;
 		newInst->feedback = 4;
@@ -177,7 +177,7 @@ setInstrumentAgain:
 			opIndex = 0;
 			goto setInstrumentAgain;
 		}
-		instruments->setPatch(0, newInst);
+		instruments->push_back(newInst);
 		this->music->patches = instruments;
 
 		this->init(false); // set tempo but not instruments

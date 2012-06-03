@@ -335,15 +335,15 @@ int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 	throw ()
 {
 	// See if the patch has already been saved
-	int numPatches = patches->getPatchCount();
-	for (int i = 0; i < numPatches; ++i) {
-		OPLPatchPtr p = boost::dynamic_pointer_cast<OPLPatch>(patches->getPatch(i));
-		if ((p) && (*p == *curPatch)) return i; // patch already saved
+	unsigned int j = 0;
+	for (PatchBank::const_iterator i = patches->begin(); i != patches->end(); i++, j++) {
+		OPLPatchPtr p = boost::dynamic_pointer_cast<OPLPatch>(*i);
+		if ((p) && (*p == *curPatch)) return j; // patch already saved
 	}
 
 	// Save the patch
-	patches->setPatchCount(numPatches + 1);
-	patches->setPatch(numPatches, curPatch);
+	unsigned int numPatches = patches->size();
+	patches->push_back(curPatch);
 	return numPatches;
 }
 

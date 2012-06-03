@@ -128,9 +128,8 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		usPerQuarterNote);
 
 	// Read the instruments
-	PatchBankPtr oplPatches(new PatchBank());
-	music->patches = oplPatches;
-	oplPatches->setPatchCount(numInstruments);
+	music->patches.reset(new PatchBank());
+	music->patches->reserve(numInstruments);
 	input->seekg(offInst, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr patch(new OPLPatch());
@@ -160,7 +159,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		patch->deepVibrato = false;
 
 		patch->rhythm      = 0;
-		oplPatches->setPatch(i, patch);
+		music->patches->push_back(patch);
 
 		//this->patchMap[i] = i;
 	}
@@ -186,7 +185,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	assert(music->ticksPerQuarterNote != 0);
 
 	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->getPatchCount() >= MIDI_PATCHES) {
+	if (music->patches->size() >= MIDI_PATCHES) {
 		throw bad_patch("CMF files have a maximum of 128 instruments.");
 	}
 
@@ -213,7 +212,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		}
 	}
 	uint16_t offInst = offNext;
-	uint16_t numInstruments = music->patches->getPatchCount();
+	uint16_t numInstruments = music->patches->size();
 	offNext += 16 * numInstruments;
 	uint16_t offMusic = offNext;
 
@@ -243,7 +242,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->getPatch(i));
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
 		assert(patch);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {

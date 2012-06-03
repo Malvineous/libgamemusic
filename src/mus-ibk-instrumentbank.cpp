@@ -90,7 +90,7 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 	input->read(names, IBK_INST_COUNT * IBK_NAME_LEN);
 
 	// Read the instruments
-	music->patches->setPatchCount(IBK_INST_COUNT);
+	music->patches->reserve(IBK_INST_COUNT);
 	input->seekg(4, stream::start);
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
 		OPLPatchPtr patch(new OPLPatch());
@@ -131,7 +131,7 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->name = std::string((char *)name, namelen);
 
-		music->patches->setPatch(i, patch);
+		music->patches->push_back(patch);
 	}
 
 	return music;
@@ -142,7 +142,7 @@ void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
 	throw (stream::error, format_limitation)
 {
 	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->getPatchCount() >= IBK_INST_COUNT) {
+	if (music->patches->size() >= IBK_INST_COUNT) {
 		throw bad_patch("IBK files have a maximum of 128 instruments.");
 	}
 
@@ -153,7 +153,7 @@ void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
 
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->getPatch(i));
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
 		assert(patch);
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
