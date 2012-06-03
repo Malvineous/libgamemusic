@@ -149,9 +149,6 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 	if ((rhythm != 1) && (rhythm != 2)) {
 		this->processNextPair(0, chipIndex, BASE_FEED_CONN | oplChannel,  ((i->feedback & 7) << 1) | (i->connection & 1));
 	}
-	// These next two affect the entire synth (all instruments/channels)
-	//TODO curPatch->deepTremolo     =  this->oplState[BASE_RHYTHM] >> 7;
-	//TODO curPatch->deepVibrato     = (this->oplState[BASE_RHYTHM] >> 6) & 1;
 
 	if (rhythm == 0) { // normal instrument
 		// Write lower eight bits of note freq

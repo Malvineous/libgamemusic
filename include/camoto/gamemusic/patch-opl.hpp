@@ -103,13 +103,6 @@ struct OPLPatch: public Patch {
 	 * 5 == bass drum (c and m)
 	 */
 	uint8_t rhythm;
-
-	/// Increase tremolo depth.  NOTE: Affects all channels/instruments.
-	bool deepTremolo;
-
-	/// Increase vibrato depth.  NOTE: Affects all channels/instruments.
-	bool deepVibrato;
-
 };
 
 inline bool operator== (const OPLOperator& a, const OPLOperator& b)
@@ -162,8 +155,6 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 	return
 		(a.feedback == b.feedback)
 		&& (a.connection == b.connection)
-		&& (a.deepTremolo == b.deepTremolo)
-		&& (a.deepVibrato == b.deepVibrato)
 	;
 }
 

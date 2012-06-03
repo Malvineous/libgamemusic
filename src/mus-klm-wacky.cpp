@@ -267,10 +267,6 @@ off klm
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		// These next two affect the entire synth (all instruments/channels)
-		patch->deepTremolo = false;
-		patch->deepVibrato = false;
-
 		patch->rhythm      = 0;
 
 ///TEMP

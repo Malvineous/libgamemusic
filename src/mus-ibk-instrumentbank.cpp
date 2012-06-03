@@ -115,10 +115,6 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		// These next two affect the entire synth (all instruments/channels)
-		patch->deepTremolo = false;
-		patch->deepVibrato = false;
-
 		patch->rhythm      = 0;
 
 		uint8_t *name = &names[i * IBK_NAME_LEN];

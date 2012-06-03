@@ -324,9 +324,6 @@ OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 
 	curPatch->feedback        = (this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] >> 1) & 0x07;
 	curPatch->connection      =  this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] & 1;
-	// These next two affect the entire synth (all instruments/channels)
-	curPatch->deepTremolo     =  this->oplState[chipIndex][BASE_RHYTHM] >> 7;
-	curPatch->deepVibrato     = (this->oplState[chipIndex][BASE_RHYTHM] >> 6) & 1;
 	curPatch->rhythm          = 0; // will be overridden later if needed
 	return curPatch;
 }

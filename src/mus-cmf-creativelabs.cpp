@@ -263,10 +263,6 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
 		inst[11] = inst[12] = inst[13] = inst[14] = inst[15] = 0;
 
-		/// @todo handle these
-		//patch->deepTremolo = false;
-		//patch->deepVibrato = false;
-
 		output->write((char *)inst, 16);
 	}
 

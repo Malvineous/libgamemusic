@@ -34,8 +34,7 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 		<< (int)p.rhythm << ":"
 		<< (int)p.feedback << '.'
 		<< (p.connection ? 'C' : 'c')
-		<< (p.deepTremolo ? 'T' : 't')
-		<< (p.deepVibrato ? 'V' : 'v') << '/'
+		<< '/'
 
 		<< (p.c.enableTremolo ? 'T' : 't')
 		<< (p.c.enableVibrato ? 'V' : 'v')
@@ -102,8 +101,6 @@ OPLPatch::OPLPatch()
 	throw () :
 		feedback(0),
 		connection(false),
-		rhythm(0),
-		deepTremolo(false),
-		deepVibrato(false)
+		rhythm(0)
 {
 }
