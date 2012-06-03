@@ -21,6 +21,7 @@
 #include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-cmf-creativelabs.hpp"
@@ -127,9 +128,41 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	MusicPtr music = midiDecode(input, MIDIFlags::BasicMIDIOnly, ticksPerQuarter,
 		usPerQuarterNote);
 
+	EventPtr gev;
+
+	// Set standard CMF settings
+
+	{
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		gev.reset(ev);
+		ev->channel = 0; // global event (all channels)
+		ev->absTime = 0;
+		ev->configType = ConfigurationEvent::EnableDeepTremolo;
+		ev->value = 1;
+		music->events->insert(music->events->begin() + 1, gev);
+	}
+	{
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		gev.reset(ev);
+		ev->channel = 0; // global event (all channels)
+		ev->absTime = 0;
+		ev->configType = ConfigurationEvent::EnableDeepVibrato;
+		ev->value = 1;
+		music->events->insert(music->events->begin() + 2, gev);
+	}
+	{
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		gev.reset(ev);
+		ev->channel = 0; // global event (all channels)
+		ev->absTime = 0;
+		ev->configType = ConfigurationEvent::EnableWaveSel;
+		ev->value = 1;
+		music->events->insert(music->events->begin() + 3, gev);
+	}
+
 	// Read the instruments
-	music->patches.reset(new PatchBank());
-	music->patches->reserve(numInstruments);
+	PatchBankPtr oplBank(new PatchBank());
+	oplBank->reserve(numInstruments);
 	input->seekg(offInst, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr patch(new OPLPatch());
@@ -154,18 +187,96 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		// These next two affect the entire synth (all instruments/channels)
-		patch->deepTremolo = false;
-		patch->deepVibrato = false;
-
 		patch->rhythm      = 0;
-		music->patches->push_back(patch);
 
-		//this->patchMap[i] = i;
+		oplBank->push_back(patch);
 	}
 	for (unsigned int i = numInstruments; i < 128; i++) {
 		/// @todo Default CMF instruments - load from .ibk?
 	}
+
+	// Run through the song events, and create each patch based on how it is used
+	int instMapping[6][128];
+	for (unsigned int t = 0; t < 6; t++) {
+		for (unsigned int p = 0; p < 128; p++) instMapping[t][p] = -1;
+	}
+	for (EventVector::iterator i = music->events->begin(); i != music->events->end(); i++) {
+		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
+		if (!ev) continue;
+
+		// Figure out which rhythm instrument (if any) this is
+		// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
+		unsigned int targetRhythm;
+		if ((ev->channel >= 12) && (ev->channel <= 16)) {
+			targetRhythm = 17 - ev->channel; // channel 0 is global
+		} else {
+			targetRhythm = 0;
+		}
+
+		// Figure out what CMF instrument number to play
+		MIDIPatchPtr midInst = boost::dynamic_pointer_cast<MIDIPatch>(music->patches->at(ev->instrument));
+		unsigned int oplInst = midInst->midiPatch;
+		int& curTarget = instMapping[targetRhythm][oplInst];
+
+		if (curTarget == -1) {
+			// Don't have a mapping yet
+
+			if (oplInst >= oplBank->size()) {
+				/// @todo Need to add one of the generic instruments
+			} else {
+				// See if it's the correct rhythm type
+				OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplInst).get());
+				if (src->rhythm == targetRhythm) {
+					// This instrument is already correct, map it to itself
+					curTarget = oplInst;
+				} else {
+					// The patch is for a different rhythm type, so we'll either have to
+					// duplicate it, or edit it if the base patch won't be used.
+					bool inUse = true;//false;
+					/*
+					for (unsigned int t = 0; t < 6; t++) {
+						for (unsigned int p = 0; p < 128; p++) {
+							if (instMapping[t][p] == (signed)oplInst) {
+								// Something already maps to this instrument
+								inUse = true;
+								break;
+							}
+						}
+						if (inUse) break;
+					}
+					*/
+					if (inUse) {
+						// Something already maps to this instrument, so we'll have to
+						// duplicate it.
+						OPLPatchPtr copy(new OPLPatch);
+						*copy = *src;
+						copy->rhythm = targetRhythm;
+						if ((copy->rhythm == 2) || (copy->rhythm == 4)) {
+							// For these instruments, the modulator data should be loaded into
+							// the OPL carrier instead.
+							copy->c = copy->m;
+							/// @todo write carrier settings into modulator fields when saving
+						}
+						curTarget = oplBank->size();
+						oplBank->push_back(copy);
+					} else {
+						// Nothing is using this instrument yet, so edit it.
+						/// @todo Enable this code, and figure out how to copy the modulator
+						/// as above without losing the carrier data in case the instrument
+						/// is used normally later.
+						src->rhythm = targetRhythm;
+						curTarget = oplInst;
+					}
+				}
+			}
+		}
+		// Use the previously defined mapping
+		assert(curTarget >= 0);
+		ev->instrument = curTarget;
+	}
+
+	// Disregard the MIDI patches and use the OPL ones
+	music->patches = oplBank;
 
 	// Read metadata
 	input->seekg(offTitle, stream::start);

@@ -71,8 +71,7 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 	unsigned int fnum, block;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 
-	int oplChannel = (ev->channel - 1) % 14; // TODO: channel map for >9 chans
-	int rhythm = 0;
+	int oplChannel = (ev->channel - 1) % 6; // TODO: channel map for >9 chans
 	int chipIndex = 0; // TODO: calculate from channel map
 
 	int delay = ev->absTime - this->lastTick;
@@ -94,63 +93,40 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 	// Don't play this note if there's no patch for it
 	if (!i) return;
 
-	if (oplChannel > 8) {
-		// Rhythm-mode instrument
-		rhythm = oplChannel - 8;
-
-		// Make sure the correct rhythm channel is in use
-		if (i->rhythm != rhythm) {
-			std::stringstream ss;
-			ss << "Instrument type mismatch - patch was for "
-				<< rhythmToText(i->rhythm) << " but channel can only be used for "
-				<< rhythmToText(rhythm);
-			//throw EChannelMismatch(ev->instrument, oplChannel, ss.str());
-			std::cerr << "Warning: " << ss.str() << std::endl;
-		}
-
-		switch (rhythm) {
-			case 1:
-				oplChannel = 7;
-				this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
-				break; // mod, hihat
-			case 2:
-				oplChannel = 8;
-				this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
-				break; // car, topcym
-			case 3:
-				oplChannel = 8;
-				this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
-				break; // mod, tomtom
-			case 4:
-				oplChannel = 7;
-				this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
-				break; // car, snare
-			case 5:
-				oplChannel = 6;
-				this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
-				this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
-				break; // both, bassdrum
-		}
-
-	} else { // normal instrument, write both operators
-		if (i->rhythm != 0) {
-			std::stringstream ss;
-			ss << "Instrument type mismatch - patch was for rhythm instrument ("
-				<< rhythmToText(i->rhythm) << ") but channel can only be used for "
-					"normal (non-rhythm) instruments";
-			throw EChannelMismatch(ev->instrument, oplChannel, ss.str());
-		}
-		this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
-		this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
+	switch (i->rhythm) {
+		case 1:
+			oplChannel = 7;
+			this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
+			break; // mod, hihat
+		case 2:
+			oplChannel = 8;
+			this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
+			break; // car, topcym
+		case 3:
+			oplChannel = 8;
+			this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
+			break; // mod, tomtom
+		case 4:
+			oplChannel = 7;
+			this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
+			break; // car, snare
+		case 5:
+			oplChannel = 6;
+			// both, bassdrum
+			// fall through
+		default:
+			// normal instrument (or bass drum), write both operators
+			this->writeOpSettings(chipIndex, oplChannel, 0, i, ev->velocity);
+			this->writeOpSettings(chipIndex, oplChannel, 1, i, ev->velocity);
+			break;
 	}
 
 	// Write the rest of the (global) instrument settings.
-	/// @todo Figure out which rhythm instruments should be excluded
-	if ((rhythm != 1) && (rhythm != 2)) {
+	if ((i->rhythm != 2) && (i->rhythm != 4)) {
 		this->processNextPair(0, chipIndex, BASE_FEED_CONN | oplChannel,  ((i->feedback & 7) << 1) | (i->connection & 1));
 	}
 
-	if (rhythm == 0) { // normal instrument
+	if (i->rhythm == 0) { // normal instrument
 		// Write lower eight bits of note freq
 		this->processNextPair(0, chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
 
@@ -161,7 +137,7 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 			| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 		);
 	} else { // rhythm instrument
-		if ((rhythm != 2) && (rhythm != 1)) { // can't set hihat or cymbal freq
+		if ((i->rhythm != 2) && (i->rhythm != 4)) { // can't set hihat or snare freq
 			// Write lower eight bits of note freq
 			this->processNextPair(0, chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
 
@@ -175,9 +151,13 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 		this->processNextPair(0, chipIndex, 0xBD,
 			0x20 |  // enable percussion mode
 			this->oplState[chipIndex][0xBD] |
-			(1 << (rhythm-1))  // instrument-specific keyon
+			(1 << (i->rhythm-1))  // instrument-specific keyon
 		);
 	}
+
+	this->lastData[ev->channel].oplChannel = oplChannel;
+	this->lastData[ev->channel].rhythm = i->rhythm;
+	this->lastData[ev->channel].chipIndex = chipIndex;
 
 	this->lastTick = ev->absTime;
 	return;
@@ -186,26 +166,18 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 void EventConverter_OPL::handleEvent(const NoteOffEvent *ev)
 	throw (stream::error)
 {
-	// TODO: These are just converting back the mappings we used when reading
-	// files.  We'll need to implement some kind of proper channel map (probably
-	// specified in the UI with the instrument map) so that arbitrary incoming
-	// channels can be mapped to correct OPL instrument/rhythm channels.
-	int oplChannel = (ev->channel - 1) % 14; // TODO: channel map for >9 chans
-	int chipIndex = (ev->channel - 1) / 14; // TODO: calculate from channel map
-
-
+	LastData &d = this->lastData[ev->channel];
 	int delay = ev->absTime - this->lastTick;
 
-	if (oplChannel > 8) {
+	if (d.rhythm) {
 		// Rhythm-mode instrument
-		int rhythm = oplChannel - 8;
-		this->processNextPair(delay, chipIndex, 0xBD,
-			(this->oplState[chipIndex][0xBD] & ~(1 << (rhythm-1)))
+		this->processNextPair(delay, d.chipIndex, 0xBD,
+			(this->oplState[d.chipIndex][0xBD] & ~(1 << (d.rhythm-1)))
 		);
 	} else {
 		// Write 0xB0 w/ keyon bit disabled
-		this->processNextPair(delay, chipIndex, 0xB0 | oplChannel,
-			(this->oplState[chipIndex][0xB0 | oplChannel] & ~OPLBIT_KEYON)
+		this->processNextPair(delay, d.chipIndex, 0xB0 | d.oplChannel,
+			(this->oplState[d.chipIndex][0xB0 | d.oplChannel] & ~OPLBIT_KEYON)
 		);
 	}
 
@@ -254,7 +226,7 @@ void EventConverter_OPL::handleEvent(const ConfigurationEvent *ev)
 			else this->oplState[ev->value >> 1][0xBD] &= 0xBF;
 			break;
 		case ConfigurationEvent::EnableRhythm:
-			// Nothing required, rhythm mode is enabled the first type a rhythm
+			// Nothing required, rhythm mode is enabled the first time a rhythm
 			// instrument is played.
 			break;
 		case ConfigurationEvent::EnableWaveSel:

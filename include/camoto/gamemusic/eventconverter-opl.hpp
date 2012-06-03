@@ -174,6 +174,13 @@ class EventConverter_OPL: virtual public EventHandler
 		unsigned long postponedDelay; ///< Delay for next event when DelayIsPostData
 		uint8_t oplState[2][256];  ///< Current register values
 
+		struct LastData {
+			unsigned int oplChannel;
+			unsigned int rhythm;
+			unsigned int chipIndex;
+		};
+		LastData lastData[MAX_CHANNELS]; ///< Last OPL settings per song channel
+
 		/// Update oplState then call handleNextPair()
 		/**
 		 * @param delay
