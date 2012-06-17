@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <math.h>
 #include <boost/pointer_cast.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
@@ -275,7 +276,7 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 		outputLevel = o->outputLevel;
 		if (velocity != 0) {
 			// Not using default velocity
-			outputLevel = 0x3F - ((0x3F - outputLevel) * velocity / 255);
+			outputLevel = 0x3F - 0x3F * log(velocity + 1) / log(256);
 		}
 	}
 

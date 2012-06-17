@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <math.h>
 #include <iostream>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
@@ -365,7 +366,14 @@ EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 	int block = (b0val >> 2) & 0x07;
 
 	ev->milliHertz = fnumToMilliHertz(fnum, block, this->fnumConversion);
-	ev->velocity = 0;
+
+	// Ignore velocity for MOD-only rhythm instruments
+	if ((rhythm == 1) || (rhythm == 3)) {
+		ev->velocity = 0;
+	} else {
+		uint8_t vel = this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F;
+		ev->velocity = pow(M_E, (63.0 - vel) / 63.0 * log(256));
+	}
 
 	return gev;
 }

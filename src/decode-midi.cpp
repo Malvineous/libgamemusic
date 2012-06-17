@@ -263,7 +263,8 @@ MusicPtr MIDIDecoder::decode()
 						NoteOnEvent *ev = new NoteOnEvent();
 						gev.reset(ev);
 						ev->channel = midiChannel + 1;
-						ev->velocity = velocity;
+						// MIDI is 1-127, we are 1-255 (MIDI velocity 0 is note off)
+						ev->velocity = (velocity & 1) | (velocity << 1);
 						if (((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0) && (midiChannel == 9)) {
 							if (this->percMap[evdata] == 0xFF) {
 								// Need to allocate a new instrument for this percussion note
