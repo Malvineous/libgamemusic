@@ -164,7 +164,8 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			)) {
 				// We have to skip any invalid registers, otherwise there may not be
 				// enough space in the codemap table to fit the valid registers.
-				std::cerr << "WARNING: Unused OPL register 0x" << std::hex << oplEvent->reg
+				std::cerr << "WARNING: Unused OPL register 0x" << std::hex
+					<< (unsigned int)oplEvent->reg
 					<< " cannot be written to a DROv2 file." << std::endl;
 				return;
 			}
