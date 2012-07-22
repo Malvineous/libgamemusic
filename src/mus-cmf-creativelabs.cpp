@@ -34,6 +34,27 @@ using namespace camoto::gamemusic;
 /// Number of available channels in a CMF file.
 const unsigned int CMF_MAX_CHANNELS = 16;
 
+/// Number of preset instruments (repeated from patch 0 to 128)
+#define CMF_NUM_DEFAULT_INSTRUMENTS 16
+
+static const char *CMF_DEFAULT_PATCHES =
+"\x01\x11\x4F\x00\xF1\xD2\x53\x74\x00\x00\x06"
+"\x07\x12\x4F\x00\xF2\xF2\x60\x72\x00\x00\x08"
+"\x31\xA1\x1C\x80\x51\x54\x03\x67\x00\x00\x0E"
+"\x31\xA1\x1C\x80\x41\x92\x0B\x3B\x00\x00\x0E"
+"\x31\x16\x87\x80\xA1\x7D\x11\x43\x00\x00\x08"
+"\x30\xB1\xC8\x80\xD5\x61\x19\x1B\x00\x00\x0C"
+"\xF1\x21\x01\x00\x97\xF1\x17\x18\x00\x00\x08"
+"\x32\x16\x87\x80\xA1\x7D\x10\x33\x00\x00\x08"
+"\x01\x12\x4F\x00\x71\x52\x53\x7C\x00\x00\x0A"
+"\x02\x03\x8D\x00\xD7\xF5\x37\x18\x00\x00\x04"
+"\x21\x21\xD1\x00\xA3\xA4\x46\x25\x00\x00\x0A"
+"\x22\x22\x0F\x00\xF6\xF6\x95\x36\x00\x00\x0A"
+"\xE1\xE1\x00\x00\x44\x54\x24\x34\x02\x02\x07"
+"\xA5\xB1\xD2\x80\x81\xF1\x03\x05\x00\x00\x02"
+"\x71\x22\xC5\x00\x6E\x8B\x17\x0E\x00\x00\x02"
+"\x32\x21\x16\x80\x73\x75\x24\x57\x00\x00\x0E";
+
 std::string MusicType_CMF::getCode() const
 	throw ()
 {
@@ -191,8 +212,37 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 
 		oplBank->push_back(patch);
 	}
-	for (unsigned int i = numInstruments; i < 128; i++) {
-		/// @todo Default CMF instruments - load from .ibk?
+
+	// Load the default instruments
+	int genericMapping[CMF_NUM_DEFAULT_INSTRUMENTS];
+	PatchBankPtr oplBankDefault(new PatchBank());
+	oplBank->reserve(CMF_NUM_DEFAULT_INSTRUMENTS);
+	for (unsigned int i = 0; i < CMF_NUM_DEFAULT_INSTRUMENTS; i++) {
+		OPLPatchPtr patch(new OPLPatch());
+		uint8_t *inst = (uint8_t *)(CMF_DEFAULT_PATCHES + i * 16);
+
+		OPLOperator *o = &patch->m;
+		for (int op = 0; op < 2; op++) {
+			o->enableTremolo = (inst[0 + op] >> 7) & 1;
+			o->enableVibrato = (inst[0 + op] >> 6) & 1;
+			o->enableSustain = (inst[0 + op] >> 5) & 1;
+			o->enableKSR     = (inst[0 + op] >> 4) & 1;
+			o->freqMult      =  inst[0 + op] & 0x0F;
+			o->scaleLevel    =  inst[2 + op] >> 6;
+			o->outputLevel   =  inst[2 + op] & 0x3F;
+			o->attackRate    =  inst[4 + op] >> 4;
+			o->decayRate     =  inst[4 + op] & 0x0F;
+			o->sustainRate   =  inst[6 + op] >> 4;
+			o->releaseRate   =  inst[6 + op] & 0x0F;
+			o->waveSelect    =  inst[8 + op] & 0x07;
+			o = &patch->c;
+		}
+		patch->feedback    = (inst[10] >> 1) & 0x07;
+		patch->connection  =  inst[10] & 1;
+		patch->rhythm      = 0;
+
+		oplBankDefault->push_back(patch);
+		genericMapping[i] = -1; // not yet assigned
 	}
 
 	// Run through the song events, and create each patch based on how it is used
@@ -217,56 +267,55 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		MIDIPatchPtr midInst = boost::dynamic_pointer_cast<MIDIPatch>(music->patches->at(ev->instrument));
 		unsigned int oplInst = midInst->midiPatch;
 		int& curTarget = instMapping[targetRhythm][oplInst];
-
 		if (curTarget == -1) {
 			// Don't have a mapping yet
 
-			if (oplInst >= oplBank->size()) {
-				/// @todo Need to add one of the generic instruments
-			} else {
-				// See if it's the correct rhythm type
-				OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplInst).get());
-				if (src->rhythm == targetRhythm) {
-					// This instrument is already correct, map it to itself
-					curTarget = oplInst;
+			// See if this is a patch for a default instrument.  We can't use
+			// oplBank->size() as it will increase as we add default instruments to
+			// the bank, so we use numInstruments which should always be the number of
+			// custom instruments only.
+			if (oplInst >= numInstruments) {
+				// Using one of the generic instruments
+				unsigned int realInst = oplInst % CMF_NUM_DEFAULT_INSTRUMENTS;
+				if (genericMapping[realInst] <= 0) {
+					// Need to add this
+					oplInst = genericMapping[realInst] = oplBank->size();
+					oplBank->push_back(oplBankDefault->at(realInst));
 				} else {
-					// The patch is for a different rhythm type, so we'll either have to
-					// duplicate it, or edit it if the base patch won't be used.
-					bool inUse = true;//false;
-					/*
-					for (unsigned int t = 0; t < 6; t++) {
-						for (unsigned int p = 0; p < 128; p++) {
-							if (instMapping[t][p] == (signed)oplInst) {
-								// Something already maps to this instrument
-								inUse = true;
-								break;
-							}
-						}
-						if (inUse) break;
+					oplInst = genericMapping[realInst];
+				}
+			}
+
+			// See if it's the correct rhythm type
+			OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplInst).get());
+			if (src->rhythm == targetRhythm) {
+				// This instrument is already correct, map it to itself
+				curTarget = oplInst;
+			} else {
+				// The patch is for a different rhythm type, so we'll either have to
+				// duplicate it, or edit it if the base patch won't be used.
+				bool inUse = true;//false;
+				if (inUse) {
+					// Something already maps to this instrument, so we'll have to
+					// duplicate it.
+					OPLPatchPtr copy(new OPLPatch);
+					*copy = *src;
+					copy->rhythm = targetRhythm;
+					if ((copy->rhythm == 2) || (copy->rhythm == 4)) {
+						// For these instruments, the modulator data should be loaded into
+						// the OPL carrier instead.
+						copy->c = copy->m;
+						/// @todo write carrier settings into modulator fields when saving
 					}
-					*/
-					if (inUse) {
-						// Something already maps to this instrument, so we'll have to
-						// duplicate it.
-						OPLPatchPtr copy(new OPLPatch);
-						*copy = *src;
-						copy->rhythm = targetRhythm;
-						if ((copy->rhythm == 2) || (copy->rhythm == 4)) {
-							// For these instruments, the modulator data should be loaded into
-							// the OPL carrier instead.
-							copy->c = copy->m;
-							/// @todo write carrier settings into modulator fields when saving
-						}
-						curTarget = oplBank->size();
-						oplBank->push_back(copy);
-					} else {
-						// Nothing is using this instrument yet, so edit it.
-						/// @todo Enable this code, and figure out how to copy the modulator
-						/// as above without losing the carrier data in case the instrument
-						/// is used normally later.
-						src->rhythm = targetRhythm;
-						curTarget = oplInst;
-					}
+					curTarget = oplBank->size();
+					oplBank->push_back(copy);
+				} else {
+					// Nothing is using this instrument yet, so edit it.
+					/// @todo Enable this code, and figure out how to copy the modulator
+					/// as above without losing the carrier data in case the instrument
+					/// is used normally later.
+					src->rhythm = targetRhythm;
+					curTarget = oplInst;
 				}
 			}
 		}
