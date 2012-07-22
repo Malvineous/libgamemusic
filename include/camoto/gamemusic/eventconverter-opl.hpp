@@ -71,6 +71,9 @@ struct OPLEvent {
 const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value
 const float OPL_FNUM_ROUND = 50000.0;    ///< Alternate value used occasionally
 
+/// Maximum number of OPL channels that will ever be used
+#define MAX_OPL_CHANNELS 18
+
 /// Callback used to do something with the OPL data supplied by oplEncode().
 class OPLWriterCallback {
 	public:
@@ -171,11 +174,15 @@ class EventConverter_OPL: virtual public EventHandler
 
 		unsigned long lastTick;    ///< Time of last event
 		unsigned long cachedDelay; ///< Delay to add on to next reg write
-		unsigned long postponedDelay; ///< Delay for next event when DelayIsPostData
 		uint8_t oplState[2][256];  ///< Current register values
+		unsigned long oplChanState[MAX_OPL_CHANNELS]; ///< State of virtual OPL channels: 0=off,-1=on,>0=noteoff tick
+		uint8_t chanToVirtOPL[MAX_CHANNELS]; // which event channel maps to which virtual OPL channel
+		bool modeOPL3;             ///< Is OPL3/dual OPL2 mode on?
+		bool modeRhythm;           ///< Is rhythm mode enabled?
 
 		struct LastData {
-			unsigned int oplChannel;
+			unsigned int realOplChannel;
+			unsigned int virtualOplChannel;
 			unsigned int rhythm;
 			unsigned int chipIndex;
 		};
