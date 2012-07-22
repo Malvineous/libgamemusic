@@ -84,8 +84,12 @@ class MIDIDecoder
 		unsigned int midiFlags;           ///< Flags supplied in constructor
 		unsigned long ticksPerQuarterNote;///< Current song granularity
 
-		/// For each of the 128 MIDI patches, which instrument are we using?
-		//uint8_t patchMap[MIDI_PATCHES];
+		/// For each of the output channels, which instrument are we using?
+		/**
+		 * We only remember this so we can attempt to reuse the same channel for the
+		 * same instrument.
+		 */
+		uint8_t lastPatch[MAX_CHANNELS];
 
 		/// For each of the percussion notes, which instrument are we using?
 		uint8_t percMap[MIDI_NOTES];
@@ -99,8 +103,11 @@ class MIDIDecoder
 		/// Current pitchbend level on each MIDI channel (-8192 to 8191)
 		int16_t currentPitchbend[MIDI_CHANNELS];
 
-		/// List of notes currently being played on each channel
-		bool activeNotes[MIDI_CHANNELS][MIDI_NOTES];
+		/// Which output channel is being used by the given MIDI note?
+		int activeNotes[MIDI_CHANNELS][MIDI_NOTES];
+
+		/// Is this output channel currently playing a note? 0=no,-1=yes,>0=noteoff tick
+		unsigned long activeChannel[MAX_CHANNELS];
 
 		/// Read a variable-length integer from MIDI data.
 		/**
@@ -149,10 +156,12 @@ MIDIDecoder::MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
 	  ticksPerQuarterNote(ticksPerQuarterNote),
 	  usPerQuarterNote(usPerQuarterNote)
 {
+	memset(this->lastPatch, 0xFF, sizeof(this->lastPatch));
 	memset(this->percMap, 0xFF, sizeof(this->percMap));
 	memset(this->currentInstrument, 0, sizeof(this->currentInstrument));
 	memset(this->currentPitchbend, 0, sizeof(this->currentPitchbend));
-	memset(this->activeNotes, 0, sizeof(this->activeNotes));
+	memset(this->activeNotes, 0xFF, sizeof(this->activeNotes));
+	memset(this->activeChannel, 0, sizeof(this->activeChannel));
 }
 
 MIDIDecoder::~MIDIDecoder()
@@ -215,16 +224,18 @@ MusicPtr MIDIDecoder::decode()
 					this->input >> u8(velocity);
 
 					// Only generate a note-off event if the note was actually on
-					if (this->activeNotes[midiChannel][evdata]) {
+					if (this->activeNotes[midiChannel][evdata] >= 0) {
 						NoteOffEvent *ev = new NoteOffEvent();
 						gev.reset(ev);
-						ev->channel = midiChannel + 1;
+						ev->channel = this->activeNotes[midiChannel][evdata];
+						ev->sourceChannel = midiChannel;
 
 						gev->absTime = this->tick;
 						music->events->push_back(gev);
 
 						// Record this note as inactive on the channel
-						this->activeNotes[midiChannel][evdata] = false;
+						this->activeNotes[midiChannel][evdata] = -1;
+						this->activeChannel[ev->channel] = this->tick;
 					}
 					break;
 				}
@@ -236,33 +247,59 @@ MusicPtr MIDIDecoder::decode()
 
 					if (velocity == 0) { // note off
 						// Only generate a note-off event if the note was actually on
-						if (this->activeNotes[midiChannel][evdata]) {
+						if (this->activeNotes[midiChannel][evdata] >= 0) {
 							NoteOffEvent *ev = new NoteOffEvent();
 							gev.reset(ev);
-							ev->channel = midiChannel + 1;
+							ev->channel = this->activeNotes[midiChannel][evdata];
 							/// @todo Handle multiple notes on the same channel
 
 							gev->absTime = this->tick;
 							music->events->push_back(gev);
 
 							// Record this note as inactive on the channel
-							this->activeNotes[midiChannel][evdata] = false;
+							this->activeNotes[midiChannel][evdata] = -1;
+							this->activeChannel[ev->channel] = this->tick;
 						}
 					} else {
-						bool abort = false;
-						for (unsigned int n = 0; n < MIDI_NOTES; n++) {
-							if (this->activeNotes[midiChannel][n]) {
-								std::cout << "Polyphonic MIDI channels not yet supported (only "
-									"one note at a time on each channel)" << std::endl;
-								abort = true;
-								break;
+						// Find the best channel for this note.
+						// First, see if there's an empty channel already using this patch.
+						uint8_t targetChannel = 0, emptyChannel = 0;
+						unsigned int inUse = 0;
+						for (unsigned int c = 1; c < MAX_CHANNELS; c++) {
+							if (this->activeChannel[c]) {
+								if (this->activeChannel[c] == (unsigned long)-1) {
+									inUse++;
+									continue;
+								}
+								if (this->activeChannel[c] + 16 >= this->tick) {
+									inUse++;
+									continue;
+								}
 							}
 						}
-						if (abort) break;
-
+						for (unsigned int c = 1; c < MAX_CHANNELS; c++) {
+							if (this->activeChannel[c]) {
+								if (this->activeChannel[c] == (unsigned long)-1) continue; // channel in use
+								if (this->activeChannel[c] + 16 >= this->tick) continue; // previous note lingering
+							}
+							if (emptyChannel == 0) emptyChannel = c;
+							if (this->lastPatch[c] == this->currentInstrument[midiChannel]) {
+								targetChannel = c;
+							}
+						}
+						if (targetChannel == 0) {
+							// Patch not yet used
+							if (emptyChannel == 0) {
+								/// @todo If this ever happens, drop the oldest or quietest note
+								std::cerr << "Too many notes, dropping this one." << std::endl;
+								break;
+							}
+							targetChannel = emptyChannel;
+						}
 						NoteOnEvent *ev = new NoteOnEvent();
 						gev.reset(ev);
-						ev->channel = midiChannel + 1;
+						ev->channel = targetChannel;//midiChannel + 1;
+						ev->sourceChannel = midiChannel;
 						// MIDI is 1-127, we are 1-255 (MIDI velocity 0 is note off)
 						ev->velocity = (velocity & 1) | (velocity << 1);
 						if (((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0) && (midiChannel == 9)) {
@@ -285,6 +322,7 @@ MusicPtr MIDIDecoder::decode()
 							// so use a default instrument
 							this->setInstrument(music->patches, midiChannel, MIDI_DEFAULT_PATCH);
 						}
+						this->lastPatch[ev->channel] = ev->instrument;
 
 						/// @todo Handle multiple notes on the same channel
 
@@ -293,7 +331,8 @@ MusicPtr MIDIDecoder::decode()
 						music->events->push_back(gev);
 
 						// Record this note as active on the channel
-						this->activeNotes[midiChannel][evdata] = true;
+						this->activeNotes[midiChannel][evdata] = ev->channel;
+						this->activeChannel[ev->channel] = (unsigned long)-1;
 					}
 					break;
 				}
@@ -313,6 +352,7 @@ MusicPtr MIDIDecoder::decode()
 							ConfigurationEvent *ev = new ConfigurationEvent();
 							gev.reset(ev);
 							ev->channel = 0; // this event is global
+							ev->sourceChannel = midiChannel;
 							ev->configType = ConfigurationEvent::EnableRhythm;
 							ev->value = value;
 
@@ -348,16 +388,16 @@ MusicPtr MIDIDecoder::decode()
 						// If there are any active notes on this channel, generate pitchbend
 						// events for them.
 						for (unsigned int i = 0; i < MIDI_NOTES; i++) {
-							if (this->activeNotes[midiChannel][i]) {
+							if (this->activeNotes[midiChannel][i] >= 0) {
 								PitchbendEvent *ev = new PitchbendEvent();
 								gev.reset(ev);
-								ev->channel = midiChannel + 1;
+								ev->channel = this->activeNotes[midiChannel][i];
+								ev->sourceChannel = midiChannel;
 								ev->milliHertz = midiToFreq(i + (double)value / 4096.0);
 
 								gev->absTime = this->tick;
 								music->events->push_back(gev);
 
-								/// @todo Handle multiple notes on this channel
 								/// @todo Handle MIDI events to set pitchbend range
 								break;
 							}
@@ -420,6 +460,7 @@ MusicPtr MIDIDecoder::decode()
 									TempoEvent *ev = new TempoEvent();
 									gev.reset(ev);
 									ev->channel = 0; // global event (all channels)
+									ev->sourceChannel = 0;
 									ev->absTime = 0;
 									ev->usPerTick = this->usPerQuarterNote / this->ticksPerQuarterNote;
 

@@ -61,6 +61,17 @@ struct Event {
 
 	/// Channel number (1+, channel 0 means a global event affecting all channels)
 	unsigned int channel;
+
+	/// Original channel number in the source file.
+	/**
+	 * This should only be used by file format handlers which may need to know
+	 * where the event came from.  For example the CMF file format assigns special
+	 * instruments to certain MIDI channels, so the original MIDI channel will be
+	 * stored here.  The 'channel' field above cannot contain this value, as only
+	 * one note can be played at a time on that channel, whereas a single MIDI
+	 * channel can play up to 128 notes simultaneously.
+	 */
+	unsigned int sourceChannel;
 };
 
 /// Shared pointer to an event
