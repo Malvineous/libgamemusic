@@ -250,15 +250,20 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	for (unsigned int t = 0; t < 6; t++) {
 		for (unsigned int p = 0; p < 128; p++) instMapping[t][p] = -1;
 	}
+
 	for (EventVector::iterator i = music->events->begin(); i != music->events->end(); i++) {
 		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
 		if (!ev) continue;
 
+		// Override MIDI velocity and use zero, so the default volume setting from
+		// the instrument patch is used in EventConverter_OPL::writeOpSettings().
+		ev->velocity = 0;
+
 		// Figure out which rhythm instrument (if any) this is
 		// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
 		unsigned int targetRhythm;
-		if ((ev->channel >= 12) && (ev->channel <= 16)) {
-			targetRhythm = 17 - ev->channel; // channel 0 is global
+		if ((ev->sourceChannel >= 12-1) && (ev->sourceChannel <= 16-1)) {
+			targetRhythm = 16 - ev->sourceChannel; // channel 0 is global
 		} else {
 			targetRhythm = 0;
 		}
