@@ -221,6 +221,10 @@ int main(int iArgC, char *cArgV[])
 			"list available input/output file formats")
 		("no-pitchbends,b",
 			"don't use pitchbends with -c")
+		("force-opl3,3",
+			"force OPL3 mode (18 channels) with -c")
+		("force-opl2,2",
+			"force OPL2 mode (11 channels) with -c")
 	;
 
 	po::options_description poHidden("Hidden parameters");
@@ -245,6 +249,8 @@ int main(int iArgC, char *cArgV[])
 	bool bScript = false; // show output suitable for script parsing?
 	bool bForceOpen = false; // open anyway even if not in given format?
 	bool bUsePitchbends = true; // pass pitchbend events with -c
+	bool bForceOPL2 = false; // force OPL2 mode?
+	bool bForceOPL3 = false; // force OPL3 mode?
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
 
@@ -328,7 +334,22 @@ int main(int iArgC, char *cArgV[])
 				(i->string_key.compare("no-pitchbends") == 0)
 			) {
 				bUsePitchbends = false;
+			} else if (
+				(i->string_key.compare("3") == 0) ||
+				(i->string_key.compare("force-opl3") == 0)
+			) {
+				bForceOPL3 = true;
+			} else if (
+				(i->string_key.compare("2") == 0) ||
+				(i->string_key.compare("force-opl2") == 0)
+			) {
+				bForceOPL2 = true;
 			}
+		}
+
+		if ((bForceOPL2 == true) && (bForceOPL3 == true)) {
+			std::cerr << "Error: can't force OPL2 and OPL3 at the same time!" << std::endl;
+			return RET_BADARGS;
 		}
 
 		if (strFilename.empty()) {
@@ -343,6 +364,61 @@ int main(int iArgC, char *cArgV[])
 			pMusic = openMusicFile(strFilename, "-t/--type", strType, pManager, bForceOpen);
 		} catch (int ret) {
 			return ret;
+		}
+
+		if (bForceOPL2 || bForceOPL3) {
+			gm::ConfigurationEvent *ev = new gm::ConfigurationEvent();
+			gm::EventPtr gev(ev);
+			ev->channel = 0; // global
+			ev->sourceChannel = 0;
+			ev->configType = gm::ConfigurationEvent::EnableOPL3;
+			ev->value = bForceOPL3 ? 1 : 0;
+			gm::EventVector::iterator i = pMusic->events->begin();
+			i = pMusic->events->insert(i, gev);
+			i++; // skip the one we just inserted
+			for (; i != pMusic->events->end(); i++) {
+				gm::ConfigurationEvent *ev = dynamic_cast<gm::ConfigurationEvent *>(i->get());
+				if (ev) {
+					switch (ev->configType) {
+						case gm::ConfigurationEvent::EnableOPL3:
+							// Got an OPL3 mode change event, delete it
+							i = pMusic->events->erase(i);
+							break;
+						case gm::ConfigurationEvent::EnableDeepTremolo: {
+							if (bForceOPL3) {
+								// Duplicate this event for the other chip
+								gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
+								gm::EventPtr gev2(ev2);
+								ev2->channel = 0; // global
+								ev2->sourceChannel = 0;
+								ev2->configType = gm::ConfigurationEvent::EnableDeepTremolo;
+								ev2->value = 2 | ev->value; // 2| == chip index 1
+								i = pMusic->events->insert(i+1, gev2);
+							}
+							break;
+						}
+						case gm::ConfigurationEvent::EnableDeepVibrato: {
+							if (bForceOPL3) {
+								// Duplicate this event for the other chip
+								gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
+								gm::EventPtr gev2(ev2);
+								ev2->channel = 0; // global
+								ev2->sourceChannel = 0;
+								ev2->configType = gm::ConfigurationEvent::EnableDeepVibrato;
+								ev2->value = 2 | ev->value; // 2| == chip index 1
+								i = pMusic->events->insert(i+1, gev2);
+							}
+							break;
+						}
+						case gm::ConfigurationEvent::EnableRhythm:
+							// Not sure how to deal with this yet
+							break;
+						case gm::ConfigurationEvent::EnableWaveSel:
+							// Always enabled on OPL3, no need to do anything
+							break;
+					}
+				}
+			}
 		}
 
 		// Run through the actions on the command line
