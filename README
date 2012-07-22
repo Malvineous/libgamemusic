@@ -1,5 +1,5 @@
 Camoto: Classic-game Modding Tools
-Copyright 2010 Adam Nielsen <malvineous@shikadi.net>
+Copyright 2010-2012 Adam Nielsen <malvineous@shikadi.net>
 http://www.shikadi.net/camoto/
 
 Camoto is a collection of utilities for editing (modding) "classic games",
@@ -19,12 +19,7 @@ instrument used in the song.  Current instrument types are General MIDI (patch
 numbers), OPL register values (used by Adlib songs) and sampled instruments
 (as used by mod/tracker formats.)
 
-Metadata is available from each format handler to indicate whether it can
-support all the events and instrument types, or whether saving in a particular
-format will result in some loss of accuracy.
-
-This library is still in the preliminary stages, so only music formats from
-these games have been implemented:
+File formats from the following games are supported:
 
   * Bio Menace (.imf)
   * Blake Stone (.wlf)
