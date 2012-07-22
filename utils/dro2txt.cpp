@@ -124,6 +124,13 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c)
 		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
 		(o[0xC0 | c] ^ n[0xC0 | c])
 	) {
+		std::cout << "Channel " << std::dec << c+1 << " patch: ";
+		printOp(n, dm);
+		std::cout << ' ';
+		printOp(n, dc);
+		std::cout << ' ' << std::hex << 0xC0 + c << '=' << std::setw(2) <<
+			(int)n[0xC0 | c] << "\n";
+
 		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
@@ -134,12 +141,7 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c)
 			std::setw(7) << std::setfill(' ') << std::dec <<
 			milliHertz << " mHz" << std::setfill('0') <<
 #endif
-			" with: ";
-		printOp(n, dm);
-		std::cout << ' ';
-		printOp(n, dc);
-		std::cout << ' ' << 0xC0 + c << '=' << std::setw(2) <<
-			(int)n[0xC0 | c] << "\n";
+			"\n";
 	}
 	return;
 }
@@ -157,24 +159,13 @@ void diffPercState(uint8_t *o, uint8_t *n, int p)
 		case 4: c = 6; bm = true; bc = true;  break; // BD
 		default: return;
 	}
-	bm = !bm; bc = !bc;
 	if (
 		(bm && isOpChanged(o, n, OPLOFFSET_MOD(c))) ||
 		(bc && isOpChanged(o, n, OPLOFFSET_CAR(c))) ||
 		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
 		(o[0xC0 | c] ^ n[0xC0 | c])
 	) {
-		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
-		int block = (n[0xB0 | c] >> 2) & 7;
-		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
-		std::cout << "Perc " << percName(p) << "   on @ " <<
-#ifdef DISPLAY_FNUM
-			block << '/' << std::hex << std::setw(3) << fnum <<
-#else
-			std::setw(7) << std::setfill(' ') << std::dec <<
-			milliHertz << " mHz" << std::setfill('0') <<
-#endif
-			" with: ";
+		std::cout << "Perc " << percName(p) << " patch: ";
 		if (bm) {
 			printOp(n, OPLOFFSET_MOD(c));
 			std::cout << ' ';
@@ -185,6 +176,18 @@ void diffPercState(uint8_t *o, uint8_t *n, int p)
 		} else std::cout << std::setfill(' ') << std::setw(30) << ' ' << std::setfill('0');
 		std::cout << 0xC0 + c << '=' << std::setw(2) <<
 			(int)n[0xC0 | c] << "\n";
+
+		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
+		int block = (n[0xB0 | c] >> 2) & 7;
+		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
+		std::cout << "Perc " << percName(p) << "   on @ " <<
+#ifdef DISPLAY_FNUM
+			block << '/' << std::hex << std::setw(3) << fnum <<
+#else
+			std::setw(7) << std::setfill(' ') << std::dec <<
+			milliHertz << " mHz" << std::setfill('0') <<
+#endif
+			"\n";
 	}
 	return;
 }
