@@ -104,7 +104,7 @@ BOOST_AUTO_TEST_CASE(freqToNote)
 	BOOST_CHECK_EQUAL(bend, b);
 
 	check_freq(    8175,   0, 0);
-	check_freq(    8661,   1, 0);
+	check_freq(    8661,   1, -8);
 	check_freq(  110000,  45, 0);
 	check_freq(  220000,  57, 0);
 	check_freq(  440000,  69, 0);
