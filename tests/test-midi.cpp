@@ -68,7 +68,7 @@ struct midi_fixture: public default_sample {
 	{
 		gm::tempo_t usPerTick;
 		stream::output_sptr s = this->base;
-		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerTick);
+		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerTick, NULL);
 
 		return this->default_sample::is_equal(strExpected, this->base->str());
 	}

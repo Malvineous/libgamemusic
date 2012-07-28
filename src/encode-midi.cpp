@@ -29,6 +29,8 @@ using namespace camoto::gamemusic;
 class MIDIEncoder: virtual private MIDIEventCallback
 {
 	public:
+		bool channelsUsed[MIDI_CHANNELS];  ///< Was this MIDI channel used?
+
 		/// Set encoding parameters.
 		/**
 		 * @param input
@@ -129,7 +131,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 
 
 void camoto::gamemusic::midiEncode(stream::output_sptr& output,
-	unsigned int midiFlags, MusicPtr music, tempo_t *usPerTick)
+	unsigned int midiFlags, MusicPtr music, tempo_t *usPerTick, bool *channelsUsed)
 	throw (stream::error, format_limitation)
 {
 	MIDIEncoder encoder(output, midiFlags);
@@ -137,6 +139,7 @@ void camoto::gamemusic::midiEncode(stream::output_sptr& output,
 	if (*usPerTick == 0) {
 		*usPerTick = MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE;
 	}
+	if (channelsUsed) memcpy(channelsUsed, encoder.channelsUsed, sizeof(encoder.channelsUsed));
 	return;
 }
 
@@ -147,6 +150,9 @@ MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
 	  lastCommand(0xFF),
 	  ticksPerQuarterNote(0)
 {
+	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+		this->channelsUsed[i] = false;
+	}
 }
 
 MIDIEncoder::~MIDIEncoder()
@@ -206,6 +212,7 @@ void MIDIEncoder::midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
 	throw (stream::error)
 {
+	this->channelsUsed[channel] = true;
 	if ((this->lastCommand == (0x90 | channel)) && (velocity == MIDI_DEFAULT_RELEASE_VELOCITY)) {
 		// Since the last event was a note-on, it will be more efficient to
 		// write the note-off as a zero-velocity note-on, as we won't have to
@@ -229,6 +236,7 @@ void MIDIEncoder::midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
 	throw (stream::error)
 {
+	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0x90 | channel);
 	this->output
 		<< u8(note)
@@ -241,6 +249,7 @@ void MIDIEncoder::midiPatchChange(uint32_t delay, uint8_t channel,
 	uint8_t instrument)
 	throw (stream::error)
 {
+	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0xC0 | channel);
 	this->output << u8(instrument);
 	return;
@@ -250,6 +259,7 @@ void MIDIEncoder::midiController(uint32_t delay, uint8_t channel,
 	uint8_t controller, uint8_t value)
 	throw (stream::error)
 {
+	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0xB0 | channel);
 	this->output
 		<< u8(controller)
@@ -261,6 +271,7 @@ void MIDIEncoder::midiController(uint32_t delay, uint8_t channel,
 void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 	throw (stream::error)
 {
+	this->channelsUsed[channel] = true;
 	uint8_t msb = (bend >> 7) & 0x7F;
 	uint8_t lsb = bend & 0x7F;
 	this->writeCommand(delay, 0xE0 | channel);

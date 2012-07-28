@@ -118,7 +118,7 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 	, 22);
 
 	tempo_t usPerTick;
-	midiEncode(output, MIDIFlags::Default, music, &usPerTick);
+	midiEncode(output, MIDIFlags::Default, music, &usPerTick, NULL);
 
 	uint32_t mtrkLen = output->tellp();
 	mtrkLen -= 22; // 22 == header from start()

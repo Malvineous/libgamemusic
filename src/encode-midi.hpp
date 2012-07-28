@@ -50,9 +50,14 @@ namespace gamemusic {
  * @param usPerTick
  *   On return, the initial number of microseconds per tick.  This could
  *   have been changed during the song, but this is the initial value.
+ *
+ * @param channelsUsed
+ *   Pointer to an array of MIDI_CHANNELS entries of bool.  On return, this each
+ *   entry is set to true where that MIDI channel was used.  Set to NULL if this
+ *   information is not required.
  */
 void midiEncode(stream::output_sptr& output, unsigned int midiFlags,
-	MusicPtr music,	tempo_t *usPerTick)
+	MusicPtr music,	tempo_t *usPerTick, bool *channelsUsed)
 	throw (stream::error, format_limitation);
 
 } // namespace gamemusic

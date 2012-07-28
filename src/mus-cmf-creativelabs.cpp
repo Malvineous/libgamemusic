@@ -353,9 +353,6 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		throw bad_patch("CMF files have a maximum of 128 instruments.");
 	}
 
-	uint8_t channelsInUse[CMF_MAX_CHANNELS];
-	memset(channelsInUse, 0, sizeof(channelsInUse));
-
 	output->write(
 		"CTMF"
 		"\x01\x01" // version 1.1
@@ -439,7 +436,8 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	tempo_t usPerTick;
-	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, &usPerTick);
+	bool channelsUsed[MIDI_CHANNELS];
+	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, &usPerTick, channelsUsed);
 
 	// Set final filesize to this
 	output->truncate_here();
@@ -451,14 +449,9 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	;
 
 	// Update the channel-in-use table
-	for (EventVector::iterator i =
-		music->events->begin(); i != music->events->end(); i++)
-	{
-		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
-		if ((ev) && (ev->channel > 0)) {
-			assert((ev->channel - 1) < CMF_MAX_CHANNELS);
-			channelsInUse[ev->channel - 1] = 1;
-		}
+	uint8_t channelsInUse[MIDI_CHANNELS];
+	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+		channelsInUse[i] = channelsUsed[i] ? 1 : 0;
 	}
 	output->seekp(20, stream::start);
 	output->write((char *)channelsInUse, 16);
