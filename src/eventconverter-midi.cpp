@@ -22,6 +22,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -143,14 +144,17 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 
 	// If we've got MIDI patches, make sure any percussion instruments end up on
 	// channel 10.
-	MIDIPatchPtr patch;
 	uint8_t midiChannel = 0xFF, note;
 
 	// No notes if there are no patches.
 	if (!this->patches) return;
 
 	assert(ev->instrument < this->patches->size());
-	patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->at(ev->instrument));
+	MIDIPatchPtr patch = boost::dynamic_pointer_cast<MIDIPatch>(this->patches->at(ev->instrument));
+	OPLPatchPtr oplPatch;
+	if (!patch) {
+		oplPatch = boost::dynamic_pointer_cast<OPLPatch>(this->patches->at(ev->instrument));
+	}
 
 	// If we're only supposed to play MIDI notes then don't play this note if
 	// there's no MIDI patch.
@@ -162,7 +166,13 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 		note = patch->midiPatch;
 		this->channelMap[ev->channel] = 9;
 	} else {
-		midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
+		if (oplPatch && oplPatch->rhythm) {
+			// Special case for CMF files
+			midiChannel = 16 - oplPatch->rhythm;
+			this->channelMap[ev->channel] = midiChannel;
+		} else {
+			midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
+		}
 		int16_t bend;
 		freqToMIDI(ev->milliHertz, &note, &bend, 0xFF);
 		if (!(this->midiFlags & MIDIFlags::IntegerNotesOnly)) {

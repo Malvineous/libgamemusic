@@ -242,22 +242,22 @@ MusicPtr MIDIDecoder::decode()
 				case 0x90: { // Note on (two data bytes)
 					assert(evdata < MIDI_NOTES);
 
+					uint8_t& note = evdata;
 					uint8_t velocity;
 					this->input >> u8(velocity);
 
 					if (velocity == 0) { // note off
 						// Only generate a note-off event if the note was actually on
-						if (this->activeNotes[midiChannel][evdata] >= 0) {
+						if (this->activeNotes[midiChannel][note] >= 0) {
 							NoteOffEvent *ev = new NoteOffEvent();
 							gev.reset(ev);
-							ev->channel = this->activeNotes[midiChannel][evdata];
-							/// @todo Handle multiple notes on the same channel
+							ev->channel = this->activeNotes[midiChannel][note];
 
 							gev->absTime = this->tick;
 							music->events->push_back(gev);
 
 							// Record this note as inactive on the channel
-							this->activeNotes[midiChannel][evdata] = -1;
+							this->activeNotes[midiChannel][note] = -1;
 							this->activeChannel[ev->channel] = this->tick;
 						}
 					} else {
@@ -303,18 +303,18 @@ MusicPtr MIDIDecoder::decode()
 						// MIDI is 1-127, we are 1-255 (MIDI velocity 0 is note off)
 						ev->velocity = (velocity & 1) | (velocity << 1);
 						if (((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0) && (midiChannel == 9)) {
-							if (this->percMap[evdata] == 0xFF) {
+							if (this->percMap[note] == 0xFF) {
 								// Need to allocate a new instrument for this percussion note
 								MIDIPatchPtr newPatch(new MIDIPatch());
 								newPatch->percussion = true;
-								newPatch->midiPatch = evdata;
-								this->percMap[evdata] = music->patches->size();
+								newPatch->midiPatch = note;
+								this->percMap[note] = music->patches->size();
 								music->patches->push_back(newPatch);
 							}
 							ev->milliHertz = PERC_FREQ;
-							ev->instrument = this->percMap[evdata];
+							ev->instrument = this->percMap[note];
 						} else {
-							ev->milliHertz = midiToFreq(evdata);
+							ev->milliHertz = midiToFreq(note);
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
 						if (ev->instrument >= music->patches->size()) {
@@ -324,14 +324,12 @@ MusicPtr MIDIDecoder::decode()
 						}
 						this->lastPatch[ev->channel] = ev->instrument;
 
-						/// @todo Handle multiple notes on the same channel
-
 						gev->absTime = this->tick;
 						assert(gev->channel != 0);
 						music->events->push_back(gev);
 
 						// Record this note as active on the channel
-						this->activeNotes[midiChannel][evdata] = ev->channel;
+						this->activeNotes[midiChannel][note] = ev->channel;
 						this->activeChannel[ev->channel] = (unsigned long)-1;
 					}
 					break;
@@ -397,6 +395,7 @@ MusicPtr MIDIDecoder::decode()
 
 								gev->absTime = this->tick;
 								music->events->push_back(gev);
+								/// @todo Include pitchbend events in future mapped channels
 
 								/// @todo Handle MIDI events to set pitchbend range
 								break;

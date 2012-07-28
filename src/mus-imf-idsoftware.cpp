@@ -116,6 +116,9 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 			}
 
 			/// @todo Put this as a format capability
+			if (oplEvent->chipIndex != 0) {
+				throw stream::error("IMF files are single-OPL2 only");
+			}
 			assert(oplEvent->chipIndex == 0);  // make sure the format capabilities are being honoured
 
 			this->output

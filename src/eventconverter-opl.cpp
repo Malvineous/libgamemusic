@@ -41,11 +41,17 @@ EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
 {
 	// Initialise all OPL registers to zero (this is assumed the initial state
 	// upon playback)
-	memset(this->oplState, 0, sizeof(this->oplState));
-	memset(this->oplChanState, 0, sizeof(this->oplChanState));
+	memset(this->oplSet, 0x00, sizeof(this->oplSet));
+	memset(this->oplState, 0x00, sizeof(this->oplState));
+	for (unsigned int c = 0; c < MAX_OPL_CHANNELS; c++) {
+		this->oplChan[c].on = false;
+		this->oplChan[c].lastTime = (unsigned long)-1;
+		this->oplChan[c].patch = (unsigned int)-1;
+	}
 	for (unsigned int c = 0; c < MAX_CHANNELS; c++) {
 		this->lastData[c].realOplChannel = -1;
 	}
+	assert(this->oplSet[0][0] == false);
 }
 
 EventConverter_OPL::~EventConverter_OPL()
@@ -117,36 +123,84 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 	}
 
 	// Figure out which channel to use
-	int virtualOplChannel = -1, realOplChannel = -1;
+
+	// A virtual OPL channel is from 0..availableChannels-1 inclusive.  A real OPL
+	// channel is the virtual value split into a chipIndex and 0..8, or 0..5 if in
+	// rhythm mode and chipIndex == 0.
+	int virtualOplChannel = -1;
+	int realOplChannel = -1;
 	int chipIndex = 0;
 	if (i->rhythm == 0) {
 		for (unsigned int c = 0; c < availableChannels; c++) {
-			if (this->oplChanState[c] != 0) continue;
+			// If this channel isn't currently playing but it's using the same
+			// instrument we want to play now, select it.
+			if ((!this->oplChan[c].on) && (this->oplChan[c].patch == ev->instrument)) {
+				virtualOplChannel = c;
+				break;
+			}
+
+			// Otherwise, if this channel is in use, or had a note played previously,
+			// skip it.
+			if (this->oplChan[c].lastTime != (unsigned long)-1) continue;
+
+			// Lastly, this channel must be fresh (never used), select it.
 			virtualOplChannel = c;
 			break;
 		}
-		if (virtualOplChannel == -1) {
-			// All OPL channels are in use, figure out which one to cut
 
-			// Try to find the oldest note
-			unsigned long oldestTime = -1, oldestTimeChan = -1;
+		if (virtualOplChannel == -1) {
+			// All OPL channels are in use (or have been used), figure out which one
+			// to reuse.
+
+			// Try to find the oldest note of various types
+			unsigned long oldestOnTime = -1, oldestOnChan = -1;
+			unsigned long oldestOffTime = -1, oldestOffChan = -1;
+			unsigned long oldestSameTime = -1, oldestSameChan = -1;
 			for (unsigned int c = 0; c < availableChannels; c++) {
-				if (this->oplChanState[c] < oldestTime) {
-					oldestTime = this->oplChanState[c];
-					oldestTimeChan = c;
+				if (this->oplChan[c].on) {
+					if (this->oplChan[c].patch == ev->instrument) {
+						// This instrument is the one we want to use
+						if (this->oplChan[c].lastTime < oldestSameTime) {
+							oldestSameTime = this->oplChan[c].lastTime;
+							oldestSameChan = c;
+						}
+					} else {
+						if (this->oplChan[c].lastTime < oldestOnTime) {
+							oldestOnTime = this->oplChan[c].lastTime;
+							oldestOnChan = c;
+						}
+					}
+				} else {
+					if (this->oplChan[c].lastTime < oldestOffTime) {
+						oldestOffTime = this->oplChan[c].lastTime;
+						oldestOffChan = c;
+					}
 				}
 			}
-			if (oldestTime != (unsigned long)-1) {
-				// Found a note old enough to lose
-				virtualOplChannel = oldestTimeChan;
-			} else {
-				// All channels are in use, drop the note
+
+			// We have to have at least one note on or off!
+			assert(
+				(oldestOffTime != (unsigned long)-1)
+				|| (oldestOnTime != (unsigned long)-1)
+				|| (oldestSameTime != (unsigned long)-1)
+			);
+
+			if (oldestOffTime != (unsigned long)-1) {
+				// Use the channel that had its last note the longest time ago
+				virtualOplChannel = oldestOffChan;
+			} else if (oldestSameTime != (unsigned long)-1) {
+				// Cut the oldest playing note with the same instrument as the new note
+				virtualOplChannel = oldestSameChan;
 				std::cout << "OPL writer: All " << availableChannels
-					<< " channels are in use, dropping this note.\n";
-				// Cancel the cached delay as it will be included in the next event's
-				// absTime, so we don't want it counted twice.
-				this->cachedDelay -= delay;
-				return;
+					<< " channels are in use at t=" << ev->absTime
+					<< ", cutting off the oldest note with the same instrument.\n";
+			} else { // oldestOnTime != (unsigned long)-1
+				assert(oldestOnTime != (unsigned long)-1);
+				// Cut the note that's been playing the longest
+				virtualOplChannel = oldestOnChan;
+				std::cout << "OPL writer: All " << availableChannels
+					<< " channels are in use at t=" << ev->absTime
+					<< ", cutting off the oldest note.\n";
 			}
 
 		}
@@ -158,37 +212,39 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 		} else {
 			realOplChannel = virtualOplChannel;
 		}
-		if (this->oplChanState[virtualOplChannel] == (unsigned long)-1) {
+		if (this->oplChan[virtualOplChannel].on) {
 			// This channel has a note on, switch it off
 			this->processNextPair(0, chipIndex, 0xB0 | realOplChannel,
 				(this->oplState[chipIndex][0xB0 | realOplChannel] & ~OPLBIT_KEYON)
 			);
+			// Don't bother setting oplChan.on = false, it'll be set to true below
 		}
 	}
 
+	// We always have to set the patch in case the velocity has changed
 	switch (i->rhythm) {
 		case 1:
-			realOplChannel = 7;
+			virtualOplChannel = realOplChannel = 7;
 			chipIndex = 0;
 			this->writeOpSettings(chipIndex, realOplChannel, 0, i, ev->velocity);
 			break; // mod, hihat
 		case 2:
-			realOplChannel = 8;
+			virtualOplChannel = realOplChannel = 8;
 			chipIndex = 0;
 			this->writeOpSettings(chipIndex, realOplChannel, 1, i, ev->velocity);
 			break; // car, topcym
 		case 3:
-			realOplChannel = 8;
+			virtualOplChannel = realOplChannel = 8;
 			chipIndex = 0;
 			this->writeOpSettings(chipIndex, realOplChannel, 0, i, ev->velocity);
 			break; // mod, tomtom
 		case 4:
-			realOplChannel = 7;
+			virtualOplChannel = realOplChannel = 7;
 			chipIndex = 0;
 			this->writeOpSettings(chipIndex, realOplChannel, 1, i, ev->velocity);
 			break; // car, snare
 		case 5:
-			realOplChannel = 6;
+			virtualOplChannel = realOplChannel = 6;
 			chipIndex = 0;
 			// both, bassdrum
 			// fall through
@@ -210,6 +266,9 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 			| (i->connection & 1));
 	}
 
+	// Remember the patch we just set
+	this->oplChan[virtualOplChannel].patch = ev->instrument;
+
 	if (i->rhythm == 0) { // normal instrument
 		// Write lower eight bits of note freq
 		this->processNextPair(0, chipIndex, 0xA0 | realOplChannel, fnum & 0xFF);
@@ -220,8 +279,11 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 			| (block << 2) // and the octave
 			| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 		);
+
+		this->oplChan[virtualOplChannel].on = true; // note on
+		this->oplChan[virtualOplChannel].lastTime = ev->absTime;
 	} else { // rhythm instrument
-		if ((i->rhythm != 2) && (i->rhythm != 4)) { // can't set hihat or snare freq
+		//if ((i->rhythm != 2) && (i->rhythm != 4)) { // can't set hihat or snare freq
 			// Write lower eight bits of note freq
 			this->processNextPair(0, chipIndex, 0xA0 | realOplChannel, fnum & 0xFF);
 
@@ -230,7 +292,8 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 				(block << 2) // and the octave
 				| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 			);
-		}
+		//}
+
 		int keyBit = 1 << (i->rhythm-1); // instrument-specific keyon
 		if (this->oplState[chipIndex][0xBD] & keyBit) {
 			// Note is already playing, disable
@@ -244,9 +307,6 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 			this->oplState[chipIndex][0xBD] | keyBit
 		);
 	}
-
-	this->oplChanState[virtualOplChannel] = -1; // note on
-	this->chanToVirtOPL[ev->channel] = virtualOplChannel;
 
 	this->lastData[ev->channel].realOplChannel = realOplChannel;
 	this->lastData[ev->channel].virtualOplChannel = virtualOplChannel;
@@ -281,21 +341,23 @@ void EventConverter_OPL::handleEvent(const NoteOffEvent *ev)
 	this->lastTick = ev->absTime;
 
 	if (d.rhythm == 0) {
-		this->oplChanState[d.virtualOplChannel] = this->lastTick; // noteoff time
-		this->chanToVirtOPL[ev->channel] = 0; // unused
+		this->oplChan[d.virtualOplChannel].on = false; // note off
+		this->oplChan[d.virtualOplChannel].lastTime = ev->absTime;
 	}
-	d.realOplChannel = -1;
+	d.realOplChannel = (unsigned int)-1;
 	return;
 }
 
 void EventConverter_OPL::handleEvent(const PitchbendEvent *ev)
 	throw (stream::error)
 {
-	unsigned int fnum, block;
-	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
-
 	LastData &d = this->lastData[ev->channel];
 	int delay = ev->absTime - this->lastTick;
+
+	if (d.realOplChannel == (unsigned int)-1) return; // pitchbend without note on!
+
+	unsigned int fnum, block;
+	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
 
 	// Write lower eight bits of note freq
 	this->processNextPair(delay, d.chipIndex, 0xA0 | d.realOplChannel, fnum & 0xFF);
@@ -365,16 +427,22 @@ void EventConverter_OPL::processNextPair(uint32_t delay, uint8_t chipIndex,
 {
 	assert(chipIndex < 2);
 
+	this->cachedDelay += delay;
+
+	// Don't write anything if the value isn't changing
+	if (this->oplSet[chipIndex][reg] && (this->oplState[chipIndex][reg] == val)) return;
+
 	OPLEvent oplev;
 	oplev.reg = reg;
 	oplev.val = val;
 	oplev.chipIndex = chipIndex;
-	oplev.delay = delay + this->cachedDelay;
+	oplev.delay = this->cachedDelay;
 	this->cachedDelay = 0;
 
 	this->cb->writeNextPair(&oplev);
 
 	this->oplState[chipIndex][reg] = val;
+	this->oplSet[chipIndex][reg] = true;
 	return;
 }
 

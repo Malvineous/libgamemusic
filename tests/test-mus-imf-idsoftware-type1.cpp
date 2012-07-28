@@ -29,11 +29,11 @@
 #define HAS_OPL_RHYTHM_INSTRUMENTS
 
 #define testdata_rhythm_hihat \
-	"\x20\x00" \
+	"\x2c\x00" \
 	imf_rhythm_hihat
 
 #define testdata_rhythm_cymbal \
-	"\x20\x00" \
+	"\x28\x00" \
 	imf_rhythm_cymbal
 
 #define testdata_rhythm_tom \
@@ -41,7 +41,7 @@
 	imf_rhythm_tom
 
 #define testdata_rhythm_snare \
-	"\x2c\x00" \
+	"\x28\x00" \
 	imf_rhythm_snare
 
 #define testdata_rhythm_bassdrum \

@@ -174,9 +174,13 @@ class EventConverter_OPL: virtual public EventHandler
 
 		unsigned long lastTick;    ///< Time of last event
 		unsigned long cachedDelay; ///< Delay to add on to next reg write
+		bool oplSet[2][256];       ///< Has this register been set yet?
 		uint8_t oplState[2][256];  ///< Current register values
-		unsigned long oplChanState[MAX_OPL_CHANNELS]; ///< State of virtual OPL channels: 0=off,-1=on,>0=noteoff tick
-		uint8_t chanToVirtOPL[MAX_CHANNELS]; // which event channel maps to which virtual OPL channel
+		struct {
+			bool on;                 ///< Is this channel currently playing?
+			unsigned long lastTime;  ///< Time of last note on or note off
+			unsigned int patch;      ///< Which instrument is set on this channel
+		} oplChan[MAX_OPL_CHANNELS]; ///< OPL channel state
 		bool modeOPL3;             ///< Is OPL3/dual OPL2 mode on?
 		bool modeRhythm;           ///< Is rhythm mode enabled?
 
