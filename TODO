@@ -1,27 +1,21 @@
 Outstanding tasks
 ~~~~~~~~~~~~~~~~~
- - Add parameter to generic OPL writer to blacklist channels, so the IMF writer
-   can reserve channel 0 so it remains available for sound effects.
-
- - Normally it is assumed all OPL registers will be zero at the start of the
-   output, so zero values aren't sent.  Add an option to set *all* registers
-   before they are used for the benefit of songs which loop, so any changed
-   instruments don't go funny when the song repeats.
-
  - Add a velocity value to the NoteOnEvent and use the OPL's volume register
    for this value (removing it from the instrument settings...maybe.)
 
  - Add support for multiple MIDI notes on the same channel
 
- - Currently no way of detecting which CMF instruments are destined for rhythm
-   channels, thus converting a CMF with rhythm instruments to e.g. DRO will
-   result in bad percussion due to the register settings being loaded into the
-   wrong operator.
-
- - Scan CMF patches and set deep tremolo event if necessary
-
- - Support default CMF patches (e.g. for Word Rescue)
+ - Fix hihat sound in Xargon demo song (different to Creative Labs player)
+ - Fix Kiloblaster song5 guitar sound (more shallow compared to creaf player)
+ - Fix perc in Kiloblaster song4 (still doesn't match creaf player)
 
  - Recognise MIDI control event to change patches, not just patch-change event
 
  - Fix .KLM writer
+
+ - Add test code for .IBK writer
+
+ - Add support for sampled instruments and MOD-style patterns
+
+ - Add new test: include delay, then tempo change, then another delay and
+   verify the values are calculated correctly
