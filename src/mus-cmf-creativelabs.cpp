@@ -310,7 +310,6 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 						// For these instruments, the modulator data should be loaded into
 						// the OPL carrier instead.
 						copy->c = copy->m;
-						/// @todo write carrier settings into modulator fields when saving
 					}
 					curTarget = oplBank->size();
 					oplBank->push_back(copy);
@@ -410,6 +409,12 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
 		assert(patch);
 		OPLOperator *o = &patch->m;
+		if ((patch->rhythm == 2) || (patch->rhythm == 4)) {
+			// For these instruments, the modulator data has been loaded into
+			// the OPL carrier instead, so we must reverse it now.
+			o = &patch->c;
+			memset(inst, 0, sizeof(inst)); // blank out other op
+		}
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =
 				((o->enableTremolo & 1) << 7) |
@@ -423,6 +428,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 			inst[6 + op] = (o->sustainRate << 4) | (o->releaseRate & 0x0F);
 			inst[8 + op] =  o->waveSelect & 7;
 
+			if ((patch->rhythm == 2) || (patch->rhythm == 4)) break; // ignore other op
 			o = &patch->c;
 		}
 		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
