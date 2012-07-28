@@ -38,6 +38,7 @@ enum DelayType {
 enum OPLWriteFlags {
 	Default          = 0x00,  ///< No special treatment
 	IntegerNotesOnly = 0x01,  ///< Disable pitchbends
+	ReserveFirstChan = 0x02,  ///< Don't use the first channel (reserve it for e.g. Adlib SFX in a game)
 };
 
 /// Information about a single OPL reg/val pair.

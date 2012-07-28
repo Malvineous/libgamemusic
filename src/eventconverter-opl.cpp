@@ -122,6 +122,11 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 		chipSplit = 0; // no split (only one chip)
 	}
 
+	if (this->flags & ReserveFirstChan) {
+		availableChannels--;
+		if (chipSplit) chipSplit--;
+	}
+
 	// Figure out which channel to use
 
 	// A virtual OPL channel is from 0..availableChannels-1 inclusive.  A real OPL
@@ -212,6 +217,8 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 		} else {
 			realOplChannel = virtualOplChannel;
 		}
+		if (this->flags & ReserveFirstChan) realOplChannel++;
+
 		if (this->oplChan[virtualOplChannel].on) {
 			// This channel has a note on, switch it off
 			this->processNextPair(0, chipIndex, 0xB0 | realOplChannel,
