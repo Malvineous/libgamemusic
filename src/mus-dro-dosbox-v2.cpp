@@ -38,6 +38,15 @@ using namespace camoto::gamemusic;
 /// Command byte we will use to write a long delay
 #define DRO2_CMD_LONGDELAY 0xFE
 
+/// Header value for single OPL2 chip
+#define DRO2_OPLTYPE_OPL2 0
+
+/// Header value for two OPL2 chips
+#define DRO2_OPLTYPE_DUALOPL2 1
+
+/// Header value for single OPL3 chip
+#define DRO2_OPLTYPE_OPL3 2
+
 /// Decode data in a .dro file to provide register/value pairs.
 class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 {
@@ -131,7 +140,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			throw (stream::error)
 			: usPerTick(DRO_CLOCK),
 			  buffer(new stream::string()),
-			  oplType(0),
+			  oplType(DRO2_OPLTYPE_OPL2),
 			  codemapLength(0),
 			  cachedDelay(0),
 			  numPairs(0),
@@ -212,7 +221,13 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 
 			if (oplEvent->chipIndex == 1) {
 				code |= 0x80;
-				this->oplType = 1; // OPL3 - could also be dual OPL2 though!
+				if ((oplEvent->reg == 0x05) && (oplEvent->val & 1)) {
+					// Enabled OPL3
+					this->oplType = DRO2_OPLTYPE_OPL3;
+				} else if (this->oplType == DRO2_OPLTYPE_OPL2) {
+					// Haven't enabled OPL3 yet
+					this->oplType = DRO2_OPLTYPE_DUALOPL2;
+				}
 			}
 			this->buffer
 				<< u8(code)

@@ -30,6 +30,15 @@ using namespace camoto::gamemusic;
 /// Length of each .dro tick in microseconds
 #define DRO_CLOCK  1000
 
+/// Header value for single OPL2 chip
+#define DRO_OPLTYPE_OPL2 0
+
+/// Header value for two OPL2 chips
+#define DRO_OPLTYPE_DUALOPL2 2
+
+/// Header value for single OPL3 chip
+#define DRO_OPLTYPE_OPL3 1
+
 /// Decode data in a .dro file to provide register/value pairs.
 class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 {
@@ -124,7 +133,8 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 			: output(output),
 			  lastChipIndex(0),
 			  usPerTick(DRO_CLOCK),
-			  msSongLength(0)
+			  msSongLength(0),
+			  oplType(DRO_OPLTYPE_OPL2)
 		{
 		}
 
@@ -160,6 +170,15 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 				this->output << u8(0x02 + oplEvent->chipIndex);
 				this->lastChipIndex = oplEvent->chipIndex;
 			}
+			if (oplEvent->chipIndex == 1) {
+				if ((oplEvent->reg == 0x05) && (oplEvent->val & 1)) {
+					// Enabled OPL3
+					this->oplType = DRO_OPLTYPE_OPL3;
+				} else if (this->oplType == DRO_OPLTYPE_OPL2) {
+					// Haven't enabled OPL3 yet
+					this->oplType = DRO_OPLTYPE_DUALOPL2;
+				}
+			}
 			if (oplEvent->reg < 0x05) {
 				// Need to escape this reg
 				this->output
@@ -190,6 +209,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 
 	public:
 		uint32_t msSongLength;      ///< Song length in milliseconds
+		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 };
 
 std::string MusicType_DRO_v1::getCode() const
@@ -278,8 +298,8 @@ void MusicType_DRO_v1::write(stream::output_sptr output, SuppData& suppData,
 	output->seekp(12, stream::start);
 	output
 		<< u32le(cb.msSongLength) // Song length in milliseconds (one tick == 1ms)
-		<< u32le(size) // Song length in bytes
-//		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
+		<< u32le(size)            // Song length in bytes
+		<< u32le(cb.oplType)      // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
 	;
 
 	return;
