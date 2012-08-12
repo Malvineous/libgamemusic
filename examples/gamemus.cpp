@@ -217,7 +217,7 @@ int main(int iArgC, char *cArgV[])
 			"format output suitable for script parsing")
 		("force,f",
 			"force open even if the file is not in the given format")
-		("list-formats,m",
+		("list-types",
 			"list available input/output file formats")
 		("no-pitchbends,b",
 			"don't use pitchbends with -c")
@@ -281,7 +281,7 @@ int main(int iArgC, char *cArgV[])
 					"with --newinst if the file type cannot be autodetected."
 					<< std::endl;
 				return RET_OK;
-			} else if (i->string_key.compare("list-formats") == 0) {
+			} else if (i->string_key.compare("list-types") == 0) {
 				gm::MusicTypePtr nextType;
 				int i = 0;
 				while ((nextType = pManager->getMusicType(i++))) {
