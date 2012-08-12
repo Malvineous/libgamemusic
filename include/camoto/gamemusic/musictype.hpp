@@ -37,10 +37,9 @@ namespace camoto {
 namespace gamemusic {
 
 /// Interface to a particular music format.
-class MusicType {
-
+class MusicType
+{
 	public:
-
 		/// Confidence level when guessing a file format.
 		enum Certainty {
 			DefinitelyNo,  ///< Definitely not in this format
@@ -165,7 +164,7 @@ class MusicType {
 		 * @return A (possibly empty) map associating required supplemental file
 		 *   types with their filenames.  For each returned value the file should be
 		 *   opened and placed in a SuppItem instance.  The SuppItem is then added
-		 *   to an \ref MP_SUPPDATA map where it can be passed to create() or
+		 *   to an \ref SuppData map where it can be passed to create() or
 		 *   open().  Note that the filenames returned can have relative paths.
 		 */
 		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,

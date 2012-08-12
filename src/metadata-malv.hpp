@@ -45,11 +45,11 @@ void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
 
 /// Write tags to the stream in Malvineous' tag format.
 /**
- * @param input
- *   Stream to read tags from.
+ * @param output
+ *   Stream to write tags to.
  *
  * @param metadata
- *   Map to store tags in.
+ *   Map to get tags from.
  *
  * @throw stream::error
  *   If there was an error writing to the stream, such as insufficient disk

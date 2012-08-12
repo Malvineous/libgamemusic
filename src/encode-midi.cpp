@@ -33,7 +33,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 
 		/// Set encoding parameters.
 		/**
-		 * @param input
+		 * @param output
 		 *   Data stream to write the MIDI data to.
 		 *
 		 * @param midiFlags

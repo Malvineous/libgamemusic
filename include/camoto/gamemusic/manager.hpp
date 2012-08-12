@@ -2,7 +2,7 @@
  * @file   manager.hpp
  * @brief  Manager class, used for accessing the various music format readers.
  *
- * Copyright (C) 2010-2011 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -57,9 +57,10 @@ ManagerPtr getManager(void)
  * is then used to manipulate the file itself.
  *
  * @note This class shouldn't be created manually, use the global function
- *       getManager() to obtain a pointer to it.
+ *   getManager() to obtain a pointer to it.
  */
-class Manager {
+class Manager
+{
 	private:
 		/// List of available music types.
 		VC_MUSICTYPE musicTypes;
@@ -71,7 +72,6 @@ class Manager {
 			throw ();
 
 	public:
-
 		~Manager()
 			throw ();
 
@@ -79,10 +79,11 @@ class Manager {
 		/**
 		 * This can be used to enumerate all available file formats.
 		 *
-		 * @param  iIndex Index of the format, starting from 0.
-		 * @return A shared pointer to a MusicType for the given index, or
-		 *         an empty pointer once iIndex goes out of range.
-		 * @todo Remove this and replace it with a function that just returns the vector.
+		 * @param index
+		 *   Index of the format, starting from 0.
+		 *
+		 * @return A shared pointer to a MusicType for the given index, or an empty
+		 *   pointer once iIndex goes out of range.
 		 */
 		MusicTypePtr getMusicType(unsigned int index)
 			throw ();
