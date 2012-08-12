@@ -1,0 +1,138 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="dro2txt">
+	<refentryinfo>
+		<application>Camoto</application>
+		<productname>dro2txt</productname>
+		<author>
+			<firstname>Adam</firstname>
+			<surname>Nielsen</surname>
+			<email>malvineous@shikadi.net</email>
+			<contrib>Original document author</contrib>
+		</author>
+	</refentryinfo>
+	<refmeta>
+		<refentrytitle>dro2txt</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="date">2012-08-02</refmiscinfo>
+		<refmiscinfo class="manual">Camoto</refmiscinfo>
+	</refmeta>
+	<refnamediv id="name">
+		<refname>dro2txt</refname>
+		<refpurpose>
+			list the events in a DROv2 capture
+		</refpurpose>
+	</refnamediv>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>dro2txt</command>
+			<arg choice="plain">&lt; <replaceable>input.dro</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1 id="description">
+		<title>Description</title>
+		<para>
+			Convert a DRO file (a DOSBox raw OPL capture) read from stdin into ASCII
+			text.  The text is sent to stdout and each line roughly describes an
+			Ad Lib event.
+		</para>
+		<para>
+			The events are printed such that things not affecting the audio output
+			(such as different ordering of the OPL register writes, or redundant
+			register writes) will not change the output text.  Thus two different
+			players could output quite different OPL data yet providing the resulting
+			music sounds the same, the text produced by this utility would also be the
+			same.
+		</para>
+		<para>
+			This utility is intended to be used in conjunction with <citerefentry>
+				<refentrytitle>diff</refentrytitle>
+				<manvolnum>1</manvolnum>
+			</citerefentry> to compare two different .dro files.  A binary comparison
+			in this situation is not practical, as the files could be very different
+			at the byte level yet sound the same musically.  This utility will allow
+			the files to be compared at the aural level.  Its main use is in
+			implementing new music formats, where a libgamemusic format reader can be
+			compared with a .dro capture of the original in-game music to ensure the
+			format is being converted correctly.
+		</para>
+	</refsect1>
+
+	<refsect1 id="examples">
+		<title id="examples-title">Examples</title>
+		<variablelist>
+
+			<varlistentry>
+				<term>
+					<command>dro2txt &lt; game.dro &gt; orig.txt &amp;&amp;
+						dro2txt &lt; output.dro &gt; convert.txt &amp;&amp;
+						diff -u orig.txt convert.txt | less</command>
+				</term>
+				<listitem>
+					<para>
+						compare two .dro files and show any differences as a diff
+					</para>
+				</listitem>
+			</varlistentry>
+
+		</variablelist>
+	</refsect1>
+
+	<refsect1 id="notes">
+		<title id="notes-title">Notes</title>
+		<para>
+			The utility only supports version 2.0 of the DOSBox .dro format, used by
+			DOSBox 0.73 and newer.
+		</para>
+		<para>
+			Exit status is <returnvalue>0</returnvalue> on success,
+			<returnvalue>1</returnvalue> on failure.
+		</para>
+		<para>
+			The .dro file format is fully documented on the
+			<ulink url="http://www.shikadi.net/moddingwiki">Game Modding Wiki</ulink>.
+		</para>
+	</refsect1>
+
+	<refsect1 id="bugs">
+		<title id="bugs-title">Bugs and Questions</title>
+		<para>
+			Report bugs at <ulink>http://www.shikadi.net/camoto/bugs/</ulink>
+		</para>
+		<para>
+			Ask questions about Camoto or modding in general at the <ulink
+			url="http://www.classicdosgames.com/forum/viewforum.php?f=25">RGB
+			Classic Games modding forum</ulink>
+		</para>
+	</refsect1>
+
+	<refsect1 id="copyright">
+		<title id="copyright-title">Copyright</title>
+		<para>
+			Copyright (c) 2010-2012 Adam Nielsen.
+		</para>
+		<para>
+			License GPLv3+: <ulink url="http://gnu.org/licenses/gpl.html">GNU GPL
+			version 3 or later</ulink>
+		</para>
+		<para>
+			This is free software: you are free to change and redistribute it.
+			There is NO WARRANTY, to the extent permitted by law.
+		</para>
+	</refsect1>
+
+	<refsect1 id="seealso">
+		<title id="seealso-title">See Also</title>
+		<simplelist type="inline">
+			<member><citerefentry><refentrytitle>dosbox</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamearch</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamecomp</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gameimg</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gametls</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamemap</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamemus</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>camoto-studio</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+		</simplelist>
+	</refsect1>
+
+</refentry>

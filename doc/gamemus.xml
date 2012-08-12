@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<refentry id="gamemus">
+	<refentryinfo>
+		<application>Camoto</application>
+		<productname>gamemus</productname>
+		<author>
+			<firstname>Adam</firstname>
+			<surname>Nielsen</surname>
+			<email>malvineous@shikadi.net</email>
+			<contrib>Original document author</contrib>
+		</author>
+	</refentryinfo>
+	<refmeta>
+		<refentrytitle>gamemus</refentrytitle>
+		<manvolnum>1</manvolnum>
+		<refmiscinfo class="date">2012-08-12</refmiscinfo>
+		<refmiscinfo class="manual">Camoto</refmiscinfo>
+	</refmeta>
+	<refnamediv id="name">
+		<refname>gamemus</refname>
+		<refpurpose>
+			read, write and convert game music files
+		</refpurpose>
+	</refnamediv>
+	<refsynopsisdiv>
+		<cmdsynopsis>
+			<command>gamemus</command>
+			<arg choice="opt" rep="repeat"><replaceable>options</replaceable></arg>
+			<arg choice="plain"><replaceable>song</replaceable></arg>
+			<arg choice="opt" rep="repeat"><replaceable>actions</replaceable></arg>
+		</cmdsynopsis>
+	</refsynopsisdiv>
+
+	<refsect1 id="description">
+		<title>Description</title>
+		<para>
+			Perform the specified <replaceable>actions</replaceable> on the given
+			<replaceable>song</replaceable> file.  The actions are performed in order
+			(i.e. the first action specified on the command line is performed first.)
+		</para>
+	</refsect1>
+
+	<refsect1 id="actions">
+		<title>Actions</title>
+		<variablelist>
+
+			<varlistentry>
+				<term><option>--convert</option>=<replaceable>format</replaceable>:<replaceable>file</replaceable></term>
+				<term><option>-c </option><replaceable>format</replaceable>:<replaceable>file</replaceable></term>
+				<listitem>
+					<para>
+						convert the input song into another
+						<replaceable>format</replaceable>, saving it as
+						<replaceable>file</replaceable>.  Use
+						<option>--list-formats</option> to see the available output formats.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--list</option></term>
+				<term><option>-l</option></term>
+				<listitem>
+					<para>
+						list all the events in the song, in text form
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--list-instruments</option></term>
+				<term><option>-i</option></term>
+				<listitem>
+					<para>
+						list all the instruments used in the song, in text form
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--newinst</option>=<replaceable>format</replaceable>:<replaceable>file</replaceable></term>
+				<term><option>-n </option><replaceable>format</replaceable>:<replaceable>file</replaceable></term>
+				<listitem>
+					<para>
+						use a different instrument bank for subsequent conversions with
+						<option>--convert</option>.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--repeat-instruments</option>=<replaceable>count</replaceable></term>
+				<term><option>-r </option><replaceable>count</replaceable></term>
+				<listitem>
+					<para>
+						repeat the instrument bank until there are
+						<replaceable>count</replaceable> instruments available.  This is
+						useful when replacing instruments, but there are not enough of them
+						in the newly loaded bank.
+					</para>
+				</listitem>
+			</varlistentry>
+
+		</variablelist>
+	</refsect1>
+
+	<refsect1 id="options">
+		<title id="options-title">Options</title>
+		<variablelist>
+
+			<varlistentry>
+				<term><option>--list-types</option></term>
+				<listitem>
+					<para>
+						show a list of supported file formats, along with the value to pass
+						to <option>--type</option>, <option>--convert</option> and
+						<option>--newinst</option>.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--force</option></term>
+				<term><option>-f</option></term>
+				<listitem>
+					<para>
+						open the file as the given <option>--type</option>, even if it
+						doesn't look like it's in that format.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--force-opl2</option></term>
+				<term><option>-2</option></term>
+				<listitem>
+					<para>
+						force OPL2 mode (11 channels) when writing FM songs with
+						<option>--convert</option>.  This drops events that enable OPL3
+						mode.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--force-opl3</option></term>
+				<term><option>-3</option></term>
+				<listitem>
+					<para>
+						force OPL3 mode (18 channels) when writing FM songs with
+						<option>--convert</option>.  This duplicates certain events so they
+						apply to both register sets, and drops events that disable OPL3
+						mode.  This may fail if the file format does not support OPL3 chips.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--no-pitchbends</option></term>
+				<term><option>-n</option></term>
+				<listitem>
+					<para>
+						don't use pitchbends with <option>--convert</option>.  This can make
+						the output notes a bit cleaner if the song doesn't use any
+						pitchbends.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--script</option></term>
+				<term><option>-s</option></term>
+				<listitem>
+					<para>
+						print output suitable for parsing by a script.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--type</option>=<replaceable>format</replaceable></term>
+				<term><option>-t </option><replaceable>format</replaceable></term>
+				<listitem>
+					<para>
+						manually specify the file type.  The type is normally autodetected,
+						but it needs to be specified for a few formats which lack signatures
+						to identify them by.  See <option>--list-types</option>.
+					</para>
+				</listitem>
+			</varlistentry>
+
+		</variablelist>
+	</refsect1>
+
+	<refsect1 id="examples">
+		<title id="examples-title">Examples</title>
+		<variablelist>
+
+			<varlistentry>
+				<term><command>gamemus song_5.kb1 --list</command></term>
+				<listitem>
+					<para>
+						list all the note on/off and other events in the
+						<productname>Kiloblaster</productname> theme song.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><command>gamemus --type imf-idsoftware-duke2 hesbacka.imf -c cmf-creativelabs:out.cmf</command></term>
+				<listitem>
+					<para>
+						convert the <productname>Duke Nukem II</productname> song
+						<literal>hesbacka.imf</literal> into a CMF file saved as
+						<literal>out.cmf</literal>.  Because both IMF and CMF formats use
+						Ad Lib/FM instruments, the instruments are converted as-is, with no
+						replacement instrument bank required.
+						<productname>Duke Nukem II</productname> however, plays its IMF
+						songs at a different speed to the normal format, so the
+						<literal>imf-idsoftware-duke2</literal> file type must be manually
+						specified to get the correct tempo.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><command>gamemus capture.dro -n gm.mid -c mid-type0:out.mid</command></term>
+				<listitem>
+					<para>
+						convert the <productname>DOSBox</productname> Ad Lib capture
+						<literal>capture.dro</literal> into a MIDI file called
+						<literal>out.mid</literal>, using the instruments loaded from
+						<literal>gm.mid</literal>.
+					</para>
+					<para>
+						Replacing the instruments is required here, because MIDI files
+						cannot use Ad Lib instruments.  The first instrument encountered in
+						<literal>capture.dro</literal> is replaced with the first instrument
+						used in <literal>gm.mid</literal> (which may
+						<emphasis>not necessarily</emphasis> be MIDI instrument #1/piano.)
+					</para>
+				</listitem>
+			</varlistentry>
+
+		</variablelist>
+	</refsect1>
+
+	<refsect1 id="notes">
+		<title id="notes-title">Notes</title>
+		<para>
+			Exit status is <returnvalue>0</returnvalue> on success,
+			<returnvalue>non-zero</returnvalue> on failure (<returnvalue>1</returnvalue>
+			for bad parameters, <returnvalue>2</returnvalue> for critical errors such
+			as being unable to open the the archive file, <returnvalue>3</returnvalue>
+			for more information needed, <returnvalue>4</returnvalue> for non-critical
+			errors such as being unable to insert one of many files,
+			<returnvalue>5</returnvalue> for uncommon failures like running out of disk
+			space.)
+		</para>
+		<para>
+			All the file formats supported by this utility are fully documented on the
+			<ulink url="http://www.shikadi.net/moddingwiki">Game Modding Wiki</ulink>.
+		</para>
+	</refsect1>
+
+	<refsect1 id="bugs">
+		<title id="bugs-title">Bugs and Questions</title>
+		<para>
+			Report bugs at <ulink>http://www.shikadi.net/camoto/bugs/</ulink>
+		</para>
+		<para>
+			Ask questions about Camoto or modding in general at the <ulink
+			url="http://www.classicdosgames.com/forum/viewforum.php?f=25">RGB
+			Classic Games modding forum</ulink>
+		</para>
+	</refsect1>
+
+	<refsect1 id="copyright">
+		<title id="copyright-title">Copyright</title>
+		<para>
+			Copyright (c) 2010-2012 Adam Nielsen.
+		</para>
+		<para>
+			License GPLv3+: <ulink url="http://gnu.org/licenses/gpl.html">GNU GPL
+			version 3 or later</ulink>
+		</para>
+		<para>
+			This is free software: you are free to change and redistribute it.
+			There is NO WARRANTY, to the extent permitted by law.
+		</para>
+	</refsect1>
+
+	<refsect1 id="seealso">
+		<title id="seealso-title">See Also</title>
+		<simplelist type="inline">
+			<member><citerefentry><refentrytitle>dro2txt</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamearch</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamecomp</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gameimg</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gametls</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>gamemap</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+			<member><citerefentry><refentrytitle>camoto-studio</refentrytitle><manvolnum>1</manvolnum></citerefentry></member>
+		</simplelist>
+	</refsect1>
+
+</refentry>
