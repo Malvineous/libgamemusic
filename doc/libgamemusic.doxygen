@@ -1,0 +1,17 @@
+PROJECT_NAME           = libgamemusic
+OUTPUT_DIRECTORY       = doxygen
+FULL_PATH_NAMES        = NO
+TAB_SIZE               = 2
+BUILTIN_STL_SUPPORT    = YES
+EXTRACT_ALL            = YES
+EXTRACT_PRIVATE        = YES
+EXTRACT_STATIC         = YES
+HIDE_SCOPE_NAMES       = YES
+WARN_NO_PARAMDOC       = YES
+QUIET                  = YES
+INPUT                  = ../include/ ../src/
+RECURSIVE              = YES
+EXAMPLE_PATH           = ../examples/
+DOCSET_FEEDNAME        = "Camoto"
+DOCSET_BUNDLE_ID       = net.shikadi.Camoto
+GENERATE_LATEX         = NO
