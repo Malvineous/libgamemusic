@@ -25,6 +25,7 @@
 #include <exception>
 #include <vector>
 
+#include <camoto/error.hpp>
 #include <camoto/stream.hpp>
 #include <stdint.h>
 #include <camoto/gamemusic/patchbank.hpp> // bad_patch
@@ -47,13 +48,11 @@ typedef double tempo_t;
  */
 struct Event {
 	/// Helper function (for debugging) to return all the data as a string
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
 	/// Call the handleEvent() function in an EventHandler class, passing this
 	/// event as the parameter.
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception) = 0;
+	virtual void processEvent(EventHandler *handler) = 0;
 
 	/// The number of ticks (since the start of the song) when this event should
 	/// be actioned.
@@ -96,11 +95,9 @@ struct TempoEvent: virtual public Event
 	/// Number of microseconds per tick.
 	tempo_t usPerTick;
 
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception);
+	virtual void processEvent(EventHandler *handler);
 };
 
 
@@ -112,11 +109,9 @@ struct TempoEvent: virtual public Event
  */
 struct NoteOnEvent: virtual public Event
 {
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception);
+	virtual void processEvent(EventHandler *handler);
 
 	/// Instrument to play this note with.  This is an index into the vector
 	/// returned by Music::getInstruments().
@@ -133,11 +128,9 @@ struct NoteOnEvent: virtual public Event
 /// All notes on this channel are now silenced.
 struct NoteOffEvent: virtual public Event
 {
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception);
+	virtual void processEvent(EventHandler *handler);
 };
 
 
@@ -152,11 +145,9 @@ struct PitchbendEvent: virtual public Event
 	/// Note frequency (440000 == 440Hz)
 	int milliHertz;
 
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception);
+	virtual void processEvent(EventHandler *handler);
 };
 
 
@@ -214,44 +205,9 @@ struct ConfigurationEvent: virtual public Event
 	/// What value we are setting (meaning dependent on config type)
 	int value;
 
-	virtual std::string getContent() const
-		throw ();
+	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler)
-		throw (std::exception);
-};
-
-
-/// Exception thrown when playing a note on an invalid channel
-/**
- * Certain formats have limits on which types of instruments can be played on
- * which channels (e.g. OPL rhythm mode instruments must be played on special
- * rhythm channels.)  This exception is thrown when a mismatch occurs.  The
- * what() function will return a reason suitable for display to the user.
- */
-class EChannelMismatch: virtual public std::exception {
-	protected:
-		int instIndex;      ///< Instrument ID (starting at 0)
-		int targetChannel;  ///< Target channel (starting at 0, but +1 for messages)
-		std::string reason; ///< User-readable reason for mismatch
-
-		/// Message displayed to use.
-		/**
-		 * This is declared mutable as it will be populated by the first call to
-		 * the const function what(), then the cached value will be returned on
-		 * subsequent calls.
-		 */
-		mutable std::string msg;
-
-	public:
-		EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
-			throw ();
-
-		virtual ~EChannelMismatch()
-			throw ();
-
-		virtual const char *what() const
-			throw ();
+	virtual void processEvent(EventHandler *handler);
 };
 
 /// Callback interface
@@ -263,8 +219,7 @@ class EChannelMismatch: virtual public std::exception {
 class EventHandler
 {
 	public:
-		virtual void handleEvent(const TempoEvent *ev)
-			throw (stream::error) = 0;
+		virtual void handleEvent(const TempoEvent *ev) = 0;
 
 		/// A note is being played.
 		/**
@@ -274,23 +229,17 @@ class EventHandler
 		 * @throws bad_patch if the note could not be played with the given
 		 *   instrument (e.g. not enough instruments in patch bank.)
 		 */
-		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, bad_patch) = 0;
+		virtual void handleEvent(const NoteOnEvent *ev) = 0;
 
-		virtual void handleEvent(const NoteOffEvent *ev)
-			throw (stream::error) = 0;
+		virtual void handleEvent(const NoteOffEvent *ev) = 0;
 
-		virtual void handleEvent(const PitchbendEvent *ev)
-			throw (stream::error) = 0;
+		virtual void handleEvent(const PitchbendEvent *ev) = 0;
 
-		virtual void handleEvent(const ConfigurationEvent *ev)
-			throw (stream::error) = 0;
+		virtual void handleEvent(const ConfigurationEvent *ev) = 0;
 
-		void handleAllEvents(const EventVectorPtr& events)
-			throw (stream::error, EChannelMismatch, bad_patch);
+		void handleAllEvents(const EventVectorPtr& events);
 
 };
-
 
 } // namespace gamemusic
 } // namespace camoto

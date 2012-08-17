@@ -56,19 +56,16 @@ static const char *CMF_DEFAULT_PATCHES =
 "\x32\x21\x16\x80\x73\x75\x24\x57\x00\x00\x0E";
 
 std::string MusicType_CMF::getCode() const
-	throw ()
 {
 	return "cmf-creativelabs";
 }
 
 std::string MusicType_CMF::getFriendlyName() const
-	throw ()
 {
 	return "Creative Labs Music File";
 }
 
 std::vector<std::string> MusicType_CMF::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("cmf");
@@ -76,7 +73,6 @@ std::vector<std::string> MusicType_CMF::getFileExtensions() const
 }
 
 MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
-	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c01
@@ -97,7 +93,6 @@ MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
 }
 
 MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Skip CTMF header.  This is an absolute seek as it will be by far the most
 	// common situation and avoids a lot of complexity because the header includes
@@ -344,7 +339,6 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 
 void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	assert(music->ticksPerQuarterNote != 0);
 
@@ -461,14 +455,12 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_CMF::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_CMF::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	types.push_back(Metadata::Title);
@@ -479,7 +471,6 @@ Metadata::MetadataTypes MusicType_CMF::getMetadataList() const
 
 /*
 void MusicWriter_CMF::handleEvent(NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch)
 {
 	// We need to override this event handler to do channel mapping appropriate
 	// for OPL instruments instead of MIDI ones.

@@ -36,13 +36,11 @@ namespace camoto {
 namespace gamemusic {
 
 ManagerPtr getManager()
-	throw ()
 {
 	return ManagerPtr(new Manager());
 }
 
 Manager::Manager()
-	throw ()
 {
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
@@ -59,19 +57,16 @@ Manager::Manager()
 }
 
 Manager::~Manager()
-	throw ()
 {
 }
 
 MusicTypePtr Manager::getMusicType(unsigned int index)
-	throw ()
 {
 	if (index >= this->musicTypes.size()) return MusicTypePtr();
 	return this->musicTypes[index];
 }
 
 MusicTypePtr Manager::getMusicTypeByCode(const std::string& code)
-	throw ()
 {
 	for (VC_MUSICTYPE::const_iterator i = this->musicTypes.begin(); i != this->musicTypes.end(); i++) {
 		if ((*i)->getCode().compare(code) == 0) return *i;

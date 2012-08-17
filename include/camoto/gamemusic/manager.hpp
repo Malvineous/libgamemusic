@@ -43,8 +43,7 @@ typedef boost::shared_ptr<Manager> ManagerPtr;
  *
  * @return A shared pointer to a Manager instance.
  */
-ManagerPtr getManager(void)
-	throw ();
+ManagerPtr getManager(void);
 
 /// Top-level class to manage music types.
 /**
@@ -65,15 +64,12 @@ class Manager
 		/// List of available music types.
 		VC_MUSICTYPE musicTypes;
 
-		Manager()
-			throw ();
+		Manager();
 
-		friend ManagerPtr getManager(void)
-			throw ();
+		friend ManagerPtr getManager(void);
 
 	public:
-		~Manager()
-			throw ();
+		~Manager();
 
 		/// Get a MusicType instance for a supported file format.
 		/**
@@ -85,8 +81,7 @@ class Manager
 		 * @return A shared pointer to a MusicType for the given index, or an empty
 		 *   pointer once iIndex goes out of range.
 		 */
-		MusicTypePtr getMusicType(unsigned int index)
-			throw ();
+		MusicTypePtr getMusicType(unsigned int index);
 
 		/// Get a MusicType instance by its code.
 		/**
@@ -94,8 +89,7 @@ class Manager
 		 * @return A shared pointer to a MusicType for the given code, or
 		 *         an empty pointer on an invalid code.
 		 */
-		MusicTypePtr getMusicTypeByCode(const std::string& code)
-			throw ();
+		MusicTypePtr getMusicTypeByCode(const std::string& code);
 };
 
 } // namespace gamemusic

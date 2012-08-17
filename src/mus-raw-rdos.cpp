@@ -35,17 +35,15 @@ class OPLReaderCallback_RAW: virtual public OPLReaderCallback
 {
 	public:
 		OPLReaderCallback_RAW(stream::input_sptr input)
-			throw (stream::error)
-			: input(input),
-			  first(true),
-			  chipIndex(0)
+			:	input(input),
+				first(true),
+				chipIndex(0)
 		{
 			this->input->seekg(8, stream::start);
 			this->input >> u16le(this->lastClock);
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			oplEvent->delay = 0;
 
@@ -113,17 +111,15 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_RAW(stream::output_sptr output)
-			throw (stream::error)
-			: output(output),
-			  first(true),
-			  lastChipIndex(0),
-			  lastTempo(0),
-			  firstClock(0xFFFF)
+			:	output(output),
+				first(true),
+				lastChipIndex(0),
+				lastTempo(0),
+				firstClock(0xFFFF)
 		{
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			// Write out the delay in one or more lots of 255 or less.
 			unsigned long delay = oplEvent->delay;
@@ -163,7 +159,6 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 		}
 
 		virtual void writeTempoChange(tempo_t usPerTick)
-			throw (stream::error)
 		{
 			// Write a tempo change if the tempo has indeed changed
 			if (usPerTick != this->lastTempo) {
@@ -192,19 +187,16 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 };
 
 std::string MusicType_RAW::getCode() const
-	throw ()
 {
 	return "raw-rdos";
 }
 
 std::string MusicType_RAW::getFriendlyName() const
-	throw ()
 {
 	return "Rdos raw OPL capture";
 }
 
 std::vector<std::string> MusicType_RAW::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("raw");
@@ -213,7 +205,6 @@ std::vector<std::string> MusicType_RAW::getFileExtensions() const
 
 
 MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
-	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_raw_rdos_isinstance_c01
@@ -231,7 +222,6 @@ MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
 }
 
 MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
@@ -248,7 +238,6 @@ MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
 
 void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	// Make sure the stream is large enough to write into
 	//output->truncate(10);
@@ -280,14 +269,12 @@ void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_RAW::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_RAW::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	types.push_back(Metadata::Title);

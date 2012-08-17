@@ -71,8 +71,7 @@ namespace gamemusic {
  * @return The converted frequency in milliHertz.
  */
 int fnumToMilliHertz(unsigned int fnum, unsigned int block,
-	unsigned int conversionFactor)
-	throw ();
+	unsigned int conversionFactor);
 
 /// Convert a frequency into an OPL f-number
 /**
@@ -101,8 +100,7 @@ int fnumToMilliHertz(unsigned int fnum, unsigned int block,
  *   the original value.
  */
 void milliHertzToFnum(unsigned int milliHertz,
-	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor)
-	throw ();
+	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor);
 
 } // namespace gamemusic
 } // namespace camoto

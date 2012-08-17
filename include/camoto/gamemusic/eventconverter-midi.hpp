@@ -104,8 +104,7 @@ class MIDIEventCallback
 		 *   as this allows better optimisation of events.
 		 */
 		virtual void midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
-			uint8_t velocity)
-			throw (stream::error) = 0;
+			uint8_t velocity) = 0;
 
 		/// Start sounding a note.
 		/**
@@ -123,8 +122,7 @@ class MIDIEventCallback
 		 *   unknown.
 		 */
 		virtual void midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
-			uint8_t velocity)
-			throw (stream::error) = 0;
+			uint8_t velocity) = 0;
 
 		/// Change instrument on a channel.
 		/**
@@ -138,8 +136,7 @@ class MIDIEventCallback
 		 *   MIDI instrument to use, 0-127 inclusive.
 		 */
 		virtual void midiPatchChange(uint32_t delay, uint8_t channel,
-			uint8_t instrument)
-			throw (stream::error) = 0;
+			uint8_t instrument) = 0;
 
 		/// Change a MIDI controller on a channel.
 		/**
@@ -156,8 +153,7 @@ class MIDIEventCallback
 		 *   Value to set controller to, 0-127 inclusive.
 		 */
 		virtual void midiController(uint32_t delay, uint8_t channel,
-			uint8_t controller, uint8_t value)
-			throw (stream::error) = 0;
+			uint8_t controller, uint8_t value) = 0;
 
 		/// Alter pitch of all notes currently playing on a channel.
 		/**
@@ -171,8 +167,7 @@ class MIDIEventCallback
 		 *   Amount of bending.  0 is as low as possible, +8192 is none/default
 		 *   and +16383 is as high as possible.
 		 */
-		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
-			throw (stream::error) = 0;
+		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend) = 0;
 
 		/// Change the song speed.
 		/**
@@ -183,8 +178,7 @@ class MIDIEventCallback
 		 * @param usPerTick
 		 *   New tempo, in number of microseconds per tick.
 		 */
-		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick)
-			throw (stream::error) = 0;
+		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick) = 0;
 
 };
 
@@ -282,36 +276,28 @@ class EventConverter_MIDI: virtual public EventHandler
 		 *   speed.
 		 */
 		EventConverter_MIDI(MIDIEventCallback *cb, const PatchBankPtr patches,
-			unsigned int midiFlags, unsigned long ticksPerQuarterNote)
-			throw ();
+			unsigned int midiFlags, unsigned long ticksPerQuarterNote);
 
-		virtual ~EventConverter_MIDI()
-			throw ();
+		virtual ~EventConverter_MIDI();
 
 		/// Prepare to start from the first event.
 		/**
 		 * This function must be called before re-sending an old event, otherwise
 		 * the resulting negative delay will cause an extremely long pause.
 		 */
-		void rewind()
-			throw ();
+		void rewind();
 
 		// EventHandler functions
 
-		virtual void handleEvent(const TempoEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const TempoEvent *ev);
 
-		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch);
+		virtual void handleEvent(const NoteOnEvent *ev);
 
-		virtual void handleEvent(const NoteOffEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const NoteOffEvent *ev);
 
-		virtual void handleEvent(const PitchbendEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const PitchbendEvent *ev);
 
-		virtual void handleEvent(const ConfigurationEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const ConfigurationEvent *ev);
 
 	protected:
 
@@ -327,8 +313,7 @@ class EventConverter_MIDI: virtual public EventHandler
 		 *
 		 * @return MIDI channel number (between 0 and 15 inclusive.)
 		 */
-		uint8_t getMIDIchannel(unsigned int channel, unsigned int numMIDIchans)
-			throw ();
+		uint8_t getMIDIchannel(unsigned int channel, unsigned int numMIDIchans);
 
 };
 

@@ -29,15 +29,14 @@ using namespace camoto::gamemusic;
 
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
 	const PatchBankPtr inst, double fnumConversion, unsigned int flags)
-	throw ()
-	: cb(cb),
-	  inst(inst),
-	  fnumConversion(fnumConversion),
-	  flags(flags),
-	  lastTick(0),
-	  cachedDelay(0),
-	  modeOPL3(false),
-	  modeRhythm(false)
+	:	cb(cb),
+		inst(inst),
+		fnumConversion(fnumConversion),
+		flags(flags),
+		lastTick(0),
+		cachedDelay(0),
+		modeOPL3(false),
+		modeRhythm(false)
 {
 	// Initialise all OPL registers to zero (this is assumed the initial state
 	// upon playback)
@@ -55,19 +54,16 @@ EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
 }
 
 EventConverter_OPL::~EventConverter_OPL()
-	throw ()
 {
 }
 
 void EventConverter_OPL::rewind()
-	throw ()
 {
 	this->lastTick = 0;
 	return;
 }
 
 void EventConverter_OPL::handleEvent(const TempoEvent *ev)
-	throw (stream::error)
 {
 	assert(ev->usPerTick > 0);
 	this->cb->writeTempoChange(ev->usPerTick);
@@ -75,7 +71,6 @@ void EventConverter_OPL::handleEvent(const TempoEvent *ev)
 }
 
 void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	assert(this->inst);
 	assert(ev->channel != 0); // can't do note on on all channels
@@ -325,7 +320,6 @@ void EventConverter_OPL::handleEvent(const NoteOnEvent *ev)
 }
 
 void EventConverter_OPL::handleEvent(const NoteOffEvent *ev)
-	throw (stream::error)
 {
 	LastData &d = this->lastData[ev->channel];
 	int delay = ev->absTime - this->lastTick;
@@ -356,7 +350,6 @@ void EventConverter_OPL::handleEvent(const NoteOffEvent *ev)
 }
 
 void EventConverter_OPL::handleEvent(const PitchbendEvent *ev)
-	throw (stream::error)
 {
 	LastData &d = this->lastData[ev->channel];
 	int delay = ev->absTime - this->lastTick;
@@ -381,7 +374,6 @@ void EventConverter_OPL::handleEvent(const PitchbendEvent *ev)
 }
 
 void EventConverter_OPL::handleEvent(const ConfigurationEvent *ev)
-	throw (stream::error)
 {
 	int delay = ev->absTime - this->lastTick;
 	switch (ev->configType) {
@@ -430,7 +422,6 @@ void EventConverter_OPL::handleEvent(const ConfigurationEvent *ev)
 void EventConverter_OPL::processNextPair(uint32_t delay, uint8_t chipIndex,
 	uint8_t reg, uint8_t val
 )
-	throw (stream::error)
 {
 	assert(chipIndex < 2);
 
@@ -456,7 +447,6 @@ void EventConverter_OPL::processNextPair(uint32_t delay, uint8_t chipIndex,
 void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 	int opNum, OPLPatchPtr i, int velocity
 )
-	throw (stream::error)
 {
 	uint8_t op;
 	OPLOperator *o;

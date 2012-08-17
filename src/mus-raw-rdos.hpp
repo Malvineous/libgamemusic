@@ -30,31 +30,23 @@ namespace gamemusic {
 class MusicType_RAW: virtual public MusicType
 {
 	public:
-		virtual std::string getCode() const
-			throw ();
+		virtual std::string getCode() const;
 
-		virtual std::string getFriendlyName() const
-			throw ();
+		virtual std::string getFriendlyName() const;
 
-		virtual std::vector<std::string> getFileExtensions() const
-			throw ();
+		virtual std::vector<std::string> getFileExtensions() const;
 
-		virtual Certainty isInstance(stream::input_sptr input) const
-			throw (stream::error);
+		virtual Certainty isInstance(stream::input_sptr input) const;
 
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error);
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const;
 
 		virtual void write(stream::output_sptr output, SuppData& suppData,
-			MusicPtr music, unsigned int flags) const
-			throw (stream::error, format_limitation);
+			MusicPtr music, unsigned int flags) const;
 
 		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
-			const std::string& filenameMusic) const
-			throw ();
+			const std::string& filenameMusic) const;
 
-		virtual Metadata::MetadataTypes getMetadataList() const
-			throw ();
+		virtual Metadata::MetadataTypes getMetadataList() const;
 };
 
 } // namespace gamemusic

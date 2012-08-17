@@ -36,8 +36,7 @@ class bad_patch: public error
 		 * @param msg
 		 *   Error description for UI messages.
 		 */
-		bad_patch(const std::string& msg)
-			throw ();
+		bad_patch(const std::string& msg);
 };
 
 /// Exception thrown when a file format cannot store the required data.
@@ -49,8 +48,7 @@ class format_limitation: public error
 		 * @param msg
 		 *   Error description for UI messages.
 		 */
-		format_limitation(const std::string& msg)
-			throw ();
+		format_limitation(const std::string& msg);
 };
 
 

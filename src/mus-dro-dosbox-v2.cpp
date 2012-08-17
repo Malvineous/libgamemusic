@@ -52,9 +52,8 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 {
 	public:
 		OPLReaderCallback_DRO_v2(stream::input_sptr input)
-			throw (stream::error)
-			: input(input),
-			  first(true)
+			:	input(input),
+				first(true)
 		{
 			this->input->seekg(12, stream::start);
 			this->input >> u32le(this->lenData);
@@ -74,7 +73,6 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			if (this->lenData == 0) return false;
 
@@ -137,20 +135,18 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_DRO_v2()
-			throw (stream::error)
-			: usPerTick(DRO_CLOCK),
-			  buffer(new stream::string()),
-			  oplType(DRO2_OPLTYPE_OPL2),
-			  codemapLength(0),
-			  cachedDelay(0),
-			  numPairs(0),
-			  msSongLength(0)
+			:	usPerTick(DRO_CLOCK),
+				buffer(new stream::string()),
+				oplType(DRO2_OPLTYPE_OPL2),
+				codemapLength(0),
+				cachedDelay(0),
+				numPairs(0),
+				msSongLength(0)
 		{
 			memset(this->codemap, 0xff, sizeof(this->codemap));
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			// Remember the delay for next time in case we get a register we can't write
 			this->cachedDelay += oplEvent->delay;
@@ -238,7 +234,6 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		}
 
 		virtual void writeTempoChange(tempo_t usPerTick)
-			throw (stream::error)
 		{
 			assert(usPerTick != 0);
 			this->usPerTick = usPerTick;
@@ -247,7 +242,6 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 
 		/// Write out all the cached data.
 		void write(stream::output_sptr output)
-			throw (stream::error)
 		{
 			assert(output->tellp() == 12);
 
@@ -287,19 +281,16 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 };
 
 std::string MusicType_DRO_v2::getCode() const
-	throw ()
 {
 	return "dro-dosbox-v2";
 }
 
 std::string MusicType_DRO_v2::getFriendlyName() const
-	throw ()
 {
 	return "DOSBox Raw OPL version 2";
 }
 
 std::vector<std::string> MusicType_DRO_v2::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("dro");
@@ -307,7 +298,6 @@ std::vector<std::string> MusicType_DRO_v2::getFileExtensions() const
 }
 
 MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) const
-	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c01
@@ -327,7 +317,6 @@ MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) co
 }
 
 MusicPtr MusicType_DRO_v2::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
@@ -344,7 +333,6 @@ MusicPtr MusicType_DRO_v2::read(stream::input_sptr input, SuppData& suppData) co
 
 void MusicType_DRO_v2::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	output->write("DBRAWOPL\x02\x00\x00\x00", 12);
 
@@ -364,14 +352,12 @@ void MusicType_DRO_v2::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_DRO_v2::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_DRO_v2::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	types.push_back(Metadata::Title);

@@ -24,7 +24,6 @@
 using namespace camoto::gamemusic;
 
 std::string Event::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -35,7 +34,6 @@ std::string Event::getContent() const
 }
 
 std::string TempoEvent::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -46,14 +44,12 @@ std::string TempoEvent::getContent() const
 }
 
 void TempoEvent::processEvent(EventHandler *handler)
-	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
 }
 
 std::string NoteOnEvent::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -66,14 +62,12 @@ std::string NoteOnEvent::getContent() const
 }
 
 void NoteOnEvent::processEvent(EventHandler *handler)
-	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
 }
 
 std::string NoteOffEvent::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -84,14 +78,12 @@ std::string NoteOffEvent::getContent() const
 }
 
 void NoteOffEvent::processEvent(EventHandler *handler)
-	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
 }
 
 std::string PitchbendEvent::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -102,14 +94,12 @@ std::string PitchbendEvent::getContent() const
 }
 
 void PitchbendEvent::processEvent(EventHandler *handler)
-	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
 }
 
 std::string ConfigurationEvent::getContent() const
-	throw ()
 {
 	std::ostringstream ss;
 	ss
@@ -138,39 +128,12 @@ std::string ConfigurationEvent::getContent() const
 }
 
 void ConfigurationEvent::processEvent(EventHandler *handler)
-	throw (std::exception)
 {
 	handler->handleEvent(this);
 	return;
 }
 
-EChannelMismatch::EChannelMismatch(int instIndex, int targetChannel, const std::string& reason)
-	throw () :
-		instIndex(instIndex),
-		targetChannel(targetChannel),
-		reason(reason)
-{
-}
-
-EChannelMismatch::~EChannelMismatch()
-	throw ()
-{
-}
-
-const char *EChannelMismatch::what() const
-	throw ()
-{
-	if (this->msg.empty()) {
-		std::stringstream ss;
-		ss << "Instrument #" << this->instIndex << " cannot be played on "
-			"channel #" << (this->targetChannel + 1) << ": " << this->reason;
-		this->msg = ss.str();
-	}
-	return this->msg.c_str();
-}
-
 void EventHandler::handleAllEvents(const EventVectorPtr& events)
-	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	for (EventVector::const_iterator i = events->begin(); i != events->end(); i++) {
 		i->get()->processEvent(this);

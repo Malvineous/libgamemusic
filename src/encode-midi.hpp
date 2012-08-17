@@ -57,8 +57,7 @@ namespace gamemusic {
  *   information is not required.
  */
 void midiEncode(stream::output_sptr& output, unsigned int midiFlags,
-	MusicPtr music,	tempo_t *usPerTick, bool *channelsUsed)
-	throw (stream::error, format_limitation);
+	MusicPtr music,	tempo_t *usPerTick, bool *channelsUsed);
 
 } // namespace gamemusic
 } // namespace camoto

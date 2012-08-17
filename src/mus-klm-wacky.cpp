@@ -40,29 +40,22 @@ class EventConverter_KLM: virtual public EventHandler
 		 * @param output
 		 *   Output stream the KLM data will be written to.
 		 */
-		EventConverter_KLM(stream::output_sptr output)
-			throw ();
+		EventConverter_KLM(stream::output_sptr output);
 
 		/// Destructor.
-		virtual ~EventConverter_KLM()
-			throw ();
+		virtual ~EventConverter_KLM();
 
 		// EventHandler overrides
 
-		virtual void handleEvent(const TempoEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const TempoEvent *ev);
 
-		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, bad_patch);
+		virtual void handleEvent(const NoteOnEvent *ev);
 
-		virtual void handleEvent(const NoteOffEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const NoteOffEvent *ev);
 
-		virtual void handleEvent(const PitchbendEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const PitchbendEvent *ev);
 
-		virtual void handleEvent(const ConfigurationEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const ConfigurationEvent *ev);
 
 	protected:
 		stream::output_sptr output;          ///< Where to write KLM file
@@ -70,24 +63,20 @@ class EventConverter_KLM: virtual public EventHandler
 		uint8_t patchMap[KLM_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
 
 		/// Write out the current delay, if there is one (curTick != lastTick)
-		void writeDelay(unsigned long curTick)
-			throw (stream::error);
+		void writeDelay(unsigned long curTick);
 };
 
 std::string MusicType_KLM::getCode() const
-	throw ()
 {
 	return "klm-wacky";
 }
 
 std::string MusicType_KLM::getFriendlyName() const
-	throw ()
 {
 	return "Wacky Wheels Adlib Music File";
 }
 
 std::vector<std::string> MusicType_KLM::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("klm");
@@ -95,7 +84,6 @@ std::vector<std::string> MusicType_KLM::getFileExtensions() const
 }
 
 MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
-	throw (stream::error)
 {
 	stream::pos lenFile = input->size();
 
@@ -178,7 +166,6 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 }
 
 MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
@@ -469,7 +456,6 @@ off klm
 
 void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	requirePatches<OPLPatch>(music->patches);
 	if (music->patches->size() > 256) {
@@ -554,14 +540,12 @@ off klm
 
 SuppFilenames MusicType_KLM::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_KLM::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	return types;
@@ -569,20 +553,17 @@ Metadata::MetadataTypes MusicType_KLM::getMetadataList() const
 
 
 EventConverter_KLM::EventConverter_KLM(stream::output_sptr output)
-	throw ()
-	: output(output),
-	  lastTick(0)
+	:	output(output),
+		lastTick(0)
 {
 	memset(this->patchMap, 0xFF, sizeof(this->patchMap));
 }
 
 EventConverter_KLM::~EventConverter_KLM()
-	throw ()
 {
 }
 
 void EventConverter_KLM::handleEvent(const TempoEvent *ev)
-	throw (stream::error)
 {
 	// TODO: Set current multiplier for future delay modifications
 	if (ev->absTime == 0) {
@@ -619,7 +600,6 @@ void EventConverter_KLM::handleEvent(const TempoEvent *ev)
 }
 
 void EventConverter_KLM::handleEvent(const NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch, bad_patch)
 {
 	assert(ev->channel != 0);
 	if (ev->channel >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");
@@ -660,7 +640,6 @@ void EventConverter_KLM::handleEvent(const NoteOnEvent *ev)
 }
 
 void EventConverter_KLM::handleEvent(const NoteOffEvent *ev)
-	throw (stream::error)
 {
 	if (ev->channel >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");
 
@@ -674,7 +653,6 @@ void EventConverter_KLM::handleEvent(const NoteOffEvent *ev)
 }
 
 void EventConverter_KLM::handleEvent(const PitchbendEvent *ev)
-	throw (stream::error)
 {
 /*
 	if (this->flags & IntegerNotesOnly) return;
@@ -706,7 +684,6 @@ void EventConverter_KLM::handleEvent(const PitchbendEvent *ev)
 }
 
 void EventConverter_KLM::handleEvent(const ConfigurationEvent *ev)
-	throw (stream::error)
 {
 	switch (ev->configType) {
 		case ConfigurationEvent::EnableRhythm:
@@ -726,7 +703,6 @@ void EventConverter_KLM::handleEvent(const ConfigurationEvent *ev)
 }
 
 void EventConverter_KLM::writeDelay(unsigned long curTick)
-	throw (stream::error)
 {
 	uint32_t delay = curTick - this->lastTick;
 	while (delay) {

@@ -28,7 +28,6 @@ namespace gamemusic {
 
 int fnumToMilliHertz(unsigned int fnum, unsigned int block,
 	unsigned int conversionFactor)
-	throw ()
 {
 	assert(block < 8);
 	assert(fnum < 1024);
@@ -37,7 +36,6 @@ int fnumToMilliHertz(unsigned int fnum, unsigned int block,
 
 void milliHertzToFnum(unsigned int milliHertz,
 	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor)
-	throw ()
 {
 	// Special case to avoid divide by zero
 	if (milliHertz == 0) {

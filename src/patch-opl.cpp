@@ -81,8 +81,7 @@ const char *camoto::gamemusic::rhythmToText(int rhythm)
 }
 
 OPLOperator::OPLOperator()
-	throw () :
-		enableTremolo(false),
+	:	enableTremolo(false),
 		enableVibrato(false),
 		enableSustain(false),
 		enableKSR(false),
@@ -98,8 +97,7 @@ OPLOperator::OPLOperator()
 }
 
 OPLPatch::OPLPatch()
-	throw () :
-		feedback(0),
+	:	feedback(0),
 		connection(false),
 		rhythm(0)
 {

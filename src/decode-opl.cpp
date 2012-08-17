@@ -46,11 +46,9 @@ class OPLDecoder
 		 * @param cb
 		 *   Callback class used to read the actual OPL data bytes from the file.
 		 */
-		OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumConversion)
-			throw ();
+		OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumConversion);
 
-		~OPLDecoder()
-			throw ();
+		~OPLDecoder();
 
 		/// Read the input data and set events and instruments accordingly.
 		/**
@@ -61,8 +59,7 @@ class OPLDecoder
 		 * @throw stream:error
 		 *   If the input data could not be read or converted for some reason.
 		 */
-		MusicPtr decode()
-			throw (stream::error);
+		MusicPtr decode();
 
 	private:
 		OPLReaderCallback *cb;     ///< Callback to use to get more OPL data
@@ -73,8 +70,7 @@ class OPLDecoder
 		uint8_t oplState[2][256];  ///< Current register values
 		PatchBankPtr patches;      ///< Patch storage
 
-		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel)
-			throw ();
+		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel);
 
 		/// Add the given patch to the patchbank.
 		/**
@@ -87,22 +83,18 @@ class OPLDecoder
 		 *
 		 * @return Index of this instrument in the patchbank.
 		 */
-		int savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
-			throw ();
+		int savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch);
 
 		EventPtr createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
-			uint8_t oplChannel, int rhythm, int channel, int b0val)
-			throw ();
+			uint8_t oplChannel, int rhythm, int channel, int b0val);
 
 		void createOrUpdatePitchbend(EventVectorPtr events,
-			uint8_t chipIndex, int channel, int a0val, int b0val)
-			throw ();
+			uint8_t chipIndex, int channel, int a0val, int b0val);
 };
 
 
 MusicPtr camoto::gamemusic::oplDecode(OPLReaderCallback *cb, DelayType delayType,
 	double fnumConversion)
-	throw (stream::error)
 {
 	OPLDecoder decoder(cb, delayType, fnumConversion);
 	return decoder.decode();
@@ -110,21 +102,18 @@ MusicPtr camoto::gamemusic::oplDecode(OPLReaderCallback *cb, DelayType delayType
 
 
 OPLDecoder::OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumConversion)
-	throw ()
-	: cb(cb),
-	  delayType(delayType),
-	  fnumConversion(fnumConversion),
-	  patches(new PatchBank())
+	:	cb(cb),
+		delayType(delayType),
+		fnumConversion(fnumConversion),
+		patches(new PatchBank())
 {
 }
 
 OPLDecoder::~OPLDecoder()
-	throw ()
 {
 }
 
 MusicPtr OPLDecoder::decode()
-	throw (stream::error)
 {
 	MusicPtr music(new Music());
 	music->patches = this->patches;
@@ -299,7 +288,6 @@ MusicPtr OPLDecoder::decode()
 }
 
 OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
-	throw ()
 {
 	OPLPatchPtr curPatch(new OPLPatch());
 
@@ -330,7 +318,6 @@ OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 }
 
 int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
-	throw ()
 {
 	// See if the patch has already been saved
 	unsigned int j = 0;
@@ -348,7 +335,6 @@ int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 	uint8_t oplChannel, int rhythm, int channel, int b0val
 )
-	throw ()
 {
 	NoteOnEvent *ev = new NoteOnEvent();
 	EventPtr gev(ev);
@@ -380,7 +366,6 @@ EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 
 void OPLDecoder::createOrUpdatePitchbend(EventVectorPtr events,
 	uint8_t chipIndex, int channel, int a0val, int b0val)
-	throw ()
 {
 	// Get the OPL frequency number for this channel
 	int fnum = ((b0val & 0x03) << 8) | a0val;

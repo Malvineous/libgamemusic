@@ -84,7 +84,6 @@ bool split(const std::string& in, char delim, std::string *out1, std::string *ou
 gm::MusicPtr openMusicFile(const std::string& strFilename,
 	const char *typeArg, const std::string& strType, gm::ManagerPtr pManager,
 	bool bForceOpen)
-	throw (int)
 {
 	stream::input_file_sptr psMusic(new stream::input_file());
 	try {

@@ -40,19 +40,16 @@ const unsigned int IBK_INST_LEN = 16;
 const unsigned int IBK_NAME_LEN = 9;
 
 std::string MusicType_IBK::getCode() const
-	throw ()
 {
 	return "ibk-instrumentbank";
 }
 
 std::string MusicType_IBK::getFriendlyName() const
-	throw ()
 {
 	return "IBK Instrument Bank";
 }
 
 std::vector<std::string> MusicType_IBK::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("ibk");
@@ -60,7 +57,6 @@ std::vector<std::string> MusicType_IBK::getFileExtensions() const
 }
 
 MusicType::Certainty MusicType_IBK::isInstance(stream::input_sptr psMusic) const
-	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_ibk_isinstance_c01
@@ -78,7 +74,6 @@ MusicType::Certainty MusicType_IBK::isInstance(stream::input_sptr psMusic) const
 }
 
 MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	MusicPtr music(new Music());
 	music->patches.reset(new PatchBank());
@@ -135,7 +130,6 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 
 void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	requirePatches<OPLPatch>(music->patches);
 	if (music->patches->size() >= IBK_INST_COUNT) {
@@ -189,14 +183,12 @@ void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_IBK::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_IBK::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	return types;

@@ -23,13 +23,11 @@
 using namespace camoto::gamemusic;
 
 bad_patch::bad_patch(const std::string& msg)
-	throw () :
-		error(msg)
+	:	error(msg)
 {
 }
 
 format_limitation::format_limitation(const std::string& msg)
-	throw () :
-		error(msg)
+	:	error(msg)
 {
 }

@@ -52,8 +52,8 @@ struct FIXTURE_NAME: public default_sample {
 	camoto::SuppData suppData;
 	MusicTypePtr pTestType;
 
-	FIXTURE_NAME() :
-		base(new stream::string())
+	FIXTURE_NAME()
+		:	base(new stream::string())
 	{
 		BOOST_REQUIRE_NO_THROW(
 			ManagerPtr pManager = getManager();

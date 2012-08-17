@@ -75,17 +75,16 @@ void camoto::gamemusic::freqToMIDI(unsigned long milliHertz, uint8_t *note,
 EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 	const PatchBankPtr patches, unsigned int midiFlags,
 	unsigned long ticksPerQuarterNote)
-	throw ()
-	: cb(cb),
-	  patches(patches),
-	  midiFlags(midiFlags),
-	  lastTick(0),
-	  ticksPerQuarterNote(ticksPerQuarterNote),
-	  usPerTick(0),
-	  deepTremolo(false),
-	  deepVibrato(false),
-	  updateDeep(false),
-	  first_usPerTick(MIDI_DEF_uS_PER_TICK)
+	:	cb(cb),
+		patches(patches),
+		midiFlags(midiFlags),
+		lastTick(0),
+		ticksPerQuarterNote(ticksPerQuarterNote),
+		usPerTick(0),
+		deepTremolo(false),
+		deepVibrato(false),
+		updateDeep(false),
+		first_usPerTick(MIDI_DEF_uS_PER_TICK)
 {
 	memset(this->currentPatch, 0xFF, sizeof(this->currentPatch));
 	memset(this->currentInternalPatch, 0xFF, sizeof(this->currentInternalPatch));
@@ -96,19 +95,16 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 }
 
 EventConverter_MIDI::~EventConverter_MIDI()
-	throw ()
 {
 }
 
 void EventConverter_MIDI::rewind()
-	throw ()
 {
 	this->lastTick = 0;
 	return;
 }
 
 void EventConverter_MIDI::handleEvent(const TempoEvent *ev)
-	throw (stream::error)
 {
 	assert(ev->usPerTick > 0);
 	if (this->usPerTick != ev->usPerTick) {
@@ -124,7 +120,6 @@ void EventConverter_MIDI::handleEvent(const TempoEvent *ev)
 }
 
 void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
-	throw (stream::error, EChannelMismatch)
 {
 	// Can't do a note-on for all channels
 	assert(ev->channel != 0);
@@ -216,7 +211,6 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 }
 
 void EventConverter_MIDI::handleEvent(const NoteOffEvent *ev)
-	throw (stream::error)
 {
 	// Can't (yet?) handle a note-off on all channels
 	assert(ev->channel != 0);
@@ -242,7 +236,6 @@ void EventConverter_MIDI::handleEvent(const NoteOffEvent *ev)
 }
 
 void EventConverter_MIDI::handleEvent(const PitchbendEvent *ev)
-	throw (stream::error)
 {
 	if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
 
@@ -266,7 +259,6 @@ void EventConverter_MIDI::handleEvent(const PitchbendEvent *ev)
 }
 
 void EventConverter_MIDI::handleEvent(const ConfigurationEvent *ev)
-	throw (stream::error)
 {
 	uint32_t delay = ev->absTime - this->lastTick;
 
@@ -292,7 +284,6 @@ void EventConverter_MIDI::handleEvent(const ConfigurationEvent *ev)
 
 
 uint8_t EventConverter_MIDI::getMIDIchannel(unsigned int channel, unsigned int numMIDIchans)
-	throw ()
 {
 	assert(channel < MAX_CHANNELS);
 	assert(numMIDIchans <= MIDI_CHANNELS);

@@ -40,12 +40,10 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
 		 */
-		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
-			throw ();
+		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags);
 
 		/// Destructor.
-		~MIDIEncoder()
-			throw ();
+		~MIDIEncoder();
 
 		/// Process the events, and write out MIDI data.
 		/**
@@ -66,32 +64,25 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   If the song could not be converted to MIDI for some reason (e.g. it has
 		 *   sampled instruments.)
 		 */
-		unsigned long encode(const MusicPtr music)
-			throw (stream::error, format_limitation);
+		unsigned long encode(const MusicPtr music);
 
 		// MIDIEventCallback
 
 		virtual void midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
-			uint8_t velocity)
-			throw (stream::error);
+			uint8_t velocity);
 
 		virtual void midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
-			uint8_t velocity)
-			throw (stream::error);
+			uint8_t velocity);
 
 		virtual void midiPatchChange(uint32_t delay, uint8_t channel,
-			uint8_t instrument)
-			throw (stream::error);
+			uint8_t instrument);
 
 		virtual void midiController(uint32_t delay, uint8_t channel,
-			uint8_t controller, uint8_t value)
-			throw (stream::error);
+			uint8_t controller, uint8_t value);
 
-		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
-			throw (stream::error);
+		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend);
 
-		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick)
-			throw (stream::error);
+		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick);
 
 	protected:
 		stream::output_sptr output;        ///< Target stream for SMF MIDI data
@@ -108,8 +99,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   only accept up to 28 bits.  An assertion failure will be triggered
 		 *   if the value is larger than this.
 		 */
-		void writeMIDINumber(uint32_t value)
-			throw (stream::error);
+		void writeMIDINumber(uint32_t value);
 
 		/// Write a MIDI command, using running notation if possible.
 		/**
@@ -125,14 +115,12 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * @param cmd
 		 *   MIDI command and channel.
 		 */
-		void writeCommand(uint32_t delay, uint8_t cmd)
-			throw (stream::error);
+		void writeCommand(uint32_t delay, uint8_t cmd);
 };
 
 
 void camoto::gamemusic::midiEncode(stream::output_sptr& output,
 	unsigned int midiFlags, MusicPtr music, tempo_t *usPerTick, bool *channelsUsed)
-	throw (stream::error, format_limitation)
 {
 	MIDIEncoder encoder(output, midiFlags);
 	*usPerTick = encoder.encode(music);
@@ -144,11 +132,10 @@ void camoto::gamemusic::midiEncode(stream::output_sptr& output,
 }
 
 MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
-	throw ()
-	: output(output),
-	  midiFlags(midiFlags),
-	  lastCommand(0xFF),
-	  ticksPerQuarterNote(0)
+	:	output(output),
+		midiFlags(midiFlags),
+		lastCommand(0xFF),
+		ticksPerQuarterNote(0)
 {
 	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
 		this->channelsUsed[i] = false;
@@ -156,12 +143,10 @@ MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
 }
 
 MIDIEncoder::~MIDIEncoder()
-	throw ()
 {
 }
 
 unsigned long MIDIEncoder::encode(const MusicPtr music)
-	throw (stream::error, format_limitation)
 {
 	// Remember this for this->midiSetTempo()
 	this->ticksPerQuarterNote = music->ticksPerQuarterNote;
@@ -177,7 +162,6 @@ unsigned long MIDIEncoder::encode(const MusicPtr music)
 }
 
 void MIDIEncoder::writeMIDINumber(uint32_t value)
-	throw (stream::error)
 {
 	// Make sure the value will fit in MIDI's 28-bit limit.
 	assert((value >> 28) == 0);
@@ -198,7 +182,6 @@ void MIDIEncoder::writeMIDINumber(uint32_t value)
 }
 
 void MIDIEncoder::writeCommand(uint32_t delay, uint8_t cmd)
-	throw (stream::error)
 {
 	this->writeMIDINumber(delay);
 	assert(cmd < 0xF0); // these commands are not part of the running status
@@ -210,7 +193,6 @@ void MIDIEncoder::writeCommand(uint32_t delay, uint8_t cmd)
 
 void MIDIEncoder::midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
-	throw (stream::error)
 {
 	this->channelsUsed[channel] = true;
 	if ((this->lastCommand == (0x90 | channel)) && (velocity == MIDI_DEFAULT_RELEASE_VELOCITY)) {
@@ -234,7 +216,6 @@ void MIDIEncoder::midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 
 void MIDIEncoder::midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
-	throw (stream::error)
 {
 	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0x90 | channel);
@@ -247,7 +228,6 @@ void MIDIEncoder::midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
 
 void MIDIEncoder::midiPatchChange(uint32_t delay, uint8_t channel,
 	uint8_t instrument)
-	throw (stream::error)
 {
 	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0xC0 | channel);
@@ -257,7 +237,6 @@ void MIDIEncoder::midiPatchChange(uint32_t delay, uint8_t channel,
 
 void MIDIEncoder::midiController(uint32_t delay, uint8_t channel,
 	uint8_t controller, uint8_t value)
-	throw (stream::error)
 {
 	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0xB0 | channel);
@@ -269,7 +248,6 @@ void MIDIEncoder::midiController(uint32_t delay, uint8_t channel,
 }
 
 void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
-	throw (stream::error)
 {
 	this->channelsUsed[channel] = true;
 	uint8_t msb = (bend >> 7) & 0x7F;
@@ -283,7 +261,6 @@ void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 }
 
 void MIDIEncoder::midiSetTempo(uint32_t delay, tempo_t usPerTick)
-	throw (stream::error)
 {
 	unsigned long usPerQuarterNote = usPerTick * this->ticksPerQuarterNote;
 	this->writeMIDINumber(delay);

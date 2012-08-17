@@ -41,8 +41,7 @@ class OPLReaderCallback {
 		 * @return true if oplEvent or tempo is valid or false to signify the end of
 		 *   the song.
 		 */
-		virtual bool readNextPair(OPLEvent *oplEvent)
-			throw (stream::error) = 0;
+		virtual bool readNextPair(OPLEvent *oplEvent) = 0;
 };
 
 /// Convert caller-supplied OPL data into a Music instance.
@@ -59,8 +58,7 @@ class OPLReaderCallback {
  *   Callback class used to read the actual OPL data bytes from the file.
  */
 MusicPtr oplDecode(OPLReaderCallback *cb, DelayType delayType,
-	double fnumConversion)
-	throw (stream::error);
+	double fnumConversion);
 
 } // namespace gamemusic
 } // namespace camoto

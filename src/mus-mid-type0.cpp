@@ -28,19 +28,16 @@ using namespace camoto;
 using namespace camoto::gamemusic;
 
 std::string MusicType_MID_Type0::getCode() const
-	throw ()
 {
 	return "mid-type0";
 }
 
 std::string MusicType_MID_Type0::getFriendlyName() const
-	throw ()
 {
 	return "Standard MIDI File (type-0/single track)";
 }
 
 std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("mid");
@@ -48,7 +45,6 @@ std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
 }
 
 MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic) const
-	throw (stream::error)
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_mid_type0_isinstance_c01
@@ -71,7 +67,6 @@ MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic)
 }
 
 MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Skip MThd header.
 	input->seekg(4, stream::start);
@@ -103,7 +98,6 @@ MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData)
 
 void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	requirePatches<MIDIPatch>(music->patches);
 
@@ -132,14 +126,12 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_MID_Type0::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_MID_Type0::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	return types;

@@ -47,7 +47,6 @@ struct PatchTypeName
 /// Require only certain patches in a PatchBankPtr.
 template <class T>
 void requirePatches(const PatchBankPtr& p)
-	throw (format_limitation)
 {
 	for (PatchBank::const_iterator i = p->begin(); i != p->end(); i++) {
 		if (!dynamic_cast<T *>(i->get())) {

@@ -60,22 +60,19 @@ class MusicType
 		 *
 		 * @return The music short name/ID.
 		 */
-		virtual std::string getCode() const
-			throw () = 0;
+		virtual std::string getCode() const = 0;
 
 		/// Get the music format name, e.g. "id Software Music Format"
 		/**
 		 * @return The music name.
 		 */
-		virtual std::string getFriendlyName() const
-			throw () = 0;
+		virtual std::string getFriendlyName() const = 0;
 
 		/// Get a list of the known file extensions for this format.
 		/**
 		 * @return A vector of file extensions, e.g. "imf", "wlf"
 		 */
-		virtual std::vector<std::string> getFileExtensions() const
-			throw () = 0;
+		virtual std::vector<std::string> getFileExtensions() const = 0;
 
 		/// Check a stream to see if it's in this music format.
 		/**
@@ -84,8 +81,7 @@ class MusicType
 		 *
 		 * @return A single confidence value from \ref MusicType::Certainty.
 		 */
-		virtual Certainty isInstance(stream::input_sptr input) const
-			throw (stream::error) = 0;
+		virtual Certainty isInstance(stream::input_sptr input) const = 0;
 
 		/// Read a music file in this format.
 		/**
@@ -106,8 +102,7 @@ class MusicType
 		 * @throw stream::error
 		 *   I/O error reading from input stream (e.g. file truncated)
 		 */
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const
-			throw (stream::error) = 0;
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const = 0;
 
 		/// Write a song in this file format.
 		/**
@@ -138,8 +133,7 @@ class MusicType
 		 * @post The stream will be truncated to the correct size.
 		 */
 		virtual void write(stream::output_sptr output, SuppData& suppData,
-			MusicPtr music, unsigned int flags) const
-			throw (stream::error, format_limitation) = 0;
+			MusicPtr music, unsigned int flags) const = 0;
 
 		/// Get a list of any required supplemental files.
 		/**
@@ -168,15 +162,13 @@ class MusicType
 		 *   open().  Note that the filenames returned can have relative paths.
 		 */
 		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
-			const std::string& filenameMusic) const
-			throw () = 0;
+			const std::string& filenameMusic) const = 0;
 
 		/// Discover valid metadata supported by this file format.
 		/**
 		 *  @see camoto::Metadata::getMetadataList()
 		 */
-		virtual Metadata::MetadataTypes getMetadataList() const
-			throw () = 0;
+		virtual Metadata::MetadataTypes getMetadataList() const = 0;
 
 };
 

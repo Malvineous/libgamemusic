@@ -35,8 +35,8 @@ struct midi_fixture: public default_sample {
 	stream::string_sptr base;
 	gm::MusicPtr music;
 
-	midi_fixture() :
-		base(new stream::string())
+	midi_fixture()
+		:	base(new stream::string())
 	{
 	}
 

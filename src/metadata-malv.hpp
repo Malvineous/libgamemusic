@@ -40,8 +40,7 @@ namespace gamemusic {
  *   If there was an error reading from the stream, such as invalid or truncated
  *   tags.
  */
-void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
-	throw (stream::error);
+void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata);
 
 /// Write tags to the stream in Malvineous' tag format.
 /**
@@ -58,8 +57,7 @@ void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
  * @throw format_limitation
  *   If the tags were too long to be written.
  */
-void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& metadata)
-	throw (stream::error, format_limitation);
+void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& metadata);
 
 } // namespace gamemusic
 } // namespace camoto

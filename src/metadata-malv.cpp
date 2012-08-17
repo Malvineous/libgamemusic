@@ -25,7 +25,6 @@ namespace camoto {
 namespace gamemusic {
 
 void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
-	throw (stream::error)
 {
 	uint8_t sig;
 	try {
@@ -43,7 +42,6 @@ void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata)
 }
 
 void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& metadata)
-	throw (stream::error, format_limitation)
 {
 	Metadata::TypeMap::const_iterator itTitle = metadata.find(Metadata::Title);
 	Metadata::TypeMap::const_iterator itComposer = metadata.find(Metadata::Author);

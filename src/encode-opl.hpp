@@ -30,8 +30,7 @@ namespace camoto {
 namespace gamemusic {
 
 void oplEncode(OPLWriterCallback *cb, DelayType delayType,
-	double fnumConversion, unsigned int flags, MusicPtr music)
-	throw (stream::error, format_limitation);
+	double fnumConversion, unsigned int flags, MusicPtr music);
 
 } // namespace gamemusic
 } // namespace camoto

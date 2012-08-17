@@ -43,16 +43,14 @@ class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 {
 	public:
 		OPLReaderCallback_IMF(stream::input_sptr input, unsigned int speed, unsigned int lenData)
-			throw (stream::error)
-			: input(input),
-			  first(true),
-			  speed(speed),
-			  lenData(lenData)
+			:	input(input),
+				first(true),
+				speed(speed),
+				lenData(lenData)
 		{
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			if (this->lenData == 0) return false;
 			if (this->first) {
@@ -93,15 +91,13 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_IMF(stream::output_sptr output, unsigned int speed)
-			throw (stream::error)
-			: output(output),
-			  speed(speed),
-			  usPerTick(HERTZ_TO_uS(speed)) // default to speed ticks per second
+			:	output(output),
+				speed(speed),
+				usPerTick(HERTZ_TO_uS(speed)) // default to speed ticks per second
 		{
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
-			throw (stream::error)
 		{
 			// Convert ticks into an IMF delay
 			unsigned long delay = oplEvent->delay * this->usPerTick / (HERTZ_TO_uS(this->speed));
@@ -130,7 +126,6 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 		}
 
 		virtual void writeTempoChange(tempo_t usPerTick)
-			throw (stream::error)
 		{
 			assert(usPerTick != 0);
 			this->usPerTick = usPerTick;
@@ -145,14 +140,12 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 
 
 MusicType_IMF_Common::MusicType_IMF_Common(unsigned int imfType, unsigned int speed)
-	throw ()
-	: imfType(imfType),
-	  speed(speed)
+	:	imfType(imfType),
+		speed(speed)
 {
 }
 
 MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) const
-	throw (stream::error)
 {
 	stream::pos len = input->size();
 
@@ -226,7 +219,6 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 }
 
 MusicPtr MusicType_IMF_Common::read(stream::input_sptr input, SuppData& suppData) const
-	throw (stream::error)
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
@@ -252,7 +244,6 @@ MusicPtr MusicType_IMF_Common::read(stream::input_sptr input, SuppData& suppData
 
 void MusicType_IMF_Common::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
-	throw (stream::error, format_limitation)
 {
 	if (this->imfType == 1) {
 		// Write a placeholder for the song length we'll fill out later when we
@@ -295,14 +286,12 @@ void MusicType_IMF_Common::write(stream::output_sptr output, SuppData& suppData,
 
 SuppFilenames MusicType_IMF_Common::getRequiredSupps(stream::input_sptr input,
 	const std::string& filenameMusic) const
-	throw ()
 {
 	// No supplemental types/empty list
 	return SuppFilenames();
 }
 
 Metadata::MetadataTypes MusicType_IMF_Common::getMetadataList() const
-	throw ()
 {
 	Metadata::MetadataTypes types;
 	if (this->imfType == 1) {
@@ -315,25 +304,21 @@ Metadata::MetadataTypes MusicType_IMF_Common::getMetadataList() const
 
 
 MusicType_IMF_Type0::MusicType_IMF_Type0()
-	throw ()
-	: MusicType_IMF_Common(0, 560)
+	:	MusicType_IMF_Common(0, 560)
 {
 }
 
 std::string MusicType_IMF_Type0::getCode() const
-	throw ()
 {
 	return "imf-idsoftware-type0";
 }
 
 std::string MusicType_IMF_Type0::getFriendlyName() const
-	throw ()
 {
 	return "id Software Music Format (type-0, 560Hz)";
 }
 
 std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("imf");
@@ -343,25 +328,21 @@ std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
 
 
 MusicType_IMF_Type1::MusicType_IMF_Type1()
-	throw ()
-	: MusicType_IMF_Common(1, 560)
+	:	MusicType_IMF_Common(1, 560)
 {
 }
 
 std::string MusicType_IMF_Type1::getCode() const
-	throw ()
 {
 	return "imf-idsoftware-type1";
 }
 
 std::string MusicType_IMF_Type1::getFriendlyName() const
-	throw ()
 {
 	return "id Software Music Format (type-1, 560Hz)";
 }
 
 std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("imf");
@@ -371,25 +352,21 @@ std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
 
 
 MusicType_WLF_Type0::MusicType_WLF_Type0()
-	throw ()
-	: MusicType_IMF_Common(0, 700)
+	:	MusicType_IMF_Common(0, 700)
 {
 }
 
 std::string MusicType_WLF_Type0::getCode() const
-	throw ()
 {
 	return "wlf-idsoftware-type0";
 }
 
 std::string MusicType_WLF_Type0::getFriendlyName() const
-	throw ()
 {
 	return "id Software Music Format (type-0, 700Hz)";
 }
 
 std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("wlf");
@@ -398,25 +375,21 @@ std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
 
 
 MusicType_WLF_Type1::MusicType_WLF_Type1()
-	throw ()
-	: MusicType_IMF_Common(1, 700)
+	:	MusicType_IMF_Common(1, 700)
 {
 }
 
 std::string MusicType_WLF_Type1::getCode() const
-	throw ()
 {
 	return "wlf-idsoftware-type1";
 }
 
 std::string MusicType_WLF_Type1::getFriendlyName() const
-	throw ()
 {
 	return "id Software Music Format (type-1, 700Hz)";
 }
 
 std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("wlf");
@@ -425,25 +398,21 @@ std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
 
 
 MusicType_IMF_Duke2::MusicType_IMF_Duke2()
-	throw ()
-	: MusicType_IMF_Common(0, 280)
+	:	MusicType_IMF_Common(0, 280)
 {
 }
 
 std::string MusicType_IMF_Duke2::getCode() const
-	throw ()
 {
 	return "imf-idsoftware-duke2";
 }
 
 std::string MusicType_IMF_Duke2::getFriendlyName() const
-	throw ()
 {
 	return "id Software Music Format (type-0, 280Hz)";
 }
 
 std::vector<std::string> MusicType_IMF_Duke2::getFileExtensions() const
-	throw ()
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("imf");

@@ -51,8 +51,8 @@ struct FIXTURE_NAME: public default_sample {
 	SuppData suppData;
 	MusicTypePtr pTestType;
 
-	FIXTURE_NAME() :
-		base(new stream::string())
+	FIXTURE_NAME()
+		:	base(new stream::string())
 	{
 	}
 

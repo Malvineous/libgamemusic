@@ -32,8 +32,7 @@ namespace gamemusic {
 struct MIDIPatch: public Patch
 {
 	/// Default constructor sets everything to zero/defaults.
-	MIDIPatch()
-		throw ();
+	MIDIPatch();
 
 	/// 7-bit number for MIDI instrument patch (0-127 inclusive)
 	uint8_t midiPatch;

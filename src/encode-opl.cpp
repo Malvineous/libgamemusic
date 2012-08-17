@@ -43,12 +43,10 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 *   One or more OPLWriteFlags to use to control the conversion.
 		 */
 		OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
-			double fnumConversion, unsigned int flags)
-			throw ();
+			double fnumConversion, unsigned int flags);
 
 		/// Destructor.
-		~OPLEncoder()
-			throw ();
+		~OPLEncoder();
 
 		/// Process the instruments and events, and write out OPL data.
 		/**
@@ -65,16 +63,13 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 *   If the song could not be converted to OPL for some reason (e.g. it has
 		 *   sampled instruments.)
 		 */
-		void encode(const MusicPtr music)
-			throw (stream::error, format_limitation);
+		void encode(const MusicPtr music);
 
 		// OPLWriterCallback
 
-		virtual void writeNextPair(const OPLEvent *oplEvent)
-			throw (stream::error);
+		virtual void writeNextPair(const OPLEvent *oplEvent);
 
-		virtual void writeTempoChange(tempo_t usPerTick)
-			throw (stream::error);
+		virtual void writeTempoChange(tempo_t usPerTick);
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to use when writing OPL data
@@ -91,7 +86,6 @@ class OPLEncoder: virtual private OPLWriterCallback
 
 void camoto::gamemusic::oplEncode(OPLWriterCallback *cb, DelayType delayType,
 	double fnumConversion, unsigned int flags, MusicPtr music)
-	throw (stream::error, format_limitation)
 {
 	OPLEncoder encoder(cb, delayType, fnumConversion, flags);
 	encoder.encode(music);
@@ -100,13 +94,12 @@ void camoto::gamemusic::oplEncode(OPLWriterCallback *cb, DelayType delayType,
 
 OPLEncoder::OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
 	double fnumConversion, unsigned int flags)
-	throw ()
-	: cb(cb),
-	  delayType(delayType),
-	  fnumConversion(fnumConversion),
-	  flags(flags),
-	  lastTempo(0),
-	  firstPair(true)
+	:	cb(cb),
+		delayType(delayType),
+		fnumConversion(fnumConversion),
+		flags(flags),
+		lastTempo(0),
+		firstPair(true)
 {
 	// Initialise all OPL registers to zero (this is assumed the initial state
 	// upon playback)
@@ -115,12 +108,10 @@ OPLEncoder::OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
 }
 
 OPLEncoder::~OPLEncoder()
-	throw ()
 {
 }
 
 void OPLEncoder::encode(const MusicPtr music)
-	throw (stream::error, format_limitation)
 {
 	PatchBankPtr oplPatches = boost::dynamic_pointer_cast<PatchBank>(music->patches);
 	if (!oplPatches) {
@@ -142,7 +133,6 @@ void OPLEncoder::encode(const MusicPtr music)
 }
 
 void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
-	throw (stream::error)
 {
 	// TODO: Cache all the events with no delay then optimise them before
 	// writing them out (once a delay is encountered.)  This should allow multiple
@@ -185,7 +175,6 @@ void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 }
 
 void OPLEncoder::writeTempoChange(tempo_t usPerTick)
-	throw (stream::error)
 {
 	if (usPerTick != this->lastTempo) {
 		this->cb->writeTempoChange(usPerTick);

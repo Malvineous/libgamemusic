@@ -37,8 +37,7 @@ struct Patch {
 
 	std::string name;
 
-	virtual ~Patch()
-		throw ();
+	virtual ~Patch();
 };
 
 /// Shared pointer to a Patch.

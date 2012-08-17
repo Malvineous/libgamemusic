@@ -37,8 +37,7 @@ std::ostream& operator << (std::ostream& s, const MIDIPatch& p)
 }
 
 MIDIPatch::MIDIPatch()
-	throw ()
-	: midiPatch(0),
-	  percussion(false)
+	:	midiPatch(0),
+		percussion(false)
 {
 }

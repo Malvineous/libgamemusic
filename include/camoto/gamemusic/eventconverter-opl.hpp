@@ -89,16 +89,14 @@ class OPLWriterCallback {
 		 * @note The delay value in oplEvent is always to occur before the data
 		 *   bytes are actioned, i.e. as if DelayIsPreData is always set.
 		 */
-		virtual void writeNextPair(const OPLEvent *oplEvent)
-			throw (stream::error) = 0;
+		virtual void writeNextPair(const OPLEvent *oplEvent) = 0;
 
 		/// Change the length of the delay values for subsequent events.
 		/**
 		 * @param usPerTick
 		 *   Number of microseconds per tick.
 		 */
-		virtual void writeTempoChange(tempo_t usPerTick)
-			throw (stream::error) = 0;
+		virtual void writeTempoChange(tempo_t usPerTick) = 0;
 };
 
 /// Immediate conversion between incoming events and OPL data.
@@ -135,37 +133,29 @@ class EventConverter_OPL: virtual public EventHandler
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
 		EventConverter_OPL(OPLWriterCallback *cb, const PatchBankPtr inst,
-			double fnumConversion, unsigned int flags)
-			throw ();
+			double fnumConversion, unsigned int flags);
 
 		/// Destructor.
-		virtual ~EventConverter_OPL()
-			throw ();
+		virtual ~EventConverter_OPL();
 
 		/// Prepare to start from the first event.
 		/**
 		 * This function must be called before re-sending an old event, otherwise
 		 * the resulting negative delay will cause an extremely long pause.
 		 */
-		void rewind()
-			throw ();
+		void rewind();
 
 		// EventHandler overrides
 
-		virtual void handleEvent(const TempoEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const TempoEvent *ev);
 
-		virtual void handleEvent(const NoteOnEvent *ev)
-			throw (stream::error, EChannelMismatch, bad_patch);
+		virtual void handleEvent(const NoteOnEvent *ev);
 
-		virtual void handleEvent(const NoteOffEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const NoteOffEvent *ev);
 
-		virtual void handleEvent(const PitchbendEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const PitchbendEvent *ev);
 
-		virtual void handleEvent(const ConfigurationEvent *ev)
-			throw (stream::error);
+		virtual void handleEvent(const ConfigurationEvent *ev);
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to handle the generated OPL data
@@ -210,8 +200,7 @@ class EventConverter_OPL: virtual public EventHandler
 		 * @throw stream::error
 		 *   The data could not be processed.
 		 */
-		void processNextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val)
-			throw (stream::error);
+		void processNextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val);
 
 		/// Write one operator's patch settings (modulator or carrier)
 		/**
@@ -234,8 +223,7 @@ class EventConverter_OPL: virtual public EventHandler
 		 *   The data could not be processed.
 		 */
 		void writeOpSettings(int chipIndex, int oplChannel, int opNum,
-			OPLPatchPtr i, int velocity)
-			throw (stream::error);
+			OPLPatchPtr i, int velocity);
 
 };
 

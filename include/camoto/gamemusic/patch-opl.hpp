@@ -33,8 +33,7 @@ namespace gamemusic {
 struct OPLOperator {
 
 	/// Default constructor sets everything to zero/defaults.
-	OPLOperator()
-		throw ();
+	OPLOperator();
 
 	/// Is tremolo enabled?
 	bool enableTremolo;
@@ -78,8 +77,7 @@ struct OPLOperator {
 struct OPLPatch: public Patch {
 
 	/// Default constructor sets everything to zero/defaults.
-	OPLPatch()
-		throw ();
+	OPLPatch();
 
 	/// Carrier settings.
 	OPLOperator c;

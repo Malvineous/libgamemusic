@@ -56,11 +56,9 @@ class MIDIDecoder
 		 *   (MIDI_DEF_uS_PER_QUARTER_NOTE).
 		 */
 		MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
-			unsigned long ticksPerQuarterNote, unsigned long usPerQuarterNote)
-			throw ();
+			unsigned long ticksPerQuarterNote, unsigned long usPerQuarterNote);
 
-		virtual ~MIDIDecoder()
-			throw ();
+		virtual ~MIDIDecoder();
 
 		/// Read the input data and set events and instruments accordingly.
 		/**
@@ -71,8 +69,7 @@ class MIDIDecoder
 		 * @throw stream:error
 		 *   If the input data could not be read or converted for some reason.
 		 */
-		MusicPtr decode()
-			throw (stream::error);
+		MusicPtr decode();
 
 	protected:
 		stream::input_sptr input;         ///< MIDI data to read
@@ -114,8 +111,7 @@ class MIDIDecoder
 		 * Reads up to four bytes from the MIDI stream, returning a 28-bit
 		 * integer.
 		 */
-		uint32_t readMIDINumber()
-			throw (stream::error);
+		uint32_t readMIDINumber();
 
 		/// Set the MIDI patch in use on the given channel.
 		/**
@@ -132,14 +128,12 @@ class MIDIDecoder
 		 *   MIDI instrument number (0-127).
 		 */
 		void setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
-			unsigned int midiPatch)
-			throw ();
+			unsigned int midiPatch);
 };
 
 MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr& input,
 	unsigned int flags, unsigned long ticksPerQuarterNote,
 	unsigned long usPerQuarterNote)
-	throw (stream::error)
 {
 	MIDIDecoder decoder(input, flags, ticksPerQuarterNote, usPerQuarterNote);
 	return decoder.decode();
@@ -148,13 +142,12 @@ MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr& input,
 
 MIDIDecoder::MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
 	unsigned long ticksPerQuarterNote, unsigned long usPerQuarterNote)
-	throw ()
-	: input(input),
-	  tick(0),
-	  lastEvent(0),
-	  midiFlags(midiFlags),
-	  ticksPerQuarterNote(ticksPerQuarterNote),
-	  usPerQuarterNote(usPerQuarterNote)
+	:	input(input),
+		tick(0),
+		lastEvent(0),
+		midiFlags(midiFlags),
+		ticksPerQuarterNote(ticksPerQuarterNote),
+		usPerQuarterNote(usPerQuarterNote)
 {
 	memset(this->lastPatch, 0xFF, sizeof(this->lastPatch));
 	memset(this->percMap, 0xFF, sizeof(this->percMap));
@@ -165,12 +158,10 @@ MIDIDecoder::MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
 }
 
 MIDIDecoder::~MIDIDecoder()
-	throw ()
 {
 }
 
 MusicPtr MIDIDecoder::decode()
-	throw (stream::error)
 {
 	MusicPtr music(new Music());
 	music->patches.reset(new PatchBank());
@@ -495,7 +486,6 @@ MusicPtr MIDIDecoder::decode()
 }
 
 uint32_t MIDIDecoder::readMIDINumber()
-	throw (stream::error)
 {
 	// Make sure this->setMIDIStream() has been called
 	assert(this->input);
@@ -513,7 +503,6 @@ uint32_t MIDIDecoder::readMIDINumber()
 
 void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 	unsigned int midiPatch)
-	throw ()
 {
 	bool found = false;
 	int n = 0;
