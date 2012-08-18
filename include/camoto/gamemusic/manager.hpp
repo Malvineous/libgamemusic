@@ -22,28 +22,10 @@
 #define _CAMOTO_GAMEMUSIC_MANAGER_HPP_
 
 #include <boost/shared_ptr.hpp>
-#include <vector>
-
-#include <camoto/stream.hpp>
-#include <stdint.h>
 #include <camoto/gamemusic/musictype.hpp>
 
 namespace camoto {
 namespace gamemusic {
-
-class Manager;
-
-/// Shared pointer to a Manager.
-typedef boost::shared_ptr<Manager> ManagerPtr;
-
-/// Library entry point.
-/**
- * All further functionality is provided by calling functions in the Manager
- * class.
- *
- * @return A shared pointer to a Manager instance.
- */
-ManagerPtr getManager(void);
 
 /// Top-level class to manage music types.
 /**
@@ -55,22 +37,12 @@ ManagerPtr getManager(void);
  * Music instance around a particular file.  It is this Music instance that
  * is then used to manipulate the file itself.
  *
- * @note This class shouldn't be created manually, use the global function
- *   getManager() to obtain a pointer to it.
+ * @note Use the free function getManager() to obtain a pointer to an instance
+ *   of an object implementing the Manager interface.
  */
 class Manager
 {
-	private:
-		/// List of available music types.
-		VC_MUSICTYPE musicTypes;
-
-		Manager();
-
-		friend ManagerPtr getManager(void);
-
 	public:
-		~Manager();
-
 		/// Get a MusicType instance for a supported file format.
 		/**
 		 * This can be used to enumerate all available file formats.
@@ -81,7 +53,7 @@ class Manager
 		 * @return A shared pointer to a MusicType for the given index, or an empty
 		 *   pointer once iIndex goes out of range.
 		 */
-		MusicTypePtr getMusicType(unsigned int index);
+		virtual const MusicTypePtr getMusicType(unsigned int index) const = 0;
 
 		/// Get a MusicType instance by its code.
 		/**
@@ -89,8 +61,21 @@ class Manager
 		 * @return A shared pointer to a MusicType for the given code, or
 		 *         an empty pointer on an invalid code.
 		 */
-		MusicTypePtr getMusicTypeByCode(const std::string& code);
+		virtual const MusicTypePtr getMusicTypeByCode(const std::string& code)
+			const = 0;
 };
+
+/// Shared pointer to a Manager.
+typedef boost::shared_ptr<Manager> ManagerPtr;
+
+/// Library entry point.
+/**
+ * All further functionality is provided by calling functions in the Manager
+ * class.
+ *
+ * @return A shared pointer to a Manager instance.
+ */
+const ManagerPtr getManager(void);
 
 } // namespace gamemusic
 } // namespace camoto

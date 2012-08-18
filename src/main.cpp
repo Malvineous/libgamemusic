@@ -18,9 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <string>
-#include <camoto/debug.hpp>
-#include <camoto/gamemusic.hpp>
+#include <camoto/gamemusic/manager.hpp>
 
 // Include all the file formats for the Manager to load
 #include "mus-imf-idsoftware.hpp"
@@ -35,12 +33,25 @@
 namespace camoto {
 namespace gamemusic {
 
-ManagerPtr getManager()
+class ActualManager: virtual public Manager
 {
-	return ManagerPtr(new Manager());
+	public:
+		ActualManager();
+		~ActualManager();
+
+		const MusicTypePtr getMusicType(unsigned int index) const;
+		const MusicTypePtr getMusicTypeByCode(const std::string& code) const;
+
+	private:
+		MusicTypeVector musicTypes;  ///< List of available music types
+};
+
+const ManagerPtr getManager()
+{
+	return ManagerPtr(new ActualManager());
 }
 
-Manager::Manager()
+ActualManager::ActualManager()
 {
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
@@ -56,19 +67,22 @@ Manager::Manager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
 }
 
-Manager::~Manager()
+ActualManager::~ActualManager()
 {
 }
 
-MusicTypePtr Manager::getMusicType(unsigned int index)
+const MusicTypePtr ActualManager::getMusicType(unsigned int index) const
 {
 	if (index >= this->musicTypes.size()) return MusicTypePtr();
 	return this->musicTypes[index];
 }
 
-MusicTypePtr Manager::getMusicTypeByCode(const std::string& code)
+const MusicTypePtr ActualManager::getMusicTypeByCode(const std::string& code)
+	const
 {
-	for (VC_MUSICTYPE::const_iterator i = this->musicTypes.begin(); i != this->musicTypes.end(); i++) {
+	for (MusicTypeVector::const_iterator
+		i = this->musicTypes.begin(); i != this->musicTypes.end(); i++
+	) {
 		if ((*i)->getCode().compare(code) == 0) return *i;
 	}
 	return MusicTypePtr();

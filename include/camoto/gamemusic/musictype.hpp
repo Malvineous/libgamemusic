@@ -176,7 +176,7 @@ class MusicType
 typedef boost::shared_ptr<MusicType> MusicTypePtr;
 
 /// Vector of MusicType shared pointers.
-typedef std::vector<MusicTypePtr> VC_MUSICTYPE;
+typedef std::vector<MusicTypePtr> MusicTypeVector;
 
 } // namespace gamemusic
 } // namespace camoto
