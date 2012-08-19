@@ -52,6 +52,10 @@
 /// mode requires a different formula.
 #define OPL_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
 
+#ifndef DLL_EXPORT
+#define DLL_EXPORT
+#endif
+
 namespace camoto {
 namespace gamemusic {
 
@@ -70,7 +74,7 @@ namespace gamemusic {
  *
  * @return The converted frequency in milliHertz.
  */
-int fnumToMilliHertz(unsigned int fnum, unsigned int block,
+int DLL_EXPORT fnumToMilliHertz(unsigned int fnum, unsigned int block,
 	unsigned int conversionFactor);
 
 /// Convert a frequency into an OPL f-number
@@ -99,7 +103,7 @@ int fnumToMilliHertz(unsigned int fnum, unsigned int block,
  *   a value to fnum/block and back to milliHertz is not guaranteed to reproduce
  *   the original value.
  */
-void milliHertzToFnum(unsigned int milliHertz,
+void DLL_EXPORT milliHertzToFnum(unsigned int milliHertz,
 	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor);
 
 } // namespace gamemusic
