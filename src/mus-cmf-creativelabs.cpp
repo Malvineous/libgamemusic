@@ -327,12 +327,18 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	music->patches = oplBank;
 
 	// Read metadata
-	input->seekg(offTitle, stream::start);
-	input >> nullTerminated(music->metadata[Metadata::Title], 256);
-	input->seekg(offComposer, stream::start);
-	input >> nullTerminated(music->metadata[Metadata::Author], 256);
-	input->seekg(offRemarks, stream::start);
-	input >> nullTerminated(music->metadata[Metadata::Description], 256);
+	if (offTitle) {
+		input->seekg(offTitle, stream::start);
+		input >> nullTerminated(music->metadata[Metadata::Title], 256);
+	}
+	if (offComposer) {
+		input->seekg(offComposer, stream::start);
+		input >> nullTerminated(music->metadata[Metadata::Author], 256);
+	}
+	if (offRemarks) {
+		input->seekg(offRemarks, stream::start);
+		input >> nullTerminated(music->metadata[Metadata::Description], 256);
+	}
 
 	return music;
 }
