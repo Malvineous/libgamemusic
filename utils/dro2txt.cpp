@@ -243,9 +243,9 @@ int main(void)
 			cin >> u8(delay);
 			nextDelay += delay + 1;
 		} else if (code == cmdLongDelay) {
-			uint16_t delay;
-			cin >> u16le(delay);
-			nextDelay += delay + 1;
+			uint8_t delay;
+			cin >> u8(delay);
+			nextDelay += (delay + 1) << 8;
 		} else {
 			int chip = code >> 7; // high bit
 			uint8_t reg = codeMap[code & 0x7F];
@@ -284,7 +284,7 @@ int main(void)
 						(!(nextOplState[chip][0xB0 | c] & OPLBIT_KEYON))
 					) {
 						// keyon bit switched off
-//						PRINT_DELAY;
+						PRINT_DELAY;
 						std::cout << "Channel " << std::dec << c+1 << " off\n";
 					} else if (nextOplState[chip][0xB0 | c] & OPLBIT_KEYON) {
 						// This channel is playing
@@ -301,7 +301,7 @@ int main(void)
 						(!(nextOplState[chip][0xBD] & bit))
 					) {
 						// keyon bit switched off
-//						PRINT_DELAY;
+						PRINT_DELAY;
 						std::cout << "Perc " << percName(p) << " off\n";
 					} else if (nextOplState[chip][0xBD] & bit) {
 						// This channel is playing
@@ -312,7 +312,6 @@ int main(void)
 				// Now all the differences have been shown, so sync the two register maps
 				memcpy(oplState, nextOplState, sizeof(oplState));
 			}
-			PRINT_DELAY;
 		}
 	}
 	} catch (const stream::incomplete_read&) {
