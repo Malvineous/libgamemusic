@@ -208,6 +208,15 @@ int main(int iArgC, char *cArgV[])
 
 		("repeat-instruments,r", po::value<int>(),
 			"repeat the instrument bank until there are this many valid instruments")
+
+		("tag-title", po::value<std::string>(),
+			"set the title tag for the next output file, blank to remove tag")
+
+		("tag-artist", po::value<std::string>(),
+			"set the artist tag for the next output file, blank to remove tag")
+
+		("tag-comment", po::value<std::string>(),
+			"set the comment tag for the next output file, blank to remove tag")
 	;
 
 	po::options_description poOptions("Options");
@@ -592,6 +601,48 @@ int main(int iArgC, char *cArgV[])
 					// making a copy - i.e. modifying one will change the other.
 					// It's OK here since we won't be futher changing instruments.
 					pMusic->patches->push_back(pMusic->patches->at(srcInst));
+				}
+
+			} else if (
+				(i->string_key.compare("tag-title") == 0)
+			) {
+				if (i->value.size() == 0) {
+					std::cerr << PROGNAME ": --tag-title requires a parameter."
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				if (i->value[0].empty()) {
+					pMusic->metadata.erase(Metadata::Title);
+				} else {
+					pMusic->metadata[Metadata::Title] = i->value[0];
+				}
+
+			} else if (
+				(i->string_key.compare("tag-artist") == 0)
+			) {
+				if (i->value.size() == 0) {
+					std::cerr << PROGNAME ": --tag-artist requires a parameter."
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				if (i->value[0].empty()) {
+					pMusic->metadata.erase(Metadata::Author);
+				} else {
+					pMusic->metadata[Metadata::Author] = i->value[0];
+				}
+
+			} else if (
+				(i->string_key.compare("tag-comment") == 0)
+			) {
+				if (i->value.size() == 0) {
+					std::cerr << PROGNAME ": --tag-comment requires a parameter."
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				if (i->value[0].empty()) {
+					pMusic->metadata.erase(Metadata::Description);
+				} else {
+					pMusic->metadata[Metadata::Description] = i->value[0];
 				}
 
 			// Ignore --type/-t
