@@ -361,8 +361,37 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	uint16_t offNext = 20 + 16 + 4;
 	uint16_t lenText[3], offText[3];
 
-	/// @todo Get lengths from metadata
-	lenText[0] = lenText[1] = lenText[2] = 0;
+	// Get lengths from metadata
+	Metadata::TypeMap::const_iterator itTitle = music->metadata.find(Metadata::Title);
+	Metadata::TypeMap::const_iterator itComposer = music->metadata.find(Metadata::Author);
+	Metadata::TypeMap::const_iterator itDesc = music->metadata.find(Metadata::Description);
+	if (itTitle != music->metadata.end()) {
+		if (itTitle->second.length() > 65535) {
+			throw format_limitation("The metadata element 'Title' is longer than "
+				"the maximum 65535 character length.");
+		}
+		lenText[0] = itTitle->second.length();
+	} else {
+		lenText[0] = 0; // no tag
+	}
+	if (itComposer != music->metadata.end()) {
+		if (itComposer->second.length() > 65535) {
+			throw format_limitation("The metadata element 'Author' is longer than "
+				"the maximum 65535 character length.");
+		}
+		lenText[1] = itComposer->second.length();
+	} else {
+		lenText[1] = 0; // no tag
+	}
+	if (itDesc != music->metadata.end()) {
+		if (itDesc->second.length() > 65535) {
+			throw format_limitation("The metadata element 'Description' is longer than "
+				"the maximum 65535 character length.");
+		}
+		lenText[2] = itDesc->second.length();
+	} else {
+		lenText[2] = 0; // no tag
+	}
 
 	for (int i = 0; i < 3; i++) {
 		if (lenText[i]) {
@@ -399,7 +428,16 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		<< u16le(0) // TODO: default value for 'basic tempo'
 	;
 
-	/// @todo Write title, composer and remarks strings here (null terminated)
+	// Write title, composer and remarks strings here (null terminated)
+	if (itTitle != music->metadata.end()) {
+		output << nullTerminated(itTitle->second, 65535);
+	}
+	if (itComposer != music->metadata.end()) {
+		output << nullTerminated(itComposer->second, 65535);
+	}
+	if (itDesc != music->metadata.end()) {
+		output << nullTerminated(itDesc->second, 65535);
+	}
 
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
