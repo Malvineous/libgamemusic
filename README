@@ -1,5 +1,5 @@
 Camoto: Classic-game Modding Tools
-Copyright 2010-2012 Adam Nielsen <malvineous@shikadi.net>
+Copyright 2010-2013 Adam Nielsen <malvineous@shikadi.net>
 http://www.shikadi.net/camoto/
 
 Camoto is a collection of utilities for editing (modding) "classic games",
@@ -40,6 +40,7 @@ File formats from the following games are supported:
   * Wolfenstein 3-D (.wlf)
   * Word Rescue (.cmf) [partial]
   * Xargon (.cmf)
+  * Zone 66 CDFM (.670)
 
 These auxiliary file formats have also been implemented:
 
