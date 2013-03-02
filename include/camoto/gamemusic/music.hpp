@@ -23,8 +23,6 @@
 #define _CAMOTO_GAMEMUSIC_MUSIC_HPP_
 
 #include <boost/shared_ptr.hpp>
-#include <map>
-
 #include <camoto/metadata.hpp>
 #include <camoto/gamemusic/patchbank.hpp>
 #include <camoto/gamemusic/events.hpp>

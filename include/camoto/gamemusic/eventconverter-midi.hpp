@@ -25,6 +25,10 @@
 #include <camoto/gamemusic/events.hpp>
 #include <camoto/stream.hpp>
 
+#ifndef DLL_EXPORT
+#define DLL_EXPORT
+#endif
+
 namespace camoto {
 namespace gamemusic {
 
@@ -190,7 +194,7 @@ class MIDIEventCallback
  *
  * @return Frequency in milliHertz (440000 == 440Hz == A4)
  */
-unsigned long midiToFreq(double midi);
+unsigned long DLL_EXPORT midiToFreq(double midi);
 
 /// Convert milliHertz into MIDI note number and pitchbend value.
 /**
@@ -208,7 +212,7 @@ unsigned long midiToFreq(double midi);
  *   then *note is set to this value and the pitchbend is calculated so as to
  *   keep the note unchanged.
  */
-void freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *bend,
+void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *bend,
 	uint8_t activeNote);
 
 /// EventHandler class that can produce MIDI events.

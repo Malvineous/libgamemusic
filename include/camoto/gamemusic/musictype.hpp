@@ -102,7 +102,8 @@ class MusicType
 		 * @throw stream::error
 		 *   I/O error reading from input stream (e.g. file truncated)
 		 */
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const = 0;
+		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData)
+			const = 0;
 
 		/// Write a song in this file format.
 		/**

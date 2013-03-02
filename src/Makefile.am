@@ -51,7 +51,7 @@ AM_CXXFLAGS  = $(DEBUG_CXXFLAGS)
 AM_CXXFLAGS += $(libgamecommon_CFLAGS)
 
 libgamemusic_la_LDFLAGS  = $(AM_LDFLAGS)
-libgamemusic_la_LDFLAGS += -version-info 0:0:0
+libgamemusic_la_LDFLAGS += -version-info 1:0:0
 
 libgamemusic_la_LIBADD  = $(BOOST_SYSTEM_LIBS)
 libgamemusic_la_LIBADD += $(BOOST_FILESYSTEM_LIBS)
