@@ -23,6 +23,7 @@ libgamemusic_la_SOURCES += opl-util.cpp
 libgamemusic_la_SOURCES += patch.cpp
 libgamemusic_la_SOURCES += patch-midi.cpp
 libgamemusic_la_SOURCES += patch-opl.cpp
+libgamemusic_la_SOURCES += patch-pcm.cpp
 libgamemusic_la_SOURCES += patchbank.cpp
 
 EXTRA_libgamemusic_la_SOURCES = decode-midi.hpp
