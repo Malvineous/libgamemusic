@@ -690,10 +690,10 @@ void EventConverter_KLM::handleEvent(const ConfigurationEvent *ev)
 			// Ignored, will set when rhythm channels are played
 			break;
 		case ConfigurationEvent::EnableDeepTremolo:
-			if (ev->value != 1) std::cerr << "Deep tremolo cannot be disabled in this format, ignoring event.";
+			if (ev->value != 1) std::cerr << "Deep tremolo cannot be disabled in this format, ignoring event.\n";
 			break;
 		case ConfigurationEvent::EnableDeepVibrato:
-			if (ev->value != 1) std::cerr << "Deep vibrato cannot be disabled in this format, ignoring event.";
+			if (ev->value != 1) std::cerr << "Deep vibrato cannot be disabled in this format, ignoring event.\n";
 			break;
 		default:
 			break;
