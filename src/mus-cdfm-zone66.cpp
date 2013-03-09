@@ -22,7 +22,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp> // midiToFreq
 #include <camoto/gamemusic/patch-opl.hpp>
-//#include <camoto/gamemusic/patch-pcm.hpp>
+#include <camoto/gamemusic/patch-pcm.hpp>
 #include "mus-cdfm-zone66.hpp"
 
 using namespace camoto;
@@ -134,11 +134,18 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 	patches->reserve(numDigInst + numOPLInst);
 
 	for (int i = 0; i < numDigInst; i++) {
-		// TEMP: Skip PCM instrument header until we can handle it
-		input->seekg(16, stream::cur);
-
-		// TEMP: Dummy patch to preserve instrument index order
-		OPLPatchPtr patch(new OPLPatch());
+		uint32_t unknown;
+		PCMPatchPtr patch(new PCMPatch());
+		input
+			>> u32le(unknown)
+			>> u32le(patch->lenData)
+			>> u32le(patch->loopStart)
+			>> u32le(patch->loopEnd)
+		;
+		patch->sampleRate = 33075;
+		patch->bitDepth = 8;
+		patch->numChannels = 1;
+		if (patch->loopEnd == 0x00FFFFFF) patch->loopEnd = 0; // no loop
 		patches->push_back(patch);
 	}
 
@@ -330,6 +337,14 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 			evOff->absTime = tick;
 			music->events->push_back(gev);
 		}
+	}
+
+	// Load the PCM samples
+	input->seekg(sampleOffset, stream::start);
+	for (int i = 0; i < numDigInst; i++) {
+		PCMPatchPtr patch = boost::static_pointer_cast<PCMPatch>(patches->at(i));
+		patch->data.reset(new uint8_t[patch->lenData]);
+		input->read(patch->data.get(), patch->lenData);
 	}
 
 	return music;
