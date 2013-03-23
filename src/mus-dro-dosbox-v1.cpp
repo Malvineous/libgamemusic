@@ -2,7 +2,7 @@
  * @file   mus-dro-dosbox-v1.cpp
  * @brief  Support for the first version of the DOSBox Raw OPL .DRO format.
  *
- * Copyright (C) 2010-2012 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
