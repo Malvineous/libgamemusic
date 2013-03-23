@@ -21,6 +21,10 @@ stamp-h1
 lib*.pc
 libtool
 *.*~
+test-driver
+tests/test-suite.log
+tests/tests.log
+tests/tests.trs
 
 # Compilation fluff
 *.o
