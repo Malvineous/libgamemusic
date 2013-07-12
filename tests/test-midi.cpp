@@ -119,7 +119,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 {
 	BOOST_TEST_MESSAGE("Testing interpretation of pitchbend event");
 
-	this->init_read(makeString("\x00\x90\x45\x40" "\x00\xe0\x00\x38"));
+	this->init_read(makeString("\x00\x90\x45\x7f" "\x00\xe0\x00\x38"));
 
 	// Make sure enough events were generated
 	BOOST_REQUIRE_GT(this->music->events->size(), 2);
@@ -156,7 +156,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 	BOOST_CHECK_MESSAGE(
 		is_equal(makeString(
 			"\x00\xc0\x14"        // set instrument
-			"\x00\x90\x45\x40"    // note on
+			"\x00\x90\x45\x7f"    // note on
 			"\x0a\xe0\x00\x38"    // pitchbend
 			"\x00\xff\x2f\x00"    // eof
 		)),
@@ -217,12 +217,12 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 	BOOST_CHECK_MESSAGE(
 		is_equal(makeString(
 			"\x00\xc0\x14"        // set instrument
-			"\x00\x90\x45\x40"    // note on
+			"\x00\x90\x45\x7f"    // note on
 			"\x00\x45\x00"        // note off
 			"\x00\xc1\x14"        // set instrument
-			"\x00\x91\x45\x40"    // note on
+			"\x00\x91\x45\x7f"    // note on
 			"\x00\x45\x00"        // note off
-			"\x00\x45\x40"        // note on
+			"\x00\x45\x7f"        // note on
 			"\x00\x45\x00"        // note off
 			"\x00\xff\x2f\x00"    // eof
 		)),

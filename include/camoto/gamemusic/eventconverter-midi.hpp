@@ -52,10 +52,10 @@ const unsigned long MIDI_DEF_uS_PER_TICK =
 	MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE;
 
 /// Default value to use for MIDI note-off events.
-const unsigned int MIDI_DEFAULT_RELEASE_VELOCITY = 64;
+const unsigned int MIDI_DEFAULT_RELEASE_VELOCITY = 127;
 
 /// Default value to use for MIDI note-on events.
-const unsigned int MIDI_DEFAULT_ATTACK_VELOCITY = 64;
+const unsigned int MIDI_DEFAULT_ATTACK_VELOCITY = 127;
 
 /// Flags indicating variations in the type of MIDI data.
 struct MIDIFlags {
