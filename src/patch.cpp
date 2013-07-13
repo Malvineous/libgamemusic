@@ -25,4 +25,3 @@ using namespace camoto::gamemusic;
 Patch::~Patch()
 {
 }
-

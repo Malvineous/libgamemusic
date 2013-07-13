@@ -22,8 +22,10 @@
 #include <camoto/gamemusic/patchbank.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/patch-pcm.hpp>
 
 using namespace camoto::gamemusic;
 
 template <> const char *PatchTypeName<OPLPatch>::name = "OPL";
 template <> const char *PatchTypeName<MIDIPatch>::name = "MIDI";
+template <> const char *PatchTypeName<PCMPatch>::name = "PCM";
