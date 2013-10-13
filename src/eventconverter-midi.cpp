@@ -27,9 +27,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-/// Frequency to use for playing channel 10 percussion
-const int PERC_FREQ = 440000;
-
 unsigned long camoto::gamemusic::midiToFreq(double midi)
 {
 	return 440000 * pow(2, (midi - 69.0) / 12.0);
@@ -166,6 +163,11 @@ void EventConverter_MIDI::handleEvent(const NoteOnEvent *ev)
 			midiChannel = 16 - oplPatch->rhythm;
 			this->channelMap[ev->channel] = midiChannel;
 		} else {
+			if ((this->channelMap[ev->channel] == 9) && ((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0)) {
+				// This channel is allocated to percussion, but this note is not a
+				// percussive note, so clear the mapping
+				this->channelMap[ev->channel] = 0xFF;
+			}
 			midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
 		}
 		int16_t bend;
