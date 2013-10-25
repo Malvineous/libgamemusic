@@ -18,7 +18,7 @@ html: $(HTML_MAN)
 MAINTAINERCLEANFILES = $(man_MANS) $(HTML_MAN)
 
 %.1: %.xml camoto.xsl
-	xmlto --skip-validation man -m camoto.xsl $<
+	xmlto --skip-validation man -m $(<D)/camoto.xsl $<
 
 %.html: %.xml camoto.xsl
-	xmlto --skip-validation html-nochunks -m camoto.xsl $<
+	xmlto --skip-validation html-nochunks -m $(<D)/camoto.xsl $<

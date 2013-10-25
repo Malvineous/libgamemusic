@@ -33,6 +33,12 @@ then
 	AC_DEFINE([DEBUG], [1], [Define to include extra debugging output])
 fi
 
+dnl Check whether xmlto exists for manpage generation
+AC_CHECK_PROG(XMLTO_CHECK,xmlto,yes)
+if test x"$XMLTO_CHECK" != x"yes"; then
+	AC_MSG_ERROR([xmlto not found - see <https://fedorahosted.org/xmlto/>.])
+fi
+
 case "$host_os" in
 *mingw*)
 	# Must specify this parameter when compiling for Windows
