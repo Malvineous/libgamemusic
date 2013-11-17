@@ -74,7 +74,7 @@ struct OPLOperator {
 };
 
 /// Descendent of Patch for storing OPL instrument settings.
-struct OPLPatch: public Patch {
+struct DLL_EXPORT OPLPatch: public Patch {
 
 	/// Default constructor sets everything to zero/defaults.
 	OPLPatch();
@@ -160,15 +160,15 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 typedef boost::shared_ptr<OPLPatch> OPLPatchPtr;
 
 /// Convert the OPLPatch::rhythm value into text for error messages.
-const char *rhythmToText(int rhythm);
+const char DLL_EXPORT *rhythmToText(int rhythm);
 
 } // namespace gamemusic
 } // namespace camoto
 
 /// ostream handler for printing patches as ASCII
-std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatch& p);
+DLL_EXPORT std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatch& p);
 
 /// ostream handler for printing patches as ASCII
-std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatchPtr p);
+DLL_EXPORT std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatchPtr p);
 
 #endif // _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_

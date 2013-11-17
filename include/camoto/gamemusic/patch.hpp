@@ -24,6 +24,10 @@
 #include <string>
 #include <boost/shared_ptr.hpp>
 
+#ifndef DLL_EXPORT
+#define DLL_EXPORT
+#endif
+
 namespace camoto {
 namespace gamemusic {
 
@@ -33,7 +37,7 @@ namespace gamemusic {
  * the sound of an instrument.  It is specialised for the particular type of
  * patch (OPL, sampled, etc.)
  */
-struct Patch {
+struct DLL_EXPORT Patch {
 
 	std::string name;
 

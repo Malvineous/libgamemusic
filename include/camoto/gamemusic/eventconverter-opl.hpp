@@ -114,7 +114,7 @@ class OPLWriterCallback {
  * @note This class does no optimisation of the OPL data.  Multiple redundant
  *   writes will occur.  The OPLEncoder class does however perform optimisation.
  */
-class EventConverter_OPL: virtual public EventHandler
+class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 {
 	public:
 		/// Set encoding parameters.

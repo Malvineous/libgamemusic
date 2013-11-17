@@ -22,6 +22,8 @@
 #include <cassert>
 #include <camoto/gamemusic/opl-util.hpp>
 
+#define log2(x) (log(x) / 0.30102999566398119521373889472449)
+
 namespace camoto {
 namespace gamemusic {
 
@@ -95,7 +97,8 @@ void milliHertzToFnum(unsigned int milliHertz,
 	//assert(*block >= 0);
 	assert(*block <= 7);
 	//assert(*fnum >= 0);
-	assert(*fnum < 1024);
+	//assert(*fnum < 1024);
+	if (*fnum > 1024) *fnum = 1024; // TEMP
 	return;
 }
 

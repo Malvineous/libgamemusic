@@ -29,7 +29,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Descendent of Patch for storing MIDI instrument settings.
-struct MIDIPatch: public Patch
+struct DLL_EXPORT MIDIPatch: public Patch
 {
 	/// Default constructor sets everything to zero/defaults.
 	MIDIPatch();

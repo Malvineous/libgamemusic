@@ -29,7 +29,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Descendent of Patch for storing PCM instruments.
-struct PCMPatch: public Patch
+struct DLL_EXPORT PCMPatch: public Patch
 {
 	/// Default constructor sets everything to zero/defaults.
 	PCMPatch();

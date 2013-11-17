@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#define _USE_MATH_DEFINES
 #include <math.h>
 #include <iostream>
 #include <camoto/gamemusic/patch-opl.hpp>
@@ -358,7 +359,7 @@ EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 		ev->velocity = 0;
 	} else {
 		uint8_t vel = this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F;
-		ev->velocity = pow(M_E, (63.0 - vel) / 63.0 * log(256));
+		ev->velocity = pow(M_E, (double)(63.0 - vel) / 63.0 * log(256.0));
 	}
 
 	return gev;

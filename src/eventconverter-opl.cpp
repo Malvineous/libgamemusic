@@ -461,7 +461,7 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 		outputLevel = o->outputLevel;
 		if (velocity != 0) {
 			// Not using default velocity
-			outputLevel = 0x3F - 0x3F * log(velocity) / log(256);
+			outputLevel = 0x3F - 0x3F * log((float)velocity) / log(256.0);
 			// Note the CMF reader sets the velocity to zero to skip this
 		}
 	}

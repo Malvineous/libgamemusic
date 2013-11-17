@@ -46,7 +46,7 @@ typedef double tempo_t;
  * Will be extended by descendent classes to hold format-specific data.
  * The entries here will be valid for all music types.
  */
-struct Event {
+struct DLL_EXPORT Event {
 	/// Helper function (for debugging) to return all the data as a string
 	virtual std::string getContent() const;
 
@@ -90,7 +90,7 @@ typedef boost::shared_ptr<EventVector> EventVectorPtr;
  * as this does not take into account any tempo changes in the middle of the
  * song.
  */
-struct TempoEvent: virtual public Event
+struct DLL_EXPORT TempoEvent: virtual public Event
 {
 	/// Number of microseconds per tick.
 	tempo_t usPerTick;
@@ -107,7 +107,7 @@ struct TempoEvent: virtual public Event
  *       which allow multiple notes on each channel (e.g. MIDI) some "virtual"
  *       channels will have to be created.
  */
-struct NoteOnEvent: virtual public Event
+struct DLL_EXPORT NoteOnEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
@@ -126,7 +126,7 @@ struct NoteOnEvent: virtual public Event
 
 
 /// All notes on this channel are now silenced.
-struct NoteOffEvent: virtual public Event
+struct DLL_EXPORT NoteOffEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
@@ -140,7 +140,7 @@ struct NoteOffEvent: virtual public Event
  *       which allow multiple notes on each channel (e.g. MIDI) some "virtual"
  *       channels will have to be created.
  */
-struct PitchbendEvent: virtual public Event
+struct DLL_EXPORT PitchbendEvent: virtual public Event
 {
 	/// Note frequency (440000 == 440Hz)
 	int milliHertz;
@@ -155,7 +155,7 @@ struct PitchbendEvent: virtual public Event
 /**
  * This event can occur at any time.
  */
-struct ConfigurationEvent: virtual public Event
+struct DLL_EXPORT ConfigurationEvent: virtual public Event
 {
 	/// What can be configured.
 	/**
@@ -216,7 +216,7 @@ struct ConfigurationEvent: virtual public Event
  * events in typed functions, removing the need to dynamic_cast to figure
  * out the event type.
  */
-class EventHandler
+class DLL_EXPORT EventHandler
 {
 	public:
 		virtual void handleEvent(const TempoEvent *ev) = 0;

@@ -224,7 +224,7 @@ void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *ben
  *   we have to write events like 'end of track/song' and different formats store
  *   tracks differently, this can only really handle a single MIDI track.
  */
-class EventConverter_MIDI: virtual public EventHandler
+class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 {
 	protected:
 		MIDIEventCallback *cb;             ///< Callback to handle MIDI events

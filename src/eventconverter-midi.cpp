@@ -24,6 +24,9 @@
 #include <camoto/gamemusic/patch-midi.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 
+#define log2(x) (log(x) / 0.30102999566398119521373889472449)
+#define round(x) (int)((x) + 0.5)
+
 using namespace camoto;
 using namespace camoto::gamemusic;
 
