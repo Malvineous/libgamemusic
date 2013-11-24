@@ -175,8 +175,11 @@ BOOST_FIXTURE_TEST_SUITE(SUITE_NAME, FIXTURE_NAME)
 		BOOST_CHECK_EQUAL(pTestType->isInstance(testBase), r); \
 	}
 
+#ifdef DETECTION_UNCERTAIN
+ISINSTANCE_TEST(c00, INITIALSTATE_NAME, MusicType::PossiblyYes);
+#else
 ISINSTANCE_TEST(c00, INITIALSTATE_NAME, MusicType::DefinitelyYes);
-
+#endif
 
 // Define an INVALIDDATA_TEST macro which we use to confirm the reader correctly
 // rejects a file with invalid data.  This is defined as a macro so the

@@ -24,6 +24,7 @@
 #include "mus-imf-idsoftware.hpp"
 #include "mus-dro-dosbox-v1.hpp"
 #include "mus-dro-dosbox-v2.hpp"
+#include "mus-got.hpp"
 #include "mus-raw-rdos.hpp"
 #include "mus-cmf-creativelabs.hpp"
 #include "mus-cdfm-zone66.hpp"
@@ -58,6 +59,7 @@ ActualManager::ActualManager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_GOT()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IBK()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type0()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type1()));
