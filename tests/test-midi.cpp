@@ -1,5 +1,5 @@
 /**
- * @file   test-midi.hpp
+ * @file   test-midi.cpp
  * @brief  Test code for generic MIDI functions.
  *
  * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
