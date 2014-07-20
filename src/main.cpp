@@ -2,7 +2,7 @@
  * @file   main.cpp
  * @brief  Entry point for libgamemusic.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
 #include "mus-ibk-instrumentbank.hpp"
+#include "mus-s3m-screamtracker.hpp"
 
 namespace camoto {
 namespace gamemusic {
@@ -69,6 +70,7 @@ ActualManager::ActualManager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_S3M()));
 }
 
 ActualManager::~ActualManager()

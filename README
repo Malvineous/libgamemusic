@@ -47,8 +47,9 @@ These auxiliary file formats have also been implemented:
 
   * DOSBox raw OPL (.dro, v1 and v2)
   * Instrument Bank (.ibk)
-  * Type-0/single-track MIDI (.mid)
   * RDOS raw OPL (.raw)
+  * ScreamTracker 3 (.s3m)
+  * Type-0/single-track MIDI (.mid)
 
 Many more formats are planned.
 

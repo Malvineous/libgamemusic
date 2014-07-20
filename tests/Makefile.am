@@ -13,6 +13,7 @@ tests_SOURCES += test-mus-cdfm-zone66.cpp
 tests_SOURCES += test-mus-got.cpp
 tests_SOURCES += test-mus-klm-wacky.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
+tests_SOURCES += test-mus-s3m-screamtracker.cpp
 tests_SOURCES += test-music.cpp
 tests_SOURCES += test-opl.cpp
 tests_SOURCES += test-tempo.cpp
