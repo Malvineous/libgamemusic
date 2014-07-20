@@ -38,9 +38,6 @@
 #include <camoto/stream_file.hpp>
 #include <camoto/gamemusic.hpp>
 
-/// Define this to display frequencies as "block/fnum" instead of milliHertz
-//#define DISPLAY_FNUM
-
 using namespace camoto;
 namespace gm = camoto::gamemusic;
 
@@ -169,12 +166,9 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
 		std::cout << "Channel " << std::dec << c+1 << " on @ " <<
-#ifdef DISPLAY_FNUM
-			block << '/' << std::hex << std::setw(3) << fnum <<
-#else
+			block << '/' << std::hex << std::setw(3) << fnum << " = " <<
 			std::setw(7) << std::setfill(' ') << std::dec <<
 			milliHertz << " mHz" << std::setfill('0') <<
-#endif
 			"\n";
 	}
 	return;
@@ -217,12 +211,9 @@ void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
 		std::cout << "Perc " << percName(p) << "   on @ " <<
-#ifdef DISPLAY_FNUM
-			block << '/' << std::hex << std::setw(3) << fnum <<
-#else
+			block << '/' << std::hex << std::setw(3) << fnum << " = " <<
 			std::setw(7) << std::setfill(' ') << std::dec <<
 			milliHertz << " mHz" << std::setfill('0') <<
-#endif
 			"\n";
 	}
 	return;
