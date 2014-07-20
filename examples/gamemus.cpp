@@ -377,71 +377,130 @@ int main(int iArgC, char *cArgV[])
 		}
 
 		if (bForceOPL2 || bForceOPL3) {
-			gm::ConfigurationEvent *ev = new gm::ConfigurationEvent();
-			gm::EventPtr gev(ev);
-			ev->channel = 0; // global
-			ev->sourceChannel = 0;
-			ev->configType = gm::ConfigurationEvent::EnableOPL3;
-			ev->value = bForceOPL3 ? 1 : 0;
-			gm::EventVector::iterator i = pMusic->events->begin();
-			i = pMusic->events->insert(i, gev);
-			i++; // skip the one we just inserted
-			for (; i != pMusic->events->end(); i++) {
-				gm::ConfigurationEvent *ev = dynamic_cast<gm::ConfigurationEvent *>(i->get());
-				if (ev) {
-					switch (ev->configType) {
-						case gm::ConfigurationEvent::EnableOPL3:
-							// Got an OPL3 mode change event, delete it
-							i = pMusic->events->erase(i);
-							break;
-						case gm::ConfigurationEvent::EnableDeepTremolo: {
-							if (bForceOPL3) {
-								// Duplicate this event for the other chip
-								gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
-								gm::EventPtr gev2(ev2);
-								ev2->channel = 0; // global
-								ev2->sourceChannel = 0;
-								ev2->configType = gm::ConfigurationEvent::EnableDeepTremolo;
-								ev2->value = 2 | ev->value; // 2| == chip index 1
-								i = pMusic->events->insert(i+1, gev2);
+
+			unsigned int patternIndex = 0;
+			// For each pattern
+			for (std::vector<gm::PatternPtr>::iterator
+				pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++, patternIndex++
+			) {
+				unsigned int trackIndex = 0;
+				// For each track
+				for (gm::Pattern::iterator
+					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
+				) {
+					// For each event in the track
+					for (gm::Track::iterator
+						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+					) {
+						const gm::TrackEvent& te = *ev;
+						gm::ConfigurationEvent *cev = dynamic_cast<gm::ConfigurationEvent *>(te.event.get());
+						if (cev) {
+							switch (cev->configType) {
+								case gm::ConfigurationEvent::None:
+									// Nothing to do
+									break;
+								case gm::ConfigurationEvent::EnableOPL3:
+									// Got an OPL3 mode change event, nullify it.  This is easier
+									// than deleting it because we don't have to handle merging
+									// the delay in with a following event (or creating a None
+									// event anyway if there is no event following this one.)
+									cev->value = bForceOPL3 ? 1 : 0;
+									break;
+								case gm::ConfigurationEvent::EnableDeepTremolo: {
+									if (bForceOPL3) {
+										// Duplicate this event for the other chip
+										gm::TrackEvent te2;
+										te2.delay = 0;
+										gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
+										te2.event = gm::EventPtr(ev2);
+										ev2->configType = gm::ConfigurationEvent::EnableDeepTremolo;
+										ev2->value = 2 | cev->value; // 2| == chip index 1
+										ev = (*pt)->insert(ev+1, te2);
+									}
+									break;
+								}
+								case gm::ConfigurationEvent::EnableDeepVibrato: {
+									if (bForceOPL3) {
+										// Duplicate this event for the other chip
+										gm::TrackEvent te2;
+										te2.delay = 0;
+										gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
+										te2.event = gm::EventPtr(ev2);
+										ev2->configType = gm::ConfigurationEvent::EnableDeepVibrato;
+										ev2->value = 2 | cev->value; // 2| == chip index 1
+										ev = (*pt)->insert(ev+1, te2);
+									}
+									break;
+								}
+								case gm::ConfigurationEvent::EnableRhythm:
+									// Not sure how to deal with this yet
+									break;
+								case gm::ConfigurationEvent::EnableWaveSel:
+									// Always enabled on OPL3, no need to do anything
+									break;
 							}
-							break;
 						}
-						case gm::ConfigurationEvent::EnableDeepVibrato: {
-							if (bForceOPL3) {
-								// Duplicate this event for the other chip
-								gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
-								gm::EventPtr gev2(ev2);
-								ev2->channel = 0; // global
-								ev2->sourceChannel = 0;
-								ev2->configType = gm::ConfigurationEvent::EnableDeepVibrato;
-								ev2->value = 2 | ev->value; // 2| == chip index 1
-								i = pMusic->events->insert(i+1, gev2);
-							}
-							break;
-						}
-						case gm::ConfigurationEvent::EnableRhythm:
-							// Not sure how to deal with this yet
-							break;
-						case gm::ConfigurationEvent::EnableWaveSel:
-							// Always enabled on OPL3, no need to do anything
-							break;
-					}
+					} // end of track
+				} // end of pattern
+			} // end of song
+
+			// Insert an OPL 2/3 switch event at the start of the first track
+			// This isn't perfect (the first pattern may not play first) but it'll
+			// do for the moment.
+			// @todo: Find first order number and put it in that pattern instead.
+			// @todo: But only if that pattern doesn't already have an OPL event at the start
+			if (pMusic->patterns.size() > 0) {
+				const gm::PatternPtr& pattern = pMusic->patterns.at(0);
+				if (pattern->size() > 0) {
+					const gm::TrackPtr& track = pattern->at(0);
+
+					gm::TrackEvent te2;
+					te2.delay = 0;
+					gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
+					te2.event = gm::EventPtr(ev2);
+					ev2->configType = gm::ConfigurationEvent::EnableOPL3;
+					ev2->value = bForceOPL3 ? 1 : 0;
+					track->insert(track->begin(), te2);
 				}
 			}
-		}
+		} // if force opl2/3
 
 		// Run through the actions on the command line
 		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
-			if (i->string_key.compare("list") == 0) {
 
-				int n = 0;
-				for (gm::EventVector::const_iterator i = pMusic->events->begin(); i != pMusic->events->end(); i++, n++) {
-					if (bScript) std::cout << "index=" << n << ";";
-					else std::cout << n << ": ";
-					std::cout << (*i)->getContent() << "\n";
+			if (i->string_key.compare("list") == 0) {
+				if (!bScript) {
+					std::cout << "Song has " << pMusic->patterns.size() << " patterns\n";
 				}
-				if (!bScript) std::cout << n << " events listed." << std::endl;
+				unsigned int totalEvents = 0;
+				unsigned int patternIndex = 0;
+				for (std::vector<gm::PatternPtr>::const_iterator
+					pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++, patternIndex++
+				) {
+					unsigned int trackIndex = 0;
+					for (gm::Pattern::const_iterator
+						pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
+					) {
+						if (!bScript) {
+							std::cout << ">> Pattern " << patternIndex << ", track "
+								<< trackIndex << "\n";
+						}
+						unsigned int eventIndex = 0;
+						for (gm::Track::const_iterator
+							ev = (*pt)->begin(); ev != (*pt)->end(); ev++, eventIndex++, totalEvents++
+						) {
+							if (bScript) {
+								std::cout << "pattern=" << patternIndex << ";track="
+									<< trackIndex << ";index=" << eventIndex << ";";
+							} else {
+								std::cout << eventIndex << ": ";
+							}
+							std::cout << "delay=" << ev->delay << ";"
+								<< ev->event->getContent() << "\n";
+						}
+					}
+				}
+				if (!bScript) std::cout << totalEvents << " events listed." << std::endl;
 
 			} else if (i->string_key.compare("convert") == 0) {
 				std::string strOutFile;
@@ -499,7 +558,7 @@ int main(int iArgC, char *cArgV[])
 				std::cout << "Listing " << pMusic->patches->size() << " instruments:\n";
 				unsigned int j = 0;
 				for (gm::PatchBank::const_iterator
-					     i = pMusic->patches->begin(); i != pMusic->patches->end(); i++, j++
+					i = pMusic->patches->begin(); i != pMusic->patches->end(); i++, j++
 				) {
 					std::cout << " #" << j << ": ";
 					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(*i);
@@ -515,7 +574,17 @@ int main(int iArgC, char *cArgV[])
 								std::cout << "patch " << (int)midiNext->midiPatch;
 							}
 						} else {
-							std::cout << "<unknown patch type>";
+							gm::PCMPatchPtr pcmNext = boost::dynamic_pointer_cast<gm::PCMPatch>(*i);
+							if (pcmNext) {
+								std::cout << "PCM " << pcmNext->sampleRate << "/"
+									<< (int)pcmNext->bitDepth << "/" << (int)pcmNext->numChannels << " "
+									<< (pcmNext->loopEnd ? '+' : '-') << "Loop ";
+								if (pcmNext->lenData < 1024) std::cout << pcmNext->lenData << "B ";
+								else if (pcmNext->lenData < 1024*1024) std::cout << pcmNext->lenData / 1024 << "kB ";
+								else std::cout << pcmNext->lenData / 1048576 << "MB ";
+							} else {
+								std::cout << "--- "; // empty patch
+							}
 						}
 					}
 					if (!(*i)->name.empty()) {
