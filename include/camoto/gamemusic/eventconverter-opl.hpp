@@ -146,15 +146,10 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		void rewind();
 
 		// EventHandler overrides
-
 		virtual void handleEvent(const TempoEvent *ev);
-
 		virtual void handleEvent(const NoteOnEvent *ev);
-
 		virtual void handleEvent(const NoteOffEvent *ev);
-
-		virtual void handleEvent(const PitchbendEvent *ev);
-
+		virtual void handleEvent(const EffectEvent *ev);
 		virtual void handleEvent(const ConfigurationEvent *ev);
 
 	private:

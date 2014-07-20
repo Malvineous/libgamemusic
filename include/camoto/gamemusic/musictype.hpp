@@ -3,7 +3,7 @@
  * @brief  MusicType class, used to identify, read and write an instance of a
  *         particular music format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,6 +54,34 @@ class MusicType
 			IntegerNotesOnly = 0x01,  ///< Disable pitchbends
 		};
 
+		/// Available capability flags, returned by getCaps().
+		/**
+		 * These are intended as guidelines to be used to warn users about loss of
+		 * fidelity when converting between formats.  Conversion may proceed anyway,
+		 * however some content will be dropped where possible, and exceptions will
+		 * be thrown where this is not possible.
+		 */
+		enum Caps {
+			/// @todo How to handle songs with shared instrument banks like MIDI or Ken's Labyrinth?
+			InstEmpty     = 0x0001, ///< Can have empty instruments
+			InstOPL       = 0x0002, ///< Can use OPL instruments
+			InstOPLRhythm = 0x0004, ///< Can use OPL rhythm-mode percussive instruments (if unset, format does not support OPL rhythm mode)
+			InstMIDI      = 0x0008, ///< Can use MIDI instruments
+			InstPCM       = 0x0010, ///< Can use sampled (PCM) instruments
+			HasEvents     = 0x0020, ///< Set if song, unset if instrument bank
+
+			/// Keeps patterns separate.
+			/**
+			 * If unset, all patterns are merged into one (possibly duplicated based
+			 * on order numbers) and a single pattern is passed to the write handler.
+			 * On load, a single pattern is expected and it may be analysed and split
+			 * automatically or with manual assistance into multiple patterns.
+			 */
+			HasPatterns   = 0x0080,
+
+			HasLoopDest   = 0x0100, ///< Can the loop destination be set?
+		};
+
 		/// Get a short code to identify this file format, e.g. "imf-idsoftware"
 		/**
 		 * This can be useful for command-line arguments.
@@ -73,6 +101,12 @@ class MusicType
 		 * @return A vector of file extensions, e.g. "imf", "wlf"
 		 */
 		virtual std::vector<std::string> getFileExtensions() const = 0;
+
+		/// Find out what features this file format supports.
+		/**
+		 * @return Zero or more \ref Caps items OR'd together.
+		 */
+		virtual unsigned long getCaps() const = 0;
 
 		/// Check a stream to see if it's in this music format.
 		/**

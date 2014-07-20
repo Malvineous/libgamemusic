@@ -82,6 +82,7 @@ homepage <http://www.shikadi.net/camoto>.
 #include <camoto/gamemusic/patch.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/patch-pcm.hpp>
 #include <camoto/gamemusic/patchbank.hpp>
 #include <camoto/gamemusic/opl-util.hpp>
 #include <camoto/gamemusic/events.hpp>

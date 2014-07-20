@@ -2,7 +2,7 @@
  * @file   events.hpp
  * @brief  Declaration of all the Event types.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,46 +41,98 @@ const unsigned int MAX_CHANNELS = 256;
 /// Type to use for all microsecond-per-tick values.
 typedef double tempo_t;
 
+/// Information about a track, shared across all patterns.
+/**
+ * This controls which channel a track's events are played on.
+ */
+struct DLL_EXPORT TrackInfo
+{
+	/// Channel type
+	enum ChannelType {
+		UnusedChannel,
+		AnyChannel,
+		OPLChannel,
+		OPLPercChannel,
+		MIDIChannel,
+		PCMChannel,
+	};
+
+	/// What type of channel this track will be played through.
+	ChannelType channelType;
+
+	/// Channel index.
+	/**
+	 * When type is:
+	 *
+	 * - AnyChannel: this value is 0-255.  The value
+	 *   is not so important, but only one note can be played on each channel
+	 *   at a time, across all tracks.  It is not valid to write any tracks
+	 *   with this channel type set.  All AnyChannel tracks must be mapped to
+	 *   other values before a song is passed to a format writer.  This is to
+	 *   prevent every format writer from having to map channels itself.
+	 *   @todo: Make a utility function to do this.
+	 *
+	 * - OPLChannel: this value is 0 to 8 for normal OPL channels on
+	 *   chip 1, and 9 to 17 for chip 2.  Some events are global and will affect
+	 *   the whole chip regardless of what track they are played on.
+	 *
+	 * - OPLPercChannel: this value is 0 for bass drum, 1 for snare, 2 for tomtom,
+	 *   3 for top cymbal, 4 for hi-hat.  Other values are invalid.
+	 *
+	 * - MIDIChannel: this value is 0 to 15, with 9 being percussion.
+	 *
+	 * - PCMChannel: this value is the channel index starting at 0.  For some
+	 *   formats like .mod, this affects the panning of the channel.
+	 *
+	 * Note that OPL percussion mode uses channels 6, 7 and 8, so it is not
+	 * valid for a song to have OPLChannel events on these channels while
+	 * OPLPercChannel events are present.  This may happen temporarily during a
+	 * format conversion, but this state must be resolved by the time the
+	 * data is written out to a file.
+	 */
+	unsigned int channelIndex;
+};
+
+/// Vector of trackinfo (a channel map)
+typedef std::vector<TrackInfo> TrackInfoVector;
+
+
 /// Base class to represent events in the file.
 /**
  * Will be extended by descendent classes to hold format-specific data.
  * The entries here will be valid for all music types.
  */
-struct DLL_EXPORT Event {
+struct DLL_EXPORT Event
+{
 	/// Helper function (for debugging) to return all the data as a string
 	virtual std::string getContent() const;
 
 	/// Call the handleEvent() function in an EventHandler class, passing this
 	/// event as the parameter.
-	virtual void processEvent(EventHandler *handler) = 0;
-
-	/// The number of ticks (since the start of the song) when this event should
-	/// be actioned.
-	unsigned long absTime;
-
-	/// Channel number (1+, channel 0 means a global event affecting all channels)
-	unsigned int channel;
-
-	/// Original channel number in the source file.
-	/**
-	 * This should only be used by file format handlers which may need to know
-	 * where the event came from.  For example the CMF file format assigns special
-	 * instruments to certain MIDI channels, so the original MIDI channel will be
-	 * stored here.  The 'channel' field above cannot contain this value, as only
-	 * one note can be played at a time on that channel, whereas a single MIDI
-	 * channel can play up to 128 notes simultaneously.
-	 */
-	unsigned int sourceChannel;
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler) = 0;
 };
 
 /// Shared pointer to an event
 typedef boost::shared_ptr<Event> EventPtr;
 
+struct DLL_EXPORT TrackEvent
+{
+	unsigned long delay;
+	EventPtr event;
+};
+
 /// Vector of shared event pointers
-typedef std::vector<EventPtr> EventVector;
+typedef std::vector<TrackEvent> Track;
 
 /// Shared pointer to a list of events
-typedef boost::shared_ptr<EventVector> EventVectorPtr;
+typedef boost::shared_ptr<Track> TrackPtr;
+
+/// Vector of tracks (a pattern)
+typedef std::vector<TrackPtr> Pattern;
+
+/// Shared pointer to a pattern
+typedef boost::shared_ptr<Pattern> PatternPtr;
 
 
 /// Changing the tempo changes the rate at which the ticks tick.
@@ -97,7 +149,8 @@ struct DLL_EXPORT TempoEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler);
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
 };
 
 
@@ -111,7 +164,8 @@ struct DLL_EXPORT NoteOnEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler);
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
 
 	/// Instrument to play this note with.  This is an index into the vector
 	/// returned by Music::getInstruments().
@@ -120,8 +174,8 @@ struct DLL_EXPORT NoteOnEvent: virtual public Event
 	/// Note frequency (440000 == 440Hz)
 	unsigned int milliHertz;
 
-	/// Velocity.  0 == unused/default, 1 == quiet, 255 = loud
-	uint8_t velocity;
+	/// Velocity: 0=silent, 255=loud, -1=default/unknown
+	int velocity;
 };
 
 
@@ -130,24 +184,29 @@ struct DLL_EXPORT NoteOffEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler);
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
 };
 
 
-/// Change the pitch of the note on this channel.
-/**
- * @note Only one note can be playing on each channel at a time.  For formats
- *       which allow multiple notes on each channel (e.g. MIDI) some "virtual"
- *       channels will have to be created.
- */
-struct DLL_EXPORT PitchbendEvent: virtual public Event
+/// Alter the way the note is currently being played on a channel.
+struct DLL_EXPORT EffectEvent: virtual public Event
 {
-	/// Note frequency (440000 == 440Hz)
-	int milliHertz;
+	enum EffectType {
+		Pitchbend, ///< Change note freq: data=new freq in milliHertz
+		Volume,    ///< Change note volume: 0=silent, 255=loud
+	};
+
+	/// Type of effect.
+	EffectType type;
+
+	/// Effect data.  See EffectType.
+	unsigned int data;
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler);
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
 };
 
 
@@ -162,7 +221,14 @@ struct DLL_EXPORT ConfigurationEvent: virtual public Event
 	 * For boolean values (Enable*) a value of 0 is false/disabled and a value
 	 * of nonzero (usually 1) is true/enabled.
 	 */
-	enum ConfigurationType {
+	enum ConfigurationType
+	{
+		/// No operation
+		/**
+		 * Dummy event that doesn't do anything.  Can be placed last in a file if
+		 * there is a trailing delay.
+		 */
+		None,
 
 		/// Enable OPL3 mode (or limit to OPL2)
 		/**
@@ -192,7 +258,7 @@ struct DLL_EXPORT ConfigurationEvent: virtual public Event
 		 */
 		EnableRhythm,
 
-		/// Enable use of wavesel registers
+		/// Enable use of wave selection registers
 		/**
 		 * value: 1 to enable, 0 to disable
 		 */
@@ -207,8 +273,17 @@ struct DLL_EXPORT ConfigurationEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(EventHandler *handler);
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
 };
+
+} // namespace gamemusic
+} // namespace camoto
+
+#include <camoto/gamemusic/music.hpp>
+
+namespace camoto {
+namespace gamemusic {
 
 /// Callback interface
 /**
@@ -219,25 +294,93 @@ struct DLL_EXPORT ConfigurationEvent: virtual public Event
 class DLL_EXPORT EventHandler
 {
 	public:
-		virtual void handleEvent(const TempoEvent *ev) = 0;
+		/// How to process events
+		enum EventOrder {
+			/// Handle all events in order, no matter what track they are in
+			/**
+			 * This processes all events at t=0, then all events at t=1, and so on.
+			 * When the last row is reached, an "end of pattern" callback is issued.
+			 * This effectively behaves as if all the tracks are merged into one
+			 * stream, but of course each event's track can still be identified so
+			 * channel information can be examined.
+			 *
+			 * This is best suited to formats that have a single track, like IMF
+			 * or type-0 MIDI.  It is also useful for tracked formats which store
+			 * data for each channel one full row at a time.
+			 *
+			 * If you use this layout, you won't have to deal with independent
+			 * tracks, just a single big list of events (with corresponding channel
+			 * numbers.)
+			 */
+			Pattern_Row_Track,
+
+			/// Handle one track at a time in full before moving on to the next
+			/**
+			 * This processes all events in the first track, then all events in
+			 * the second track, and so on.
+			 *
+			 * This is best suited to type-1 MIDI data, where the output file has a
+			 * number of separate self-contained tracks, which are played back at the
+			 * same time.
+			 *
+			 * When the last row in a track is reached, an "end of track" callback is
+			 * issued and processing continues with the next track.  Once the last
+			 * track has been processed, an "end of pattern" callback is issued.
+			 */
+			Pattern_Track_Row,
+		};
+
+		/// Callback when handleAllEvents() has reached the end of the track.
+		/**
+		 * Not called when EventOrder::Pattern_Row_Track is in use.
+		 */
+		virtual void endOfTrack();
+
+		/// Callback when handleAllEvents() has reached the end of a pattern.
+		/**
+		 * This callback is used when the last pattern is processed, but there
+		 * is no 'end of song' callback.  But the end of the song is when
+		 * handleAllEvents() returns, so any code that should run once the last
+		 * pattern has been processed can just be put after handleAllEvents().
+		 */
+		virtual void endOfPattern();
+
+		/// The tempo is being changed.
+		/**
+		 * As delays are measured in ticks, and ticks are independent of the tempo,
+		 * any events with a delay that crosses the tempo change will have the
+		 * first of their ticks timed at the original tempo, and the last of their
+		 * ticks timed at the new tempo.
+		 *
+		 * Be wary of this when a tempo change occurs in one track and there are
+		 * events being processed in other tracks as well.
+		 *
+		 * @param delay
+		 *   The number of ticks to delay (at the original tempo) before the
+		 *   new tempo takes effect.
+		 */
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const TempoEvent *ev) = 0;
 
 		/// A note is being played.
 		/**
-		 * @throws EChannelMismatch if the note could not be played on the given
-		 *   channel (e.g. channel does not support the instrument.)
-		 *
-		 * @throws bad_patch if the note could not be played with the given
-		 *   instrument (e.g. not enough instruments in patch bank.)
+		 * If the instrument is incorrect for the song (e.g. OPL instrument on a
+		 * PCM channel), the behaviour is undefined.  Typically the instrument
+		 * number will be set anyway but it will correspond to the wrong patch.
 		 */
-		virtual void handleEvent(const NoteOnEvent *ev) = 0;
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOnEvent *ev) = 0;
 
-		virtual void handleEvent(const NoteOffEvent *ev) = 0;
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOffEvent *ev) = 0;
 
-		virtual void handleEvent(const PitchbendEvent *ev) = 0;
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const EffectEvent *ev) = 0;
 
-		virtual void handleEvent(const ConfigurationEvent *ev) = 0;
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const ConfigurationEvent *ev) = 0;
 
-		void handleAllEvents(const EventVectorPtr& events);
+		void handleAllEvents(EventOrder eventOrder, const MusicPtr& music);
 
 };
 

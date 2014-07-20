@@ -292,15 +292,10 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 		void rewind();
 
 		// EventHandler functions
-
 		virtual void handleEvent(const TempoEvent *ev);
-
 		virtual void handleEvent(const NoteOnEvent *ev);
-
 		virtual void handleEvent(const NoteOffEvent *ev);
-
-		virtual void handleEvent(const PitchbendEvent *ev);
-
+		virtual void handleEvent(const EffectEvent *ev);
 		virtual void handleEvent(const ConfigurationEvent *ev);
 
 	protected:

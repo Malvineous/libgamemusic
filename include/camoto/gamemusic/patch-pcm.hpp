@@ -34,14 +34,14 @@ struct DLL_EXPORT PCMPatch: public Patch
 	/// Default constructor sets everything to zero/defaults.
 	PCMPatch();
 
-	uint32_t sampleRate; ///< Sampling rate in Hertz to get a middle-C note
-	uint8_t bitDepth;    ///< Sample size in bits (8/16)
-	uint8_t numChannels; ///< Channel count (1=mono, 2=stereo)
+	unsigned long sampleRate; ///< Sampling rate in Hertz to get a middle-C note
+	unsigned int bitDepth;    ///< Sample size in bits (8/16)
+	unsigned int numChannels; ///< Channel count (1=mono, 2=stereo)
 
-	uint32_t loopStart;  ///< Beginning of loop (offset of first sample)
-	uint32_t loopEnd;    ///< End of loop, 0=no loop (offset of last sample+1)
+	unsigned long loopStart;  ///< Beginning of loop (offset of first sample)
+	unsigned long loopEnd;    ///< End of loop, 0=no loop (offset of last sample+1)
 
-	uint32_t lenData;    ///< Size of data in bytes
+	unsigned long lenData;    ///< Size of data in bytes
 
 	/// Actual sample data
 	boost::shared_array<uint8_t> data;

@@ -2,7 +2,7 @@
  * @file   patch.cpp
  * @brief  Implementation of top-level Patch class, for managing patches.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,6 +21,11 @@
 #include <camoto/gamemusic/patch.hpp>
 
 using namespace camoto::gamemusic;
+
+Patch::Patch()
+	:	defaultVolume(255)
+{
+}
 
 Patch::~Patch()
 {

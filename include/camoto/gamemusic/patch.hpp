@@ -37,10 +37,19 @@ namespace gamemusic {
  * the sound of an instrument.  It is specialised for the particular type of
  * patch (OPL, sampled, etc.)
  */
-struct DLL_EXPORT Patch {
-
+struct DLL_EXPORT Patch
+{
+	/// Title of the instrument.
 	std::string name;
 
+	/// Default volume, 0=silent, 255=full.
+	/**
+	 * This is overridden by the note-on velocity, but if that's -1, then the
+	 * value here is used.
+	 */
+	unsigned int defaultVolume;
+
+	Patch();
 	virtual ~Patch();
 };
 

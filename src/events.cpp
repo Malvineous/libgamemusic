@@ -2,7 +2,7 @@
  * @file   events.cpp
  * @brief  Implementation of all Event types.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,18 +19,14 @@
  */
 
 #include <sstream>
+#include <list>
 #include <camoto/gamemusic/events.hpp>
 
 using namespace camoto::gamemusic;
 
 std::string Event::getContent() const
 {
-	std::ostringstream ss;
-	ss
-		<< "time=" << this->absTime
-		<< ";channel=" << this->channel
-	;
-	return ss.str();
+	return std::string();
 }
 
 std::string TempoEvent::getContent() const
@@ -38,14 +34,15 @@ std::string TempoEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=tempo;us_per_tick=" << this->usPerTick
+		<< "event=tempo;us_per_tick=" << this->usPerTick
 	;
 	return ss.str();
 }
 
-void TempoEvent::processEvent(EventHandler *handler)
+void TempoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
 {
-	handler->handleEvent(this);
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
@@ -54,16 +51,17 @@ std::string NoteOnEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=note-on;freq=" << this->milliHertz
+		<< "event=note-on;freq=" << this->milliHertz
 		<< ";instrument=" << this->instrument
 		<< ";velocity=" << (int)this->velocity
 	;
 	return ss.str();
 }
 
-void NoteOnEvent::processEvent(EventHandler *handler)
+void NoteOnEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
 {
-	handler->handleEvent(this);
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
@@ -72,30 +70,32 @@ std::string NoteOffEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=note-off"
+		<< "event=note-off"
 	;
 	return ss.str();
 }
 
-void NoteOffEvent::processEvent(EventHandler *handler)
+void NoteOffEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
 {
-	handler->handleEvent(this);
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
-std::string PitchbendEvent::getContent() const
+std::string EffectEvent::getContent() const
 {
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=pitchbend;freq=" << this->milliHertz
+		<< "event=effect;type=" << this->type << ";data=" << this->data
 	;
 	return ss.str();
 }
 
-void PitchbendEvent::processEvent(EventHandler *handler)
+void EffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
 {
-	handler->handleEvent(this);
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
@@ -104,9 +104,12 @@ std::string ConfigurationEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< ";event=config;type="
+		<< "event=config;type="
 	;
 	switch (this->configType) {
+		case None:
+			ss << "none";
+			break;
 		case EnableOPL3:
 			ss << "enableOPL3";
 			break;
@@ -127,16 +130,118 @@ std::string ConfigurationEvent::getContent() const
 	return ss.str();
 }
 
-void ConfigurationEvent::processEvent(EventHandler *handler)
+void ConfigurationEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
 {
-	handler->handleEvent(this);
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
-void EventHandler::handleAllEvents(const EventVectorPtr& events)
+void EventHandler::endOfTrack()
 {
-	for (EventVector::const_iterator i = events->begin(); i != events->end(); i++) {
-		i->get()->processEvent(this);
+	return;
+}
+
+void EventHandler::endOfPattern()
+{
+	return;
+}
+
+struct MergedEvent
+{
+	MergedEvent(const EventPtr& ev)
+		:	event(ev)
+	{
+	}
+	unsigned long absTime;
+	unsigned int trackIndex;
+	const EventPtr event;
+};
+
+bool trackMergeByTime(const MergedEvent& a, const MergedEvent& b)
+{
+	return a.absTime < b.absTime;
+}
+
+void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
+	const MusicPtr& music)
+{
+	switch (eventOrder) {
+		case Pattern_Row_Track: {
+			unsigned int patternIndex = 0;
+			// For each pattern
+			for (std::vector<PatternPtr>::const_iterator
+				pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
+			) {
+				// Merge all the tracks together into one big track, with all events in
+				// chronological order
+				std::list<MergedEvent> full;
+
+				unsigned int trackIndex = 0;
+				// For each track
+				for (Pattern::const_iterator
+					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
+				) {
+					std::list<MergedEvent> ltrack;
+
+					unsigned long trackTime = 0;
+					// For each event in the track
+					for (Track::const_iterator
+						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+					) {
+						const TrackEvent& te = *ev;
+						// If this assertion is thrown, it's because the format reader or
+						// some processing function got events out of order.  They must be
+						// chronological.
+						trackTime += te.delay;
+						MergedEvent mevent(te.event);
+						mevent.absTime = trackTime;
+						mevent.trackIndex = trackIndex;
+						ltrack.push_back(mevent);
+					}
+					// Merge in with master list
+					full.merge(ltrack, trackMergeByTime);
+				}
+
+				unsigned long trackTime = 0;
+				// Now run through the master list, which has all events sorted
+				for (std::list<MergedEvent>::const_iterator
+					fev = full.begin(); fev != full.end(); fev++
+				) {
+					const MergedEvent& me = *fev;
+					unsigned long deltaTime = me.absTime - trackTime;
+					trackTime = me.absTime;
+					me.event->processEvent(deltaTime, me.trackIndex, patternIndex, this);
+				}
+				this->endOfPattern();
+			}
+			break;
+		}
+
+		case Pattern_Track_Row: {
+			unsigned int patternIndex = 0;
+			// For each pattern
+			for (std::vector<PatternPtr>::const_iterator
+				pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
+			) {
+				unsigned int trackIndex = 0;
+				// For each track
+				for (Pattern::const_iterator
+					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
+				) {
+					// For each event in the track
+					for (Track::const_iterator
+						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+					) {
+						const TrackEvent& te = *ev;
+						te.event->processEvent(te.delay, trackIndex, patternIndex, this);
+					}
+					this->endOfTrack();
+				}
+				this->endOfPattern();
+			}
+			break;
+		}
 	}
 	return;
 }
