@@ -2,7 +2,7 @@
  * @file   mus-cdfm-zone66.hpp
  * @brief  Support for Renaissance's CDFM format used in Zone 66.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ class MusicType_CDFM: virtual public MusicType
 		virtual std::string getCode() const;
 		virtual std::string getFriendlyName() const;
 		virtual std::vector<std::string> getFileExtensions() const;
+		virtual unsigned long getCaps() const;
 		virtual Certainty isInstance(stream::input_sptr input) const;
 		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const;
 		virtual void write(stream::output_sptr output, SuppData& suppData,

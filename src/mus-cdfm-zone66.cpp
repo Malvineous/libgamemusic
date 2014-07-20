@@ -2,7 +2,7 @@
  * @file   mus-cdfm-zone66.cpp
  * @brief  Support for Renaissance's CDFM format used in Zone 66.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,6 +28,8 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+#define CDFM_CHANNEL_COUNT 16 ///< Number of storage channels in CDFM file
+
 std::string MusicType_CDFM::getCode() const
 {
 	return "cdfm-zone66";
@@ -46,33 +48,44 @@ std::vector<std::string> MusicType_CDFM::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_CDFM::getCaps() const
+{
+	return
+		InstEmpty
+		| InstOPL
+		| InstPCM
+		| HasEvents
+		| HasPatterns
+		| HasLoopDest
+	;
+}
+
 MusicType::Certainty MusicType_CDFM::isInstance(stream::input_sptr input) const
 {
 	stream::len fileSize = input->size();
 	input->seekg(0, stream::start);
 
-	uint8_t tempo, patternListSize, numPatterns, numDigInst, numOPLInst, loopDest;
+	uint8_t speed, orderCount, patternCount, numDigInst, numOPLInst, loopDest;
 	uint32_t sampleOffset;
-	uint8_t patternOrder[256];
-	uint32_t patternOffset[256];
 	input
-		>> u8(tempo)
-		>> u8(patternListSize)
-		>> u8(numPatterns)
+		>> u8(speed)
+		>> u8(orderCount)
+		>> u8(patternCount)
 		>> u8(numDigInst)
 		>> u8(numOPLInst)
 		>> u8(loopDest)
 		>> u32le(sampleOffset)
 	;
-	if (loopDest >= patternListSize) {
+	if (loopDest >= orderCount) {
 		// Loop target is past end of song
 		// TESTED BY: mus_cdfm_zone66_isinstance_c01
 		return MusicType::DefinitelyNo;
 	}
 
-	input->read(patternOrder, patternListSize);
-	for (int i = 0; i < patternListSize; i++) {
-		if (patternOrder[i] >= numPatterns) {
+	uint8_t patternOrder[256];
+	input->read(patternOrder, orderCount);
+	for (int i = 0; i < orderCount; i++) {
+		if (patternOrder[i] >= patternCount) {
 			// Sequence specifies invalid pattern
 			// TESTED BY: mus_cdfm_zone66_isinstance_c02
 			return MusicType::DefinitelyNo;
@@ -82,15 +95,16 @@ MusicType::Certainty MusicType_CDFM::isInstance(stream::input_sptr input) const
 	// Read the song data
 	stream::pos patternStart =
 		10                     // sizeof fixed-length part of header
-		+ 1 * patternListSize  // one byte for each pattern in the sequence
-		+ 4 * numPatterns      // one uint32le for each pattern's offset
+		+ 1 * orderCount  // one byte for each pattern in the sequence
+		+ 4 * patternCount      // one uint32le for each pattern's offset
 		+ 16 * numDigInst      // PCM instruments
 		+ 11 * numOPLInst      // OPL instruments
 	;
 
-	for (int i = 0; i < numPatterns; i++) {
-		input >> u32le(patternOffset[i]);
-		if (patternStart + patternOffset[i] >= fileSize) {
+	for (int i = 0; i < patternCount; i++) {
+		uint32_t patternOffset;
+		input >> u32le(patternOffset);
+		if (patternStart + patternOffset >= fileSize) {
 			// Pattern data offset is past EOF
 			// TESTED BY: mus_cdfm_zone66_isinstance_c03
 			return MusicType::DefinitelyNo;
@@ -103,32 +117,64 @@ MusicType::Certainty MusicType_CDFM::isInstance(stream::input_sptr input) const
 
 MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) const
 {
-	stream::len fileSize = input->size();
+	MusicPtr music(new Music());
+	PatchBankPtr patches(new PatchBank());
+	music->patches = patches;
+
+	// All CDFM files seem to be in 4/4 time?
+	music->initialTempo.beatsPerBar = 4;
+	music->initialTempo.beatLength = 4;
+	music->initialTempo.ticksPerBeat = 4;
+
+	for (unsigned int c = 0; c < CDFM_CHANNEL_COUNT; c++) {
+		TrackInfo t;
+		if (c < 4) {
+			t.channelType = TrackInfo::PCMChannel;
+			t.channelIndex = c;
+		} else if (c < 13) {
+			t.channelType = TrackInfo::OPLChannel;
+			t.channelIndex = c - 4;
+		} else {
+			t.channelType = TrackInfo::UnusedChannel;
+			t.channelIndex = c - 13;
+		}
+		music->trackInfo.push_back(t);
+	}
+
 	input->seekg(0, stream::start);
 
-	uint8_t tempo, patternListSize, numPatterns, numDigInst, numOPLInst, loopDest;
+	uint8_t speed, orderCount, patternCount, numDigInst, numOPLInst, loopDest;
 	uint32_t sampleOffset;
-	uint8_t patternOrder[256];
-	uint32_t patternOffset[256];
 	input
-		>> u8(tempo)
-		>> u8(patternListSize)
-		>> u8(numPatterns)
+		>> u8(speed)
+		>> u8(orderCount)
+		>> u8(patternCount)
 		>> u8(numDigInst)
 		>> u8(numOPLInst)
 		>> u8(loopDest)
 		>> u32le(sampleOffset)
 	;
-	input->read(patternOrder, patternListSize);
-	for (int i = 0; i < numPatterns; i++) {
-		input >> u32le(patternOffset[i]);
+	music->loopDest = loopDest;
+	music->initialTempo.module(speed, 144);
+
+	for (unsigned int i = 0; i < orderCount; i++) {
+		uint8_t order;
+		input >> u8(order);
+		if (order < 0xFE) {
+			music->patternOrder.push_back(order);
+		} else {
+			/// @todo: See if this is part of the CDFM spec, like it is for S3M
+			std::cout << "CDFM: Got pattern >= 254, handle this!\n";
+		}
 	}
 
-	MusicPtr music(new Music());
-	PatchBankPtr patches(new PatchBank());
-	music->patches = patches;
-	music->events.reset(new EventVector());
-	music->ticksPerQuarterNote = 192; ///< @todo see if there's one value for this format
+	std::vector<uint16_t> ptrPatterns;
+	ptrPatterns.reserve(patternCount);
+	for (unsigned int i = 0; i < patternCount; i++) {
+		uint16_t ptrPattern;
+		input >> u32le(ptrPattern);
+		ptrPatterns.push_back(ptrPattern);
+	}
 
 	// Read instruments
 	patches->reserve(numDigInst + numOPLInst);
@@ -142,16 +188,21 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 			>> u32le(patch->loopStart)
 			>> u32le(patch->loopEnd)
 		;
-		patch->sampleRate = 33075;
+		patch->defaultVolume = 255;
+		patch->sampleRate = 8287;//8268;//8363;
 		patch->bitDepth = 8;
 		patch->numChannels = 1;
 		if (patch->loopEnd == 0x00FFFFFF) patch->loopEnd = 0; // no loop
 		patches->push_back(patch);
+		if (unknown != 0) {
+			std::cout << "CDFM: Got file with unknown value as " << (int)unknown << "\n";
+		}
 	}
 
 	uint8_t inst[11];
 	for (int i = 0; i < numOPLInst; i++) {
 		OPLPatchPtr patch(new OPLPatch());
+		patch->defaultVolume = 255;
 		input->read(inst, 11);
 
 		OPLOperator *o = &patch->m;
@@ -178,165 +229,162 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 	}
 
 	// Read the song data
+	music->patterns.reserve(patternCount);
+	bool firstPattern = true;
 	stream::pos patternStart =
 		10                     // sizeof fixed-length part of header
-		+ 1 * patternListSize  // one byte for each pattern in the sequence
-		+ 4 * numPatterns      // one uint32le for each pattern's offset
+		+ 1 * orderCount  // one byte for each pattern in the sequence
+		+ 4 * patternCount      // one uint32le for each pattern's offset
 		+ 16 * numDigInst      // PCM instruments
 		+ 11 * numOPLInst      // OPL instruments
 	;
 	assert(input->tellg() == patternStart);
 
-	EventPtr gev;
+	for (std::vector<uint16_t>::const_iterator
+		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++
+	) {
+		// Jump to the start of the pattern data
+		input->seekg(patternStart + *i, stream::start);
+		PatternPtr pattern(new Pattern());
+		for (unsigned int track = 0; track < CDFM_CHANNEL_COUNT; track++) {
+			TrackPtr t(new Track());
+			pattern->push_back(t);
+			if (firstPattern) {
+				// Set standard settings
+				{
+					TrackEvent te;
+					te.delay = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableOPL3;
+					ev->value = 0;
+					t->push_back(te);
+				}
+				{
+					TrackEvent te;
+					te.delay = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableDeepTremolo;
+					ev->value = 0;
+					t->push_back(te);
+				}
+				{
+					TrackEvent te;
+					te.delay = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableDeepVibrato;
+					ev->value = 0;
+					t->push_back(te);
+				}
+				{
+					TrackEvent te;
+					te.delay = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableWaveSel;
+					ev->value = 1;
+					t->push_back(te);
+				}
 
-	// Add the tempo event first
-	{
-		TempoEvent *ev = new TempoEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
-		ev->usPerTick = tempo * 1750;
-		music->events->push_back(gev);
-	}
+				firstPattern = false;
+			}
+		}
 
-	// Set standard settings
-	{
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
-		ev->configType = ConfigurationEvent::EnableOPL3;
-		ev->value = 0;
-		music->events->push_back(gev);
-	}
-	{
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
-		ev->configType = ConfigurationEvent::EnableDeepTremolo;
-		ev->value = 0;
-		music->events->push_back(gev);
-	}
-	{
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
-		ev->configType = ConfigurationEvent::EnableDeepVibrato;
-		ev->value = 0;
-		music->events->push_back(gev);
-	}
-	{
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
-		ev->configType = ConfigurationEvent::EnableWaveSel;
-		ev->value = 1;
-		music->events->push_back(gev);
-	}
-
-	bool noteOn[16]; // true if a note is currently playing on this channel
-	for (int i = 0; i < 16; i++) {
-		noteOn[i] = false;
-	}
-
-	unsigned long tick = 0; // Last event's time
-	for (int i = 0; i < patternListSize; i++) {
-		int pattern = patternOrder[i];
-		assert(pattern < numPatterns);
-		stream::pos offThisPattern = patternStart + patternOffset[pattern];
-		stream::pos remaining = fileSize - offThisPattern;
-		input->seekg(offThisPattern, stream::start);
-		while (remaining > 0) {
-			gev.reset();
-			uint8_t cmd;
+		// Process the events
+		uint8_t cmd;
+		unsigned int lastDelay[CDFM_CHANNEL_COUNT];
+		for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) lastDelay[i] = 0;
+		do {
 			input >> u8(cmd);
-			remaining--;
-			uint8_t channel = (cmd & 0x0F) + 1; // libgamemusic channel 0 is all channels
+			uint8_t channel = cmd & 0x0F;
+			TrackPtr& track = pattern->at(channel);
 			switch (cmd & 0xF0) {
 				case 0x00: { // note on
 					uint8_t freq, inst_vel;
 					input >> u8(freq) >> u8(inst_vel);
-					remaining -= 2;
 					freq %= 128; // notes larger than this wrap
 
-					if (noteOn[channel]) {
-						// A note is already playing, so turn it off first
-						NoteOffEvent *evOff = new NoteOffEvent();
-						gev.reset(evOff);
-						evOff->channel = channel;
-						evOff->absTime = tick;
-						music->events->push_back(gev);
-					} else {
-						noteOn[channel] = true;
-					}
-
+					TrackEvent te;
+					te.delay = lastDelay[channel];
+					lastDelay[channel] = 0;
 					NoteOnEvent *ev = new NoteOnEvent();
-					gev.reset(ev);
-					ev->channel = channel;
+					te.event.reset(ev);
+
+					unsigned int oct = (freq >> 4);
+					unsigned int note = freq & 0x0F;
+
 					ev->instrument = inst_vel >> 4;
-					if (channel > 4) {
+					if (channel > 3) {
 						// This is an OPL channel so increment instrument index
 						ev->instrument += numDigInst;
+					} else {
+						// PCM instruments use C-2 not C-4 so transpose them
+						oct += 2;
 					}
-					ev->milliHertz = midiToFreq(12 * ((freq >> 4)+1) + (freq & 0x0f));
-
+					ev->milliHertz = midiToFreq((oct + 1) * 12 + note);
 					ev->velocity = ((inst_vel & 0x0F) << 4) | (inst_vel & 0x0F);
+
+					track->push_back(te);
 					break;
 				}
 				case 0x20: { // set volume
 					uint8_t vol;
 					input >> u8(vol);
-					remaining--;
+					vol &= 0x0F;
 
 					if (vol == 0) {
-						if (noteOn[channel]) {
-							// A note is already playing, so turn it off first
-							NoteOffEvent *evOff = new NoteOffEvent();
-							gev.reset(evOff);
-							evOff->channel = channel;
-							evOff->absTime = tick;
-							music->events->push_back(gev);
-						}
+						TrackEvent te;
+						te.delay = lastDelay[channel];
+						lastDelay[channel] = 0;
+						NoteOffEvent *ev = new NoteOffEvent();
+						te.event.reset(ev);
+						track->push_back(te);
 					} else {
-						std::cerr << "mus-cdfm-zone66: TODO - set volume on channel "
-							<< (int)channel << std::endl;
+						TrackEvent te;
+						te.delay = lastDelay[channel];
+						lastDelay[channel] = 0;
+						EffectEvent *ev = new EffectEvent();
+						te.event.reset(ev);
+						ev->type = EffectEvent::Volume;
+						ev->data = (vol << 4) | vol; // 0-15 -> 0-255
+						track->push_back(te);
 					}
 					break;
 				}
 				case 0x40: { // delay
 					uint8_t data;
 					input >> u8(data);
-					remaining--;
-					tick += data * 10;// * tempo * 17.5;
+					for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
+						lastDelay[i] += data;
+					}
 					break;
 				}
 				case 0x60: // end of pattern
-					remaining = 0;
+					// Value will cause while loop to exit below
 					break;
 				default:
 					std::cerr << "mus-cdfm-zone66: Unknown event " << (int)cmd
-						<< " at offset " << (int)(fileSize-remaining) << std::endl;
+						<< " at offset " << input->tellg() - 1 << std::endl;
 					break;
 			}
-			if (gev) {
-				gev->absTime = tick;
-				music->events->push_back(gev);
+		} while (cmd != 0x60);
+
+		// Write out any trailing delays
+		for (unsigned int t = 0; t < CDFM_CHANNEL_COUNT; t++) {
+			if (lastDelay[t]) {
+				TrackPtr& track = pattern->at(t);
+				TrackEvent te;
+				te.delay = lastDelay[t];
+				ConfigurationEvent *ev = new ConfigurationEvent();
+				te.event.reset(ev);
+				ev->configType = ConfigurationEvent::None;
+				ev->value = 0;
+				track->push_back(te);
 			}
 		}
-	}
-
-	for (int i = 0; i < 16; i++) {
-		if (noteOn[i]) {
-			// A note is still playing, so turn it off
-			NoteOffEvent *evOff = new NoteOffEvent();
-			gev.reset(evOff);
-			evOff->channel = i;
-			evOff->absTime = tick;
-			music->events->push_back(gev);
-		}
+		music->patterns.push_back(pattern);
 	}
 
 	// Load the PCM samples

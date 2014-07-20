@@ -41,7 +41,7 @@ File formats from the following games are supported:
   * Wolfenstein 3-D (.wlf)
   * Word Rescue (.cmf) [partial]
   * Xargon (.cmf)
-  * Zone 66 CDFM (.670)
+  * Zone 66 CDFM (.670) [read only]
 
 These auxiliary file formats have also been implemented:
 
