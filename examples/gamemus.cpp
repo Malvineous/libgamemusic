@@ -203,6 +203,9 @@ int main(int iArgC, char *cArgV[])
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
 
+		("dump-tags,d",
+			"list all tags/metadata in the song")
+
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
 
@@ -501,6 +504,20 @@ int main(int iArgC, char *cArgV[])
 					}
 				}
 				if (!bScript) std::cout << totalEvents << " events listed." << std::endl;
+
+			} else if (i->string_key.compare("dump-tags") == 0) {
+				for (camoto::Metadata::TypeMap::const_iterator
+					i = pMusic->metadata.begin(); i != pMusic->metadata.end(); i++
+				) {
+					switch (i->first) {
+						case camoto::Metadata::Description: std::cout << "comment"; break;
+						case camoto::Metadata::PaletteFilename: std::cout << "palette"; break;
+						case camoto::Metadata::Version: std::cout << "version"; break;
+						case camoto::Metadata::Title: std::cout << "title"; break;
+						case camoto::Metadata::Author: std::cout << "artist"; break;
+					}
+					std::cout << "=" << i->second << "\n";
+				}
 
 			} else if (i->string_key.compare("convert") == 0) {
 				std::string strOutFile;
