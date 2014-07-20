@@ -40,14 +40,14 @@ BOOST_AUTO_TEST_CASE(hertz)
 	t.hertz(700);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 1429);
 	BOOST_CHECK_EQUAL(t.bpm(), 120);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 4200);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 10500);
 	BOOST_CHECK_EQUAL(t.hertz(), 700);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 1);
 
 	t.hertz(560);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 1786);
 	BOOST_CHECK_EQUAL(t.bpm(), 96);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 3360);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 8400);
 	BOOST_CHECK_EQUAL(t.hertz(), 560);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 2);
 }
@@ -61,14 +61,14 @@ BOOST_AUTO_TEST_CASE(ms)
 	t.msPerTick(375);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 375000);
 	BOOST_CHECK_EQUAL(t.bpm(), 80);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 16);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 40);
 	BOOST_CHECK_EQUAL(t.hertz(), 3);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 375);
 
 	t.msPerTick(500);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 500000);
 	BOOST_CHECK_EQUAL(t.bpm(), 60);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 12);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 30);
 	BOOST_CHECK_EQUAL(t.hertz(), 2);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 500);
 }
@@ -82,14 +82,14 @@ BOOST_AUTO_TEST_CASE(bpm)
 	t.bpm(60);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 500000);
 	BOOST_CHECK_EQUAL(t.bpm(), 60);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 12);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 30);
 	BOOST_CHECK_EQUAL(t.hertz(), 2);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 500);
 
 	t.bpm(240);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 125000);
 	BOOST_CHECK_EQUAL(t.bpm(), 240);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 48);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 120);
 	BOOST_CHECK_EQUAL(t.hertz(), 8);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 125);
 
@@ -98,7 +98,7 @@ BOOST_AUTO_TEST_CASE(bpm)
 	t.bpm(120);
 	BOOST_CHECK_EQUAL(round(t.usPerTick), 1429);
 	BOOST_CHECK_EQUAL(t.bpm(), 120);
-	BOOST_CHECK_EQUAL(t.module_tempo(), 4200);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 10500);
 	BOOST_CHECK_EQUAL(t.hertz(), 700);
 	BOOST_CHECK_EQUAL(t.msPerTick(), 1);
 }
@@ -111,27 +111,27 @@ BOOST_AUTO_TEST_CASE(module)
 	t.ticksPerBeat = 4;
 
 	t.module(5, 140);
-	BOOST_CHECK_EQUAL(round(t.usPerTick), 35714);
-	BOOST_CHECK_EQUAL(t.bpm(), 420);
+	BOOST_CHECK_EQUAL(round(t.usPerTick), 89286);
+	BOOST_CHECK_EQUAL(t.bpm(), 168);
 	BOOST_CHECK_EQUAL(t.module_tempo(), 140);
-	BOOST_CHECK_EQUAL(t.hertz(), 28);
-	BOOST_CHECK_EQUAL(t.msPerTick(), 36);
+	BOOST_CHECK_EQUAL(t.hertz(), 11);
+	BOOST_CHECK_EQUAL(t.msPerTick(), 89);
 	BOOST_CHECK_EQUAL(t.module_speed(), 5);
 
 	t.module(t.module_speed(), 150);
-	BOOST_CHECK_EQUAL(round(t.usPerTick), 33333);
-	BOOST_CHECK_EQUAL(t.bpm(), 450);
+	BOOST_CHECK_EQUAL(round(t.usPerTick), 83333);
+	BOOST_CHECK_EQUAL(t.bpm(), 180);
 	BOOST_CHECK_EQUAL(t.module_tempo(), 150);
-	BOOST_CHECK_EQUAL(t.hertz(), 30);
-	BOOST_CHECK_EQUAL(t.msPerTick(), 33);
+	BOOST_CHECK_EQUAL(t.hertz(), 12);
+	BOOST_CHECK_EQUAL(t.msPerTick(), 83);
 	BOOST_CHECK_EQUAL(t.module_speed(), 5);
 
 	t.module(6, t.module_tempo());
-	BOOST_CHECK_EQUAL(round(t.usPerTick), 40000);
-	BOOST_CHECK_EQUAL(t.bpm(), 375);
+	BOOST_CHECK_EQUAL(round(t.usPerTick), 100000);
+	BOOST_CHECK_EQUAL(t.bpm(), 150);
 	BOOST_CHECK_EQUAL(t.module_tempo(), 150);
-	BOOST_CHECK_EQUAL(t.hertz(), 25);
-	BOOST_CHECK_EQUAL(t.msPerTick(), 40);
+	BOOST_CHECK_EQUAL(t.hertz(), 10);
+	BOOST_CHECK_EQUAL(t.msPerTick(), 100);
 	BOOST_CHECK_EQUAL(t.module_speed(), 6);
 }
 
