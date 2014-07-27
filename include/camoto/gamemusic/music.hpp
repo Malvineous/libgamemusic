@@ -55,8 +55,8 @@ namespace gamemusic {
  * back to a file, as most file formats only support differing subsets of the
  * capabilities presented here.
  */
-struct Music {
-
+struct Music
+{
 	/// PatchBank holding all instruments in the song.
 	PatchBankPtr patches;
 
@@ -92,8 +92,11 @@ struct Music {
 	 */
 	int loopDest;
 
-	/// List of events in the song (note on, note off, etc.)
-//	EventVectorPtr events;
+	/// Total number of ticks in each track.
+	/**
+	 * This is the same for all tracks in all patterns in the song.
+	 */
+	unsigned int ticksPerTrack;
 
 	/// List of metadata elements set.  Remove from map to unset.
 	Metadata::TypeMap metadata;

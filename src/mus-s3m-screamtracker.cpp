@@ -142,6 +142,8 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 	music->initialTempo.beatsPerBar = 4;
 	music->initialTempo.beatLength = 4;
 	music->initialTempo.ticksPerBeat = 4;
+	music->ticksPerTrack = 64;
+	music->loopDest = -1; // no loop
 
 	input->seekg(0, stream::start);
 

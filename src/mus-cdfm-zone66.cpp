@@ -125,6 +125,7 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 	music->initialTempo.beatsPerBar = 4;
 	music->initialTempo.beatLength = 4;
 	music->initialTempo.ticksPerBeat = 4;
+	music->ticksPerTrack = 64;
 
 	for (unsigned int c = 0; c < CDFM_CHANNEL_COUNT; c++) {
 		TrackInfo t;
