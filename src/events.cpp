@@ -137,12 +137,12 @@ void ConfigurationEvent::processEvent(unsigned long delay, unsigned int trackInd
 	return;
 }
 
-void EventHandler::endOfTrack()
+void EventHandler::endOfTrack(unsigned long delay)
 {
 	return;
 }
 
-void EventHandler::endOfPattern()
+void EventHandler::endOfPattern(unsigned long delay)
 {
 	return;
 }
@@ -213,7 +213,8 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 					trackTime = me.absTime;
 					me.event->processEvent(deltaTime, me.trackIndex, patternIndex, this);
 				}
-				this->endOfPattern();
+				assert(trackTime <= music->ticksPerTrack);
+				this->endOfPattern(music->ticksPerTrack - trackTime);
 			}
 			break;
 		}
@@ -225,20 +226,24 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 				pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
 			) {
 				unsigned int trackIndex = 0;
+				unsigned long maxTrackTime = 0;
 				// For each track
 				for (Pattern::const_iterator
 					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
 				) {
+					unsigned long trackTime = 0;
 					// For each event in the track
 					for (Track::const_iterator
 						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
 					) {
 						const TrackEvent& te = *ev;
+						trackTime += te.delay;
 						te.event->processEvent(te.delay, trackIndex, patternIndex, this);
 					}
-					this->endOfTrack();
+					if (trackTime > maxTrackTime) maxTrackTime = trackTime;
+					this->endOfTrack(music->ticksPerTrack - trackTime);
 				}
-				this->endOfPattern();
+				this->endOfPattern(music->ticksPerTrack - maxTrackTime);
 			}
 			break;
 		}

@@ -333,8 +333,11 @@ class DLL_EXPORT EventHandler
 		/// Callback when handleAllEvents() has reached the end of the track.
 		/**
 		 * Not called when EventOrder::Pattern_Row_Track is in use.
+		 *
+		 * @param delay
+		 *   Number of ticks worth of silence until the end of the track.
 		 */
-		virtual void endOfTrack();
+		virtual void endOfTrack(unsigned long delay);
 
 		/// Callback when handleAllEvents() has reached the end of a pattern.
 		/**
@@ -342,8 +345,11 @@ class DLL_EXPORT EventHandler
 		 * is no 'end of song' callback.  But the end of the song is when
 		 * handleAllEvents() returns, so any code that should run once the last
 		 * pattern has been processed can just be put after handleAllEvents().
+		 *
+		 * @param delay
+		 *   Number of ticks worth of silence until the end of the pattern.
 		 */
-		virtual void endOfPattern();
+		virtual void endOfPattern(unsigned long delay);
 
 		/// The tempo is being changed.
 		/**

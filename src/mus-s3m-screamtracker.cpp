@@ -56,7 +56,7 @@ class EventConverter_S3M: virtual public EventHandler
 		virtual ~EventConverter_S3M();
 
 		// EventHandler overrides
-		virtual void endOfPattern();
+		virtual void endOfPattern(unsigned long delay);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
@@ -837,8 +837,9 @@ EventConverter_S3M::~EventConverter_S3M()
 {
 }
 
-void EventConverter_S3M::endOfPattern()
+void EventConverter_S3M::endOfPattern(unsigned long delay)
 {
+	this->curRow += delay;
 	while (this->curRow < 64) {
 		*this->patBufPos++ = 0x00; // finish row
 		this->curRow++;
@@ -959,7 +960,8 @@ void EventConverter_S3M::writeDelay(unsigned long delay)
 	assert(delay < 1048576*1024); // safety catch
 
 	if (this->curRow + delay > 64) {
-		throw stream::error("S3M: Tried to write pattern with more than 64 rows.");
+		throw stream::error(createString("S3M: Tried to write pattern with more "
+			"than 64 rows (next row is " << this->curRow + delay << ")."));
 	}
 
 	this->curRow += delay;
