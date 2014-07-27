@@ -35,6 +35,9 @@ struct Music;
 /// Shared pointer to a Music instance.
 typedef boost::shared_ptr<Music> MusicPtr;
 
+/// Shared pointer to an unmodifiable Music instance.
+typedef boost::shared_ptr<const Music> ConstMusicPtr;
+
 } // namespace gamemusic
 } // namespace camoto
 

@@ -90,5 +90,6 @@ homepage <http://www.shikadi.net/camoto>.
 #include <camoto/gamemusic/music.hpp>
 #include <camoto/gamemusic/musictype.hpp>
 #include <camoto/gamemusic/manager.hpp>
+#include <camoto/gamemusic/playback.hpp>
 
 #endif // _CAMOTO_GAMEMUSIC_HPP_

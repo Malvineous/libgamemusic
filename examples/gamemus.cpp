@@ -20,12 +20,16 @@
 
 #include <boost/program_options.hpp>
 #include <boost/bind.hpp>
+#include <boost/shared_array.hpp>
+#include <boost/thread.hpp>
+#include <portaudio.h>
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
 #include <camoto/stream_file.hpp>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <config.h>
 
 namespace po = boost::program_options;
 namespace gm = camoto::gamemusic;
@@ -181,6 +185,116 @@ finishTesting:
 	return pMusic;
 }
 
+struct PBCallback
+{
+	gm::Playback *playback;
+	gm::Playback::Position pos;
+	boost::mutex mut;
+	boost::condition_variable wait;
+};
+
+#define FRAMES_TO_BUFFER 512
+#define NUM_CHANNELS 2
+static int paCallback(const void *inputBuffer, void *outputBuffer,
+	unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo *timeInfo,
+	PaStreamCallbackFlags statusFlags, void *userData)
+{
+	PBCallback *pbcb = (PBCallback *)userData;
+	{
+		boost::lock_guard<boost::mutex> lock(pbcb->mut);
+		pbcb->playback->generate((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->pos);
+	}
+	if (pbcb->pos.changed) {
+		// Notify anyone waiting that the position has updated
+		pbcb->wait.notify_all();
+	}
+
+	return paContinue;
+}
+
+int play(const gm::MusicPtr& music, unsigned int loopCount)
+{
+#ifdef USE_PORTAUDIO
+	// Init PA
+	PaError err = Pa_Initialize();
+	if (err != paNoError) {
+		std::cerr << "Unable to initialise PortAudio.  Pa_Initialize() failed: "
+			<< Pa_GetErrorText(err) << std::endl;
+		return RET_SHOWSTOPPER;
+	}
+
+	// Open audio device
+	PaStreamParameters op;
+	op.device = Pa_GetDefaultOutputDevice();
+	if (op.device == paNoDevice) {
+		std::cerr << "No available audio devices.  Pa_GetDefaultOutputDevice() "
+			"returned paNoDevice." << std::endl;
+		Pa_Terminate();
+		return RET_SHOWSTOPPER;
+	}
+	op.channelCount = NUM_CHANNELS;
+	op.sampleFormat = paInt16; // paFloat32
+	op.suggestedLatency = Pa_GetDeviceInfo(op.device)->defaultLowOutputLatency;
+	op.hostApiSpecificStreamInfo = NULL;
+
+	unsigned int sampleRate = 48000;
+	gm::Playback playback(sampleRate, NUM_CHANNELS, 16);
+	playback.setSong(music);
+	playback.setLoopCount(loopCount);
+	PBCallback pbcb;
+	pbcb.playback = &playback;
+	pbcb.pos.end = false;
+
+	PaStream *stream;
+	err = Pa_OpenStream(&stream, NULL, &op, sampleRate,
+		paFramesPerBufferUnspecified, paClipOff, paCallback, &pbcb);
+	if (err != paNoError) {
+		std::cerr << "Unable to open audio stream.  Pa_OpenStream() failed: "
+			<< Pa_GetErrorText(err) << std::endl;
+		Pa_Terminate();
+		return RET_SHOWSTOPPER;
+	}
+
+	int16_t *output = new int16_t[FRAMES_TO_BUFFER * NUM_CHANNELS];
+	boost::shared_array<int16_t> output_sptr(output);
+
+	err = Pa_StartStream(stream);
+	if (err != paNoError) {
+		std::cerr << "Unable to start audio stream.  Pa_StartStream() failed: "
+			<< Pa_GetErrorText(err) << std::endl;
+		Pa_CloseStream(stream);
+		Pa_Terminate();
+		return RET_SHOWSTOPPER;
+	}
+
+	{
+		boost::unique_lock<boost::mutex> lock(pbcb.mut);
+		while (!pbcb.pos.end) {
+			pbcb.wait.wait(lock);
+			unsigned long pattern = music->patternOrder[pbcb.pos.order];
+			unsigned int beat = (pbcb.pos.row / pbcb.pos.tempo.ticksPerBeat) % pbcb.pos.tempo.beatsPerBar;
+			std::cout
+				<< "Loop: " << pbcb.pos.loop
+				<< " Order: " << pbcb.pos.order
+				<< " Pattern: " << pattern
+				<< " Row: " << pbcb.pos.row
+				<< " Beat: " << beat
+				<< "        \r" << std::flush;
+		}
+	}
+	std::cout << "\n";
+
+	Pa_StopStream(stream);
+	Pa_CloseStream(stream);
+	Pa_Terminate();
+	return RET_OK;
+#else
+	std::cerr << "PortAudio was not available at compile time, playback is "
+		"unavailable." << std::endl;
+	return RET_BADARGS;
+#endif
+}
+
 int main(int iArgC, char *cArgV[])
 {
 #ifdef __GLIBCXX__
@@ -208,6 +322,10 @@ int main(int iArgC, char *cArgV[])
 
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
+
+		("play,p", po::value<int>(),
+			"play the song this many times on the default audio device (0=loop "
+				"forever, 1=no loop, 2=loop once, etc.)")
 
 		("repeat-instruments,r", po::value<int>(),
 			"repeat the instrument bank until there are this many valid instruments")
@@ -688,6 +806,21 @@ int main(int iArgC, char *cArgV[])
 					// It's OK here since we won't be futher changing instruments.
 					pMusic->patches->push_back(pMusic->patches->at(srcInst));
 				}
+
+			} else if (i->string_key.compare("play") == 0) {
+				if (!pMusic->patches) {
+					std::cerr << "This song has no instruments - please specify an "
+						"external instrument bank with -n/--newinst before -p/--play"
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				int loop = 1;
+				if (i->value.size() != 0) {
+					loop = strtod(i->value[0].c_str(), NULL);
+				}
+
+				int ret = play(pMusic, loop);
+				if (ret != RET_OK) return ret;
 
 			} else if (
 				(i->string_key.compare("tag-title") == 0)

@@ -1,6 +1,7 @@
 lib_LTLIBRARIES = libgamemusic.la
 
 libgamemusic_la_SOURCES = main.cpp
+libgamemusic_la_SOURCES += dbopl.cpp
 libgamemusic_la_SOURCES += decode-midi.cpp
 libgamemusic_la_SOURCES += decode-opl.cpp
 libgamemusic_la_SOURCES += encode-midi.cpp
@@ -26,9 +27,13 @@ libgamemusic_la_SOURCES += patch-midi.cpp
 libgamemusic_la_SOURCES += patch-opl.cpp
 libgamemusic_la_SOURCES += patch-pcm.cpp
 libgamemusic_la_SOURCES += patchbank.cpp
+libgamemusic_la_SOURCES += playback.cpp
+libgamemusic_la_SOURCES += synth-opl.cpp
 
-EXTRA_libgamemusic_la_SOURCES = decode-midi.hpp
+EXTRA_libgamemusic_la_SOURCES = dbopl.hpp
+EXTRA_libgamemusic_la_SOURCES += decode-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-opl.hpp
+EXTRA_libgamemusic_la_SOURCES += dosbox.hpp
 EXTRA_libgamemusic_la_SOURCES += encode-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += encode-opl.hpp
 EXTRA_libgamemusic_la_SOURCES += metadata-malv.hpp
