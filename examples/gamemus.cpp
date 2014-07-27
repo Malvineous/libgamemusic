@@ -476,8 +476,12 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 				pattern = music->patternOrder[pos.order];
 			}
 
-			unsigned int progress = (pos.order * music->ticksPerTrack + pos.row) * 100
-				/ (numOrders * music->ticksPerTrack);
+			unsigned int loopLength = numOrders - (music->loopDest == -1 ? 0 : music->loopDest);
+			unsigned int progress = (
+					(pos.loop * loopLength + pos.order)
+					* music->ticksPerTrack + pos.row
+				) * 100
+				/ (((loopCount - 1) * loopLength + numOrders) * music->ticksPerTrack);
 
 			std::cout
 				<< std::setfill(' ')
