@@ -329,6 +329,22 @@ class DLL_EXPORT EventHandler
 			 * track has been processed, an "end of pattern" callback is issued.
 			 */
 			Pattern_Track_Row,
+
+			/// Same as Pattern_Row_Track except respecting the order list.
+			/**
+			 * This means some patterns will be processed multiple times, so it should
+			 * only be used when converting to formats that don't have a concept of
+			 * reusable patterns.
+			 */
+			Order_Row_Track,
+
+			/// Same as Pattern_Track_Row except respecting the order list.
+			/**
+			 * This means some patterns will be processed multiple times, so it should
+			 * only be used when converting to formats that don't have a concept of
+			 * reusable patterns.
+			 */
+			Order_Track_Row,
 		};
 
 		/// Callback when handleAllEvents() has reached the end of the track.
@@ -388,6 +404,15 @@ class DLL_EXPORT EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev) = 0;
 
 		void handleAllEvents(EventOrder eventOrder, const MusicPtr& music);
+
+	private:
+		/// Merge the given pattern into a single track and process that.
+		void processPattern_mergeTracks(const MusicPtr& music,
+			const PatternPtr& pattern, unsigned int patternIndex);
+
+		/// Process the events in each track, track by track.
+		void processPattern_separateTracks(const MusicPtr& music,
+			const PatternPtr& pattern, unsigned int patternIndex);
 
 };
 

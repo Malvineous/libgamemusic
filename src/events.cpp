@@ -173,48 +173,7 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 			for (std::vector<PatternPtr>::const_iterator
 				pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
 			) {
-				// Merge all the tracks together into one big track, with all events in
-				// chronological order
-				std::list<MergedEvent> full;
-
-				unsigned int trackIndex = 0;
-				// For each track
-				for (Pattern::const_iterator
-					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
-				) {
-					std::list<MergedEvent> ltrack;
-
-					unsigned long trackTime = 0;
-					// For each event in the track
-					for (Track::const_iterator
-						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-					) {
-						const TrackEvent& te = *ev;
-						// If this assertion is thrown, it's because the format reader or
-						// some processing function got events out of order.  They must be
-						// chronological.
-						trackTime += te.delay;
-						MergedEvent mevent(te.event);
-						mevent.absTime = trackTime;
-						mevent.trackIndex = trackIndex;
-						ltrack.push_back(mevent);
-					}
-					// Merge in with master list
-					full.merge(ltrack, trackMergeByTime);
-				}
-
-				unsigned long trackTime = 0;
-				// Now run through the master list, which has all events sorted
-				for (std::list<MergedEvent>::const_iterator
-					fev = full.begin(); fev != full.end(); fev++
-				) {
-					const MergedEvent& me = *fev;
-					unsigned long deltaTime = me.absTime - trackTime;
-					trackTime = me.absTime;
-					me.event->processEvent(deltaTime, me.trackIndex, patternIndex, this);
-				}
-				assert(trackTime <= music->ticksPerTrack);
-				this->endOfPattern(music->ticksPerTrack - trackTime);
+				this->processPattern_mergeTracks(music, *pp, patternIndex);
 			}
 			break;
 		}
@@ -225,28 +184,111 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 			for (std::vector<PatternPtr>::const_iterator
 				pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
 			) {
-				unsigned int trackIndex = 0;
-				unsigned long maxTrackTime = 0;
-				// For each track
-				for (Pattern::const_iterator
-					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
-				) {
-					unsigned long trackTime = 0;
-					// For each event in the track
-					for (Track::const_iterator
-						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-					) {
-						const TrackEvent& te = *ev;
-						trackTime += te.delay;
-						te.event->processEvent(te.delay, trackIndex, patternIndex, this);
-					}
-					if (trackTime > maxTrackTime) maxTrackTime = trackTime;
-					this->endOfTrack(music->ticksPerTrack - trackTime);
-				}
-				this->endOfPattern(music->ticksPerTrack - maxTrackTime);
+				this->processPattern_separateTracks(music, *pp, patternIndex);
+			}
+			break;
+		}
+
+		case Order_Row_Track: {
+			unsigned int orderIndex = 0;
+			// For each pattern
+			for (std::vector<unsigned int>::const_iterator
+				o = music->patternOrder.begin(); o != music->patternOrder.end(); o++, orderIndex++
+			) {
+				const unsigned int& patternIndex = *o;
+				const PatternPtr& pattern = music->patterns[patternIndex];
+
+				this->processPattern_mergeTracks(music, pattern, patternIndex);
+			}
+			break;
+		}
+
+		case Order_Track_Row: {
+			unsigned int orderIndex = 0;
+			// For each pattern
+			for (std::vector<unsigned int>::const_iterator
+				o = music->patternOrder.begin(); o != music->patternOrder.end(); o++, orderIndex++
+			) {
+				const unsigned int& patternIndex = *o;
+				const PatternPtr& pattern = music->patterns[patternIndex];
+
+				this->processPattern_separateTracks(music, pattern, patternIndex);
 			}
 			break;
 		}
 	}
+	return;
+}
+
+void EventHandler::processPattern_mergeTracks(const MusicPtr& music,
+	const PatternPtr& pattern, unsigned int patternIndex)
+{
+	// Merge all the tracks together into one big track, with all events in
+	// chronological order
+	std::list<MergedEvent> full;
+
+	unsigned int trackIndex = 0;
+	// For each track
+	for (Pattern::const_iterator
+		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+	) {
+		std::list<MergedEvent> ltrack;
+
+		unsigned long trackTime = 0;
+		// For each event in the track
+		for (Track::const_iterator
+			ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+		) {
+			const TrackEvent& te = *ev;
+			// If this assertion is thrown, it's because the format reader or
+			// some processing function got events out of order.  They must be
+			// chronological.
+			trackTime += te.delay;
+			MergedEvent mevent(te.event);
+			mevent.absTime = trackTime;
+			mevent.trackIndex = trackIndex;
+			ltrack.push_back(mevent);
+		}
+		// Merge in with master list
+		full.merge(ltrack, trackMergeByTime);
+	}
+
+	unsigned long trackTime = 0;
+	// Now run through the master list, which has all events sorted
+	for (std::list<MergedEvent>::const_iterator
+		fev = full.begin(); fev != full.end(); fev++
+	) {
+		const MergedEvent& me = *fev;
+		unsigned long deltaTime = me.absTime - trackTime;
+		trackTime = me.absTime;
+		me.event->processEvent(deltaTime, me.trackIndex, patternIndex, this);
+	}
+	assert(trackTime <= music->ticksPerTrack);
+	this->endOfPattern(music->ticksPerTrack - trackTime);
+	return;
+}
+
+void EventHandler::processPattern_separateTracks(const MusicPtr& music,
+	const PatternPtr& pattern, unsigned int patternIndex)
+{
+	unsigned int trackIndex = 0;
+	unsigned long maxTrackTime = 0;
+	// For each track
+	for (Pattern::const_iterator
+		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+	) {
+		unsigned long trackTime = 0;
+		// For each event in the track
+		for (Track::const_iterator
+			ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+		) {
+			const TrackEvent& te = *ev;
+			trackTime += te.delay;
+			te.event->processEvent(te.delay, trackIndex, patternIndex, this);
+		}
+		if (trackTime > maxTrackTime) maxTrackTime = trackTime;
+		this->endOfTrack(music->ticksPerTrack - trackTime);
+	}
+	this->endOfPattern(music->ticksPerTrack - maxTrackTime);
 	return;
 }
