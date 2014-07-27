@@ -389,6 +389,133 @@ int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTi
 #endif
 }
 
+/// Render the given song to a .wav file.
+/**
+ * @param wavFilename
+ *   Filename and optional path of the output file.
+ *
+ * @param music
+ *   Song to play.
+ *
+ * @param loopCount
+ *   Number of times to play the song.  1=once, 2=twice (loop once), 0=loop
+ *   forever.  If 0, this function never returns.  Note these values are
+ *   different to those given to the --loop parameter.
+ *
+ * @param extraTime
+ *   Number of seconds to linger after song finishes, to let notes fade out.
+ */
+int render(const std::string& wavFilename, const gm::MusicPtr& music,
+	unsigned int loopCount, unsigned int extraTime)
+{
+	if (loopCount == 0) {
+		std::cerr << "Can't loop forever when writing to .wav or you will run out "
+			"of disk space!" << std::endl;
+		return RET_BADARGS;
+	}
+
+	stream::output_file_sptr wav(new stream::output_file());
+	try {
+		wav->create(wavFilename);
+	} catch (stream::open_error& e) {
+		std::cerr << "Error opening " << wavFilename << ": " << e.what()
+			<< std::endl;
+		return RET_SHOWSTOPPER;
+	}
+
+	unsigned int numChannels = NUM_CHANNELS;
+	unsigned int bitDepth = 16;
+	unsigned int sampleRate = 48000;
+	gm::Playback playback(sampleRate, numChannels, bitDepth);
+	playback.setSong(music);
+	playback.setLoopCount(loopCount);
+
+	// Make room for the header, will rewrite later
+#define WAVE_FMT_SIZE (2+2+4+4+2+2)
+#define WAVE_HEADER_SIZE (4+4+4+4+4+WAVE_FMT_SIZE+4+4)
+	wav
+		<< "RIFF"
+		<< u32le(0) // overwritten later
+		<< "WAVEfmt "
+		<< u32le(WAVE_FMT_SIZE)
+		<< u16le(1) // PCM
+		<< u16le(numChannels)
+		<< u32le(sampleRate)
+		<< u32le(sampleRate * numChannels * bitDepth / 8)
+		<< u16le(numChannels * bitDepth / 8)
+		<< u16le(bitDepth)
+		<< "data"
+		<< u32le(0) // overwritten later
+	;
+
+	unsigned long lenBuffer = FRAMES_TO_BUFFER * NUM_CHANNELS;
+	int16_t *output = new int16_t[lenBuffer];
+	boost::shared_array<int16_t> output_sptr(output);
+
+	std::cout << "Writing WAV at " << sampleRate << "Hz, " << bitDepth << "-bit, "
+		<< (numChannels == 1 ? "mono" : "stereo") << ": " << wavFilename
+		<< "\nExtra time: " << extraTime << " seconds, loop: ";
+	if (loopCount == 1) std::cout << "off"; else std::cout << loopCount - 1;
+	std::cout << std::endl;
+
+	gm::Playback::Position pos, lastPos;
+	lastPos.end = true;
+	pos.end = false;
+	unsigned int numOrders = music->patternOrder.size();
+	while (!pos.end) {
+		playback.generate(output, lenBuffer, &pos);
+
+		// Make sure samples are little-endian
+		for (unsigned int i = 0; i < lenBuffer; i++) output[i] = htole16(output[i]);
+
+		wav->write((uint8_t *)output, lenBuffer * sizeof(int16_t));
+
+		if (pos != lastPos) {
+			long pattern = -1;
+			if (pos.order < numOrders) {
+				pattern = music->patternOrder[pos.order];
+			}
+
+			unsigned int progress = (pos.order * music->ticksPerTrack + pos.row) * 100
+				/ (numOrders * music->ticksPerTrack);
+
+			std::cout
+				<< std::setfill(' ')
+				<< "Loop: " << pos.loop
+				<< " Order: " << std::setw(2) << pos.order
+				<< " Pattern: " << std::setw(2) << pattern
+				<< " Row: " << std::setw(2) << pos.row
+				<< " Progress: " << progress
+				<< "%    \r" << std::flush;
+			lastPos = pos;
+		}
+	}
+
+	if (extraTime) {
+		unsigned long extraSamples = extraTime * sampleRate * numChannels;
+		while (extraSamples >= lenBuffer) {
+			playback.generate(output, lenBuffer, &pos);
+			extraSamples -= lenBuffer;
+
+			// Make sure samples are little-endian
+			for (unsigned int i = 0; i < lenBuffer; i++) output[i] = htole16(output[i]);
+
+			wav->write((uint8_t *)output, lenBuffer * sizeof(int16_t));
+		}
+	}
+	std::cout << "\n";
+
+	stream::pos lenTotal = wav->tellp();
+
+	wav->seekp(4, stream::start);
+	wav << u32le(lenTotal - 8);
+	wav->seekp(WAVE_HEADER_SIZE - 4, stream::start);
+	wav << u32le(lenTotal - WAVE_HEADER_SIZE);
+	wav->flush();
+
+	return RET_OK;
+}
+
 int main(int iArgC, char *cArgV[])
 {
 #ifdef __GLIBCXX__
@@ -419,6 +546,9 @@ int main(int iArgC, char *cArgV[])
 
 		("play,p",
 			"play the song on the default audio device")
+
+		("wav,w", po::value<std::string>(),
+			"render the song to a .wav file with the given filename")
 
 		("repeat-instruments,r", po::value<int>(),
 			"repeat the instrument bank until there are this many valid instruments")
@@ -926,6 +1056,22 @@ int main(int iArgC, char *cArgV[])
 				}
 
 				int ret = play(pMusic, userLoop+1, extraTime);
+				if (ret != RET_OK) return ret;
+
+			} else if (i->string_key.compare("wav") == 0) {
+				if (!pMusic->patches) {
+					std::cerr << "This song has no instruments - please specify an "
+						"external instrument bank with -n/--newinst before -w/--wav"
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				if (i->value[0].empty()) {
+					std::cerr << "-w/--wav requires filename" << std::endl;
+					return RET_BADARGS;
+				}
+				std::string wavFilename = i->value[0];
+
+				int ret = render(wavFilename, pMusic, userLoop+1, extraTime);
 				if (ret != RET_OK) return ret;
 
 			} else if (
