@@ -26,9 +26,11 @@
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
 #include <camoto/stream_file.hpp>
+#include <camoto/iostream_helpers.hpp>
 #include <stdlib.h>
 #include <iostream>
 #include <fstream>
+#include <queue>
 #include <config.h>
 
 namespace po = boost::program_options;
@@ -185,10 +187,18 @@ finishTesting:
 	return pMusic;
 }
 
+
+struct PositionHistory {
+	PaTime time;
+	gm::Playback::Position pos;
+};
+
 struct PBCallback
 {
 	gm::Playback *playback;
-	gm::Playback::Position pos;
+	PositionHistory position;
+	gm::Playback::Position lastPos;
+	PaTime waitUntil; // stream time the main thread is waiting for
 	boost::mutex mut;
 	boost::condition_variable wait;
 };
@@ -202,17 +212,36 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
 	PBCallback *pbcb = (PBCallback *)userData;
 	{
 		boost::lock_guard<boost::mutex> lock(pbcb->mut);
-		pbcb->playback->generate((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->pos);
+		pbcb->playback->generate((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->position.pos);
+		pbcb->position.time = timeInfo->outputBufferDacTime;
 	}
-	if (pbcb->pos.changed) {
+	if (
+		(pbcb->position.pos != pbcb->lastPos) ||
+		(pbcb->waitUntil <= timeInfo->currentTime) ||
+		(pbcb->position.pos.end)
+	) {
+		pbcb->lastPos = pbcb->position.pos;
+
 		// Notify anyone waiting that the position has updated
 		pbcb->wait.notify_all();
 	}
-
 	return paContinue;
 }
 
-int play(const gm::MusicPtr& music, unsigned int loopCount)
+/// Play the given song.
+/**
+ * @param music
+ *   Song to play.
+ *
+ * @param loopCount
+ *   Number of times to play the song.  1=once, 2=twice (loop once), 0=loop
+ *   forever.  If 0, this function never returns.  Note these values are
+ *   different to those given to the --loop parameter.
+ *
+ * @param extraTime
+ *   Number of seconds to linger after song finishes, to let notes fade out.
+ */
+int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTime)
 {
 #ifdef USE_PORTAUDIO
 	// Init PA
@@ -234,7 +263,7 @@ int play(const gm::MusicPtr& music, unsigned int loopCount)
 	}
 	op.channelCount = NUM_CHANNELS;
 	op.sampleFormat = paInt16; // paFloat32
-	op.suggestedLatency = Pa_GetDeviceInfo(op.device)->defaultLowOutputLatency;
+	op.suggestedLatency = 1;//Pa_GetDeviceInfo(op.device)->defaultLowOutputLatency;
 	op.hostApiSpecificStreamInfo = NULL;
 
 	unsigned int sampleRate = 48000;
@@ -243,7 +272,7 @@ int play(const gm::MusicPtr& music, unsigned int loopCount)
 	playback.setLoopCount(loopCount);
 	PBCallback pbcb;
 	pbcb.playback = &playback;
-	pbcb.pos.end = false;
+	pbcb.position.pos.end = false;
 
 	PaStream *stream;
 	err = Pa_OpenStream(&stream, NULL, &op, sampleRate,
@@ -259,6 +288,7 @@ int play(const gm::MusicPtr& music, unsigned int loopCount)
 	boost::shared_array<int16_t> output_sptr(output);
 
 	err = Pa_StartStream(stream);
+	pbcb.waitUntil = 0;
 	if (err != paNoError) {
 		std::cerr << "Unable to start audio stream.  Pa_StartStream() failed: "
 			<< Pa_GetErrorText(err) << std::endl;
@@ -266,20 +296,84 @@ int play(const gm::MusicPtr& music, unsigned int loopCount)
 		Pa_Terminate();
 		return RET_SHOWSTOPPER;
 	}
+	pbcb.waitUntil = Pa_GetStreamTime(stream);
 
+	const PaStreamInfo *info = Pa_GetStreamInfo(stream);
+	if (!info) {
+		std::cerr << "Unable to get stream parameters.  Pa_GetStreamInfo() failed."
+			<< std::endl;
+		Pa_CloseStream(stream);
+		Pa_Terminate();
+		return RET_SHOWSTOPPER;
+	}
+	std::cout << "Adjusting for output latency: " << info->outputLatency << " sec\n";
+
+	std::queue<PositionHistory> queuePos;
+	gm::Playback::Position lastPos;
+	gm::Playback::Position audiblePos, lastAudiblePos;
+	audiblePos.end = false;
+	PaTime lastTime;
 	{
 		boost::unique_lock<boost::mutex> lock(pbcb.mut);
-		while (!pbcb.pos.end) {
+		while (!audiblePos.end) {
+			//if (!pbcb.position.pos.end)
 			pbcb.wait.wait(lock);
-			unsigned long pattern = music->patternOrder[pbcb.pos.order];
-			unsigned int beat = (pbcb.pos.row / pbcb.pos.tempo.ticksPerBeat) % pbcb.pos.tempo.beatsPerBar;
-			std::cout
-				<< "Loop: " << pbcb.pos.loop
-				<< " Order: " << pbcb.pos.order
-				<< " Pattern: " << pattern
-				<< " Row: " << pbcb.pos.row
-				<< " Beat: " << beat
-				<< "        \r" << std::flush;
+
+			// The values returned by PortAudio don't include the output latency
+			// so we have to add that now to make this position change slightly
+			// further in the future.
+			pbcb.position.time += info->outputLatency;
+
+			lastTime = pbcb.position.time;
+
+			// See if the position has changed
+			if (pbcb.position.pos != lastPos) {
+				// It has, so store it and the time
+				queuePos.push(pbcb.position);
+				lastPos = pbcb.position.pos;
+			}
+
+			// Check to see whether the oldest pos has played yet
+			while (!queuePos.empty()) {
+				PositionHistory& nextH = queuePos.front();
+				if (nextH.time <= Pa_GetStreamTime(stream)) {
+					// This pos has been played now
+					audiblePos = nextH.pos;
+					queuePos.pop();
+				} else {
+					// The next event hasn't happened yet, leave it for later
+					pbcb.waitUntil = queuePos.front().time;
+					break;
+				}
+			}
+
+			if (audiblePos != lastAudiblePos) {
+				// The position being played out of the speakers has just changed
+				long pattern = -1;
+				if (audiblePos.order < music->patternOrder.size()) {
+					pattern = music->patternOrder[audiblePos.order];
+				}
+
+				unsigned int beat = (audiblePos.row / audiblePos.tempo.ticksPerBeat)
+					% audiblePos.tempo.beatsPerBar;
+
+				std::cout
+					<< std::setfill(' ')
+					<< "Loop: " << audiblePos.loop
+					<< " Order: " << std::setw(2) << audiblePos.order
+					<< " Pattern: " << std::setw(2) << pattern
+					<< " Row: " << std::setw(2) << audiblePos.row
+					<< " Beat: " << beat
+					<< "    \r" << std::flush;
+				lastAudiblePos = audiblePos;
+			}
+		}
+
+		if (extraTime) {
+			PaTime endTime = lastTime + extraTime;
+			do {
+				pbcb.wait.wait(lock);
+			} while (pbcb.position.time < endTime);
 		}
 	}
 	std::cout << "\n";
@@ -308,7 +402,7 @@ int main(int iArgC, char *cArgV[])
 	// Declare the supported options.
 	po::options_description poActions("Actions");
 	poActions.add_options()
-		("list,l",
+		("list-events,v",
 			"list all events in the song")
 
 		("list-instruments,i",
@@ -323,9 +417,8 @@ int main(int iArgC, char *cArgV[])
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
 
-		("play,p", po::value<int>(),
-			"play the song this many times on the default audio device (0=loop "
-				"forever, 1=no loop, 2=loop once, etc.)")
+		("play,p",
+			"play the song on the default audio device")
 
 		("repeat-instruments,r", po::value<int>(),
 			"repeat the instrument bank until there are this many valid instruments")
@@ -356,6 +449,11 @@ int main(int iArgC, char *cArgV[])
 			"force OPL3 mode (18 channels) with -c")
 		("force-opl2,2",
 			"force OPL2 mode (11 channels) with -c")
+		("loop,l", po::value<int>(),
+			"repeat the song (-1=loop forever, 0=no loop, 1=loop once) [default=1]")
+		("extra-time,e", po::value<int>(),
+			"number of seconds to linger after song finishes to allow notes to fade "
+			"out [default=2]")
 	;
 
 	po::options_description poHidden("Hidden parameters");
@@ -382,6 +480,8 @@ int main(int iArgC, char *cArgV[])
 	bool bUsePitchbends = true; // pass pitchbend events with -c
 	bool bForceOPL2 = false; // force OPL2 mode?
 	bool bForceOPL3 = false; // force OPL3 mode?
+	int userLoop = 1; // repeat once by default
+	int extraTime = 2; // two seconds extra by default
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
 
@@ -475,6 +575,16 @@ int main(int iArgC, char *cArgV[])
 				(i->string_key.compare("force-opl2") == 0)
 			) {
 				bForceOPL2 = true;
+			} else if (
+				(i->string_key.compare("l") == 0) ||
+				(i->string_key.compare("loop") == 0)
+			) {
+				userLoop = strtod(i->value[0].c_str(), NULL);
+			} else if (
+				(i->string_key.compare("e") == 0) ||
+				(i->string_key.compare("extra-time") == 0)
+			) {
+				extraTime = strtod(i->value[0].c_str(), NULL);
 			}
 		}
 
@@ -589,7 +699,7 @@ int main(int iArgC, char *cArgV[])
 		// Run through the actions on the command line
 		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
 
-			if (i->string_key.compare("list") == 0) {
+			if (i->string_key.compare("list-events") == 0) {
 				if (!bScript) {
 					std::cout << "Song has " << pMusic->patterns.size() << " patterns\n";
 				}
@@ -814,12 +924,8 @@ int main(int iArgC, char *cArgV[])
 						<< std::endl;
 					return RET_BADARGS;
 				}
-				int loop = 1;
-				if (i->value.size() != 0) {
-					loop = strtod(i->value[0].c_str(), NULL);
-				}
 
-				int ret = play(pMusic, loop);
+				int ret = play(pMusic, userLoop+1, extraTime);
 				if (ret != RET_OK) return ret;
 
 			} else if (

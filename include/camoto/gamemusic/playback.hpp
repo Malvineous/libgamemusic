@@ -32,15 +32,39 @@ namespace gamemusic {
 class Playback: public OPLWriterCallback
 {
 	public:
-		struct Position {
+		struct Position
+		{
 			Position();
 
-			bool changed;
+			/// Number of times the song has looped.
 			unsigned int loop;
+
+			/// Order number (0 to largest order+1)
+			/**
+			 * The order number starts at 0 and after the last note is played (when
+			 * \ref end is set to true) this value will equal the number of orders
+			 * in the song.  If you are using this field as an index into the order
+			 * list, be careful to check that it is in range first, as it will go out
+			 * of range when the end of the song has been reached!
+			 */
 			unsigned int order;
+
+			/// Row index within pattern.  Starts at 0.
 			unsigned int row;
+
+			/// True if the end of the song has been reached.
 			bool end;
+
+			/// Current tempo at this point in the song.  May be different to the
+			/// song's initial tempo.
 			Tempo tempo;
+
+			bool operator== (const Playback::Position& b);
+
+			inline bool operator!= (const Playback::Position& b)
+			{
+				return !(*this == b);
+			}
 		};
 
 		Playback(unsigned long sampleRate, unsigned int channels,

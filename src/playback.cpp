@@ -34,12 +34,20 @@ using namespace camoto::gamemusic;
 #define CLIP(v) (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)))
 
 Playback::Position::Position()
-	:	changed(true),
-		loop(0),
+	:	loop(0),
 		order(0),
 		row(0),
 		end(true)
 {
+}
+
+bool Playback::Position::operator== (const Playback::Position& b)
+{
+	return
+		(this->loop == b.loop)
+		&& (this->order == b.order)
+		&& (this->row == b.row)
+	;
 }
 
 Playback::Playback(unsigned long sampleRate, unsigned int channels,
@@ -105,7 +113,7 @@ void Playback::seekByTime(unsigned long ms)
 	return;
 }
 
-void Playback::generate(int16_t *output, unsigned long samples, Position *pos)
+void Playback::generate(int16_t *output, unsigned long samples, Playback::Position *pos)
 {
 	assert(this->music);
 
@@ -121,11 +129,6 @@ void Playback::generate(int16_t *output, unsigned long samples, Position *pos)
 	}
 
 	// Return the current playback position
-	pos->changed =
-		(pos->loop != this->loop)
-		|| (pos->order != this->order)
-		|| (pos->row != this->row)
-	;
 	pos->end = this->end;
 	pos->loop = this->loop;
 	pos->order = this->order;
@@ -137,33 +140,35 @@ void Playback::generate(int16_t *output, unsigned long samples, Position *pos)
 void Playback::nextFrame()
 {
 	// Trigger the next event
-	if (this->frame == 0) {
-		const PatternPtr& pattern = this->music->patterns.at(this->pattern);
-		unsigned int trackIndex = 0;
-		// For each track
-		for (Pattern::const_iterator
-			pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
-		) {
-			unsigned int trackPos = 0; // current track position in ticks
-			// For each event in the track
-			for (Track::const_iterator
-				ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+	if (!this->end) {
+		if (this->frame == 0) {
+			const PatternPtr& pattern = this->music->patterns.at(this->pattern);
+			unsigned int trackIndex = 0;
+			// For each track
+			for (Pattern::const_iterator
+				pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
 			) {
-				const TrackEvent& te = *ev;
-				trackPos += te.delay;
-				// Right at this event
-				if (trackPos == this->row) {
-					// delay is zero here because we want it to sound immediately (not
-					// that is really matters as the delay is ignored later anyway)
-					te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
-				} else if (trackPos > this->row) {
-					// Not up to this event yet, don't keep looking
-					break;
+				unsigned int trackPos = 0; // current track position in ticks
+				// For each event in the track
+				for (Track::const_iterator
+					ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+				) {
+					const TrackEvent& te = *ev;
+					trackPos += te.delay;
+					// Right at this event
+					if (trackPos == this->row) {
+						// delay is zero here because we want it to sound immediately (not
+						// that is really matters as the delay is ignored later anyway)
+						te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
+					} else if (trackPos > this->row) {
+						// Not up to this event yet, don't keep looking
+						break;
+					}
 				}
 			}
+		} else {
+			// Update any effects currently in progress
 		}
-	} else {
-		// Update any effects currently in progress
 	}
 
 	// Fill up the frame buffer from the PCM source
@@ -177,24 +182,26 @@ void Playback::nextFrame()
 
 	// Increment the frame, row, order, etc.
 	this->frameBufferPos = 0;
-	this->frame++;
-	if (this->frame >= this->framesPerRow) {
-		this->frame = 0;
-		this->row++;
-		if (this->row >= this->music->ticksPerTrack) {
-			this->row = 0;
-			this->order++;
-			if (this->order >= this->music->patternOrder.size()) {
-				if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount)) {
-					this->order = this->music->loopDest;
-					this->loop++;
-				} else {
-					this->end = true;
-					this->frame = this->framesPerRow;
-					return; // don't update this->pattern
+	if (!this->end) {
+		this->frame++;
+		if (this->frame >= this->framesPerRow) {
+			this->frame = 0;
+			this->row++;
+			if (this->row >= this->music->ticksPerTrack) {
+				this->row = 0;
+				this->order++;
+				if (this->order >= this->music->patternOrder.size()) {
+					if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1)) {
+						this->order = this->music->loopDest;
+						this->loop++;
+					} else {
+						this->end = true;
+						this->frame = 0;
+						return; // don't update this->pattern
+					}
 				}
+				this->pattern = this->music->patternOrder[this->order];
 			}
-			this->pattern = this->music->patternOrder[this->order];
 		}
 	}
 
