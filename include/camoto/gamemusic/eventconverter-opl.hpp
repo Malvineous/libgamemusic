@@ -96,7 +96,7 @@ class OPLWriterCallback {
 		 * @param usPerTick
 		 *   Number of microseconds per tick.
 		 */
-		virtual void writeTempoChange(tempo_t usPerTick) = 0;
+		virtual void writeTempoChange(const Tempo& tempo) = 0;
 };
 
 /// Immediate conversion between incoming events and OPL data.
@@ -122,7 +122,13 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 * @param cb
 		 *   Callback to do something with the OPL data bytes.
 		 *
-		 * @param inst
+		 * @param trackInfo
+		 *   Pointer to a list of track-to-channel assignments.  The pointer
+		 *   must remain valid until the EventConverter_OPL class is destroyed.
+		 *   The values (channel assignments) can be changed during event
+		 *   processing and the changes will be reflected in subsequent events.
+		 *
+		 * @param patches
 		 *   Instrument bank.
 		 *
 		 * @param flags
@@ -132,8 +138,8 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *   Conversion constant to use when converting Hertz into OPL frequency
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
-		EventConverter_OPL(OPLWriterCallback *cb, const PatchBankPtr inst,
-			double fnumConversion, unsigned int flags);
+		EventConverter_OPL(OPLWriterCallback *cb, const TrackInfoVector *trackInfo,
+			const PatchBankPtr& patches, double fnumConversion, unsigned int flags);
 
 		/// Destructor.
 		virtual ~EventConverter_OPL();
@@ -146,43 +152,33 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		void rewind();
 
 		// EventHandler overrides
-		virtual void handleEvent(const TempoEvent *ev);
-		virtual void handleEvent(const NoteOnEvent *ev);
-		virtual void handleEvent(const NoteOffEvent *ev);
-		virtual void handleEvent(const EffectEvent *ev);
-		virtual void handleEvent(const ConfigurationEvent *ev);
+		virtual void endOfPattern(unsigned long delay);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const TempoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOnEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOffEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const EffectEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	private:
-		OPLWriterCallback *cb;     ///< Callback to handle the generated OPL data
-		const PatchBankPtr inst;   ///< Patch bank
-		double fnumConversion;     ///< Conversion value to use in Hz -> fnum calc
-		unsigned int flags;        ///< One or more OPLWriteFlags
+		OPLWriterCallback *cb;      ///< Callback to handle the generated OPL data
+		const TrackInfoVector *trackInfo; ///< Track to channel assignments
+		const PatchBankPtr patches; ///< Patch bank
+		double fnumConversion;      ///< Conversion value to use in Hz -> fnum calc
+		unsigned int flags;         ///< One or more OPLWriteFlags
 
-		unsigned long lastTick;    ///< Time of last event
-		unsigned long cachedDelay; ///< Delay to add on to next reg write
-		bool oplSet[2][256];       ///< Has this register been set yet?
-		uint8_t oplState[2][256];  ///< Current register values
-		struct {
-			bool on;                 ///< Is this channel currently playing?
-			unsigned long lastTime;  ///< Time of last note on or note off
-			unsigned int patch;      ///< Which instrument is set on this channel
-		} oplChan[MAX_OPL_CHANNELS]; ///< OPL channel state
-		bool modeOPL3;             ///< Is OPL3/dual OPL2 mode on?
-		bool modeRhythm;           ///< Is rhythm mode enabled?
-
-		struct LastData {
-			unsigned int realOplChannel;
-			unsigned int virtualOplChannel;
-			unsigned int rhythm;
-			unsigned int chipIndex;
-		};
-		LastData lastData[MAX_CHANNELS]; ///< Last OPL settings per song channel
+		unsigned long cachedDelay;  ///< Delay to add on to next reg write
+		bool oplSet[2][256];        ///< Has this register been set yet?
+		uint8_t oplState[2][256];   ///< Current register values
+		bool modeOPL3;              ///< Is OPL3/dual OPL2 mode on?
+		bool modeRhythm;            ///< Is rhythm mode enabled?
 
 		/// Update oplState then call handleNextPair()
 		/**
-		 * @param delay
-		 *   The number of ticks to wait *before* processing reg/val.
-		 *
 		 * @param chipIndex
 		 *   0 or 1 for which OPL chip to use.
 		 *
@@ -194,8 +190,11 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *
 		 * @throw stream::error
 		 *   The data could not be processed.
+		 *
+		 * @post A delay of value this->cachedDelay is inserted before the event,
+		 *   and cachedDelay is set to zero on return;
 		 */
-		void processNextPair(uint32_t delay, uint8_t chipIndex, uint8_t reg, uint8_t val);
+		void processNextPair(uint8_t chipIndex, uint8_t reg, uint8_t val);
 
 		/// Write one operator's patch settings (modulator or carrier)
 		/**

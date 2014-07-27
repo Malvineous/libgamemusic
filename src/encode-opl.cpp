@@ -2,7 +2,7 @@
  * @file   encode-opl.cpp
  * @brief  Function to convert a Music instance into raw OPL data.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -66,10 +66,8 @@ class OPLEncoder: virtual private OPLWriterCallback
 		void encode(const MusicPtr music);
 
 		// OPLWriterCallback
-
 		virtual void writeNextPair(const OPLEvent *oplEvent);
-
-		virtual void writeTempoChange(tempo_t usPerTick);
+		virtual void writeTempoChange(const Tempo& tempo);
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to use when writing OPL data
@@ -77,7 +75,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 		unsigned int flags;        ///< One or more OPLWriteFlags
 
-		unsigned long lastTempo;   ///< Last tempo value (to avoid duplicate events)
+		double lastTempo;          ///< Last tempo value (to avoid duplicate events)
 		bool firstPair;            ///< Is the next pair the first we have written?
 		uint8_t oplState[2][256];  ///< Current register values
 		OPLEvent delayedEvent;     ///< Delayed event data
@@ -117,10 +115,11 @@ void OPLEncoder::encode(const MusicPtr music)
 	if (!oplPatches) {
 		throw format_limitation("This format can only accept OPL patches.");
 	}
-	EventConverter_OPL conv(this, oplPatches, this->fnumConversion,
-		this->flags);
+	EventConverter_OPL conv(this, &music->trackInfo, oplPatches,
+		this->fnumConversion, this->flags);
+	this->writeTempoChange(music->initialTempo);
 	try {
-		conv.handleAllEvents(music->events);
+		conv.handleAllEvents(EventHandler::Order_Row_Track, music);
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}
@@ -174,11 +173,11 @@ void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 	return;
 }
 
-void OPLEncoder::writeTempoChange(tempo_t usPerTick)
+void OPLEncoder::writeTempoChange(const Tempo& tempo)
 {
-	if (usPerTick != this->lastTempo) {
-		this->cb->writeTempoChange(usPerTick);
-		this->lastTempo = usPerTick;
+	if (tempo.usPerTick != this->lastTempo) {
+		this->cb->writeTempoChange(tempo);
+		this->lastTempo = tempo.usPerTick;
 	}
 	return;
 }

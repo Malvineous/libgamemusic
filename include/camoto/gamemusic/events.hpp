@@ -29,6 +29,7 @@
 #include <camoto/stream.hpp>
 #include <stdint.h>
 #include <camoto/gamemusic/patchbank.hpp> // bad_patch
+#include <camoto/gamemusic/tempo.hpp>
 
 namespace camoto {
 namespace gamemusic {
@@ -76,8 +77,8 @@ struct DLL_EXPORT TrackInfo
 	 *   chip 1, and 9 to 17 for chip 2.  Some events are global and will affect
 	 *   the whole chip regardless of what track they are played on.
 	 *
-	 * - OPLPercChannel: this value is 0 for bass drum, 1 for snare, 2 for tomtom,
-	 *   3 for top cymbal, 4 for hi-hat.  Other values are invalid.
+	 * - OPLPercChannel: this value is 4 for bass drum, 3 for snare, 2 for tomtom,
+	 *   1 for top cymbal, 0 for hi-hat.  Other values are invalid.
 	 *
 	 * - MIDIChannel: this value is 0 to 15, with 9 being percussion.
 	 *
@@ -144,8 +145,8 @@ typedef boost::shared_ptr<Pattern> PatternPtr;
  */
 struct DLL_EXPORT TempoEvent: virtual public Event
 {
-	/// Number of microseconds per tick.
-	tempo_t usPerTick;
+	/// New tempo.
+	Tempo tempo;
 
 	virtual std::string getContent() const;
 
