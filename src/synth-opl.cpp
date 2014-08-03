@@ -21,6 +21,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <camoto/gamemusic/synth-opl.hpp>
+#include "audio-util.hpp"
 #include "dbopl.hpp"
 
 using namespace camoto;
@@ -28,12 +29,8 @@ using namespace camoto::gamemusic;
 
 #define OPL_FRAME_SIZE 512
 
-// Clipping function to prevent integer wraparound after amplification
-#define SAMPLE_SIZE 2
-#define SAMP_BITS (SAMPLE_SIZE << 3)
-#define SAMP_MAX ((1 << (SAMP_BITS-1)) - 1)
-#define SAMP_MIN -((1 << (SAMP_BITS-1)))
-#define CLIP(v) (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)))
+/// Boost the volume by this amount
+#define VOL_BOOST 0
 
 /// Mixer for processing DOSBox OPL data.
 class OPLMixer: public MixerChannel {
@@ -48,10 +45,10 @@ class OPLMixer: public MixerChannel {
 		virtual void AddSamples_m32(Bitu samples, Bit32s *buffer)
 		{
 			while (samples) {
-				int32_t a = 32768 + *this->buf;
-				int32_t b = 32768 + (*buffer << 1);
-				*this->buf++ = CLIP(-32768 + 2 * (a + b) - (a * b) / 32768 - 65536);
-				*this->buf++ = CLIP(-32768 + 2 * (a + b) - (a * b) / 32768 - 65536);
+				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				this->buf++;
+				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				this->buf++;
 				buffer++;
 				samples--;
 			}
@@ -62,9 +59,8 @@ class OPLMixer: public MixerChannel {
 		{
 			unsigned long samples = frames * 2;
 			while (samples) {
-				int32_t a = 32768 + *this->buf;
-				int32_t b = 32768 + (*buffer << 1);
-				*this->buf++ = CLIP(-32768 + 2 * (a + b) - (a * b) / 32768 - 65536);
+				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				this->buf++;
 				buffer++;
 				samples--;
 			}

@@ -299,6 +299,15 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 				p->lenData = len;
 				input->read(p->data.get(), len);
 
+				// Convert from little-endian to host byte order if 16-bit
+				if (p->bitDepth == 16) {
+					int16_t *data = (int16_t *)p->data.get();
+					for (unsigned long i = 0; i < len / 2; i++) {
+						*data = le16toh(*data);
+						data++;
+					}
+				}
+
 				music->patches->push_back(p);
 				break;
 			}

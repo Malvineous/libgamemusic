@@ -43,7 +43,14 @@ struct DLL_EXPORT PCMPatch: public Patch
 
 	unsigned long lenData;    ///< Size of data in bytes
 
-	/// Actual sample data
+	/// Actual sample data.
+	/**
+	 * If bitDepth is 8, this is unsigned 8-bit PCM data, one byte per sample.  If
+	 * bitDepth is 16, then this is signed 16-bit PCM data (two bytes per sample),
+	 * in host-byte order.  Since most PCM data is little-endian, 16-bit PCM data
+	 * will need to be converted to host-byte order when it is loaded into this
+	 * buffer.
+	 */
 	boost::shared_array<uint8_t> data;
 };
 

@@ -57,6 +57,7 @@ Playback::Playback(unsigned long sampleRate, unsigned int channels,
 		outputBits(bits),
 		loopCount(1),
 		frameBufferPos(0),
+		pcm(sampleRate),
 		opl(sampleRate)
 {
 }
@@ -90,6 +91,8 @@ void Playback::setSong(ConstMusicPtr music)
 	this->opl.reset();
 	this->oplConverter.reset(new EventConverter_OPL(this, &this->music->trackInfo,
 		this->music->patches, OPL_FNUM_DEFAULT, Default));
+
+	this->pcm.reset(&this->music->trackInfo, this->music->patches);
 	return;
 }
 
@@ -160,6 +163,7 @@ void Playback::nextFrame()
 						// delay is zero here because we want it to sound immediately (not
 						// that is really matters as the delay is ignored later anyway)
 						te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
+						te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
 					} else if (trackPos > this->row) {
 						// Not up to this event yet, don't keep looking
 						break;
@@ -171,13 +175,13 @@ void Playback::nextFrame()
 		}
 	}
 
-	// Fill up the frame buffer from the PCM source
-	for (unsigned int i = 0; i < frameBuffer.size(); i++) {
-		this->frameBuffer[i] = 0;//(i % 256) << 4;
-	}
+	// Silence the framebuffer
+	memset(this->frameBuffer.data(), 0, this->frameBuffer.size() * sizeof(int16_t));
 
-	// Fill the frame buffer with up to 512 samples at a time.  This is the
-	// maximum number of samples we can get from the OPL chip in one go.
+	// Mix the PCM source in to the frame buffer
+	this->pcm.mix(this->frameBuffer.data(), this->frameBuffer.size());
+
+	// Mix the OPL source in to the frame buffer
 	this->opl.mix(this->frameBuffer.data(), this->frameBuffer.size());
 
 	// Increment the frame, row, order, etc.

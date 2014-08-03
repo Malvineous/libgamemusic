@@ -139,11 +139,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	// See if the instrument is already set
 	if (ev->instrument >= this->patches->size()) {
-		std::stringstream ss;
-		ss << "Instrument bank too small - tried to play note with instrument #"
-			<< ev->instrument + 1 << " but patch bank only has "
-			<< this->patches->size() << " instruments.";
-		throw bad_patch(ss.str());
+		throw bad_patch(createString("Instrument bank too small - tried to play "
+			"note with instrument #" << ev->instrument + 1
+			<< " but patch bank only has " << this->patches->size()
+			<< " instruments."));
 	}
 	OPLPatchPtr inst = boost::dynamic_pointer_cast<OPLPatch>(this->patches->at(ev->instrument));
 

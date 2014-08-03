@@ -29,8 +29,10 @@ libgamemusic_la_SOURCES += patch-pcm.cpp
 libgamemusic_la_SOURCES += patchbank.cpp
 libgamemusic_la_SOURCES += playback.cpp
 libgamemusic_la_SOURCES += synth-opl.cpp
+libgamemusic_la_SOURCES += synth-pcm.cpp
 
-EXTRA_libgamemusic_la_SOURCES = dbopl.hpp
+EXTRA_libgamemusic_la_SOURCES = audio-util.hpp
+EXTRA_libgamemusic_la_SOURCES += dbopl.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-opl.hpp
 EXTRA_libgamemusic_la_SOURCES += dosbox.hpp

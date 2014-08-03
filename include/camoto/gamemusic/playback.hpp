@@ -23,6 +23,7 @@
 
 #include <camoto/gamemusic/music.hpp>
 #include <camoto/gamemusic/synth-opl.hpp>
+#include <camoto/gamemusic/synth-pcm.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 
 namespace camoto {
@@ -114,6 +115,7 @@ class Playback: public OPLWriterCallback
 		std::vector<int16_t> frameBuffer;
 		unsigned int frameBufferPos;
 
+		SynthPCM pcm;
 		SynthOPL opl;
 		boost::shared_ptr<EventConverter_OPL> oplConverter;
 
