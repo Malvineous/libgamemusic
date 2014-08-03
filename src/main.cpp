@@ -28,6 +28,7 @@
 #include "mus-raw-rdos.hpp"
 #include "mus-cmf-creativelabs.hpp"
 #include "mus-cdfm-zone66.hpp"
+#include "mus-cdfm-zone66-gus.hpp"
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
 #include "mus-ibk-instrumentbank.hpp"
@@ -58,6 +59,7 @@ ActualManager::ActualManager()
 {
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM_GUS()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_GOT()));
