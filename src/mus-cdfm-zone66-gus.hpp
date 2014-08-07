@@ -43,6 +43,13 @@ class MusicType_CDFM_GUS: virtual public MusicType
 		virtual Metadata::MetadataTypes getMetadataList() const;
 };
 
+// This function is here so the test code can get to it
+/// Convert a volume value (0..15) to a libgamemusic linear velocity (0..255)
+inline unsigned int z66_volume_to_velocity(unsigned int vol)
+{
+	return 255 * (1-log((float)16-vol) / log(16.0));
+}
+
 } // namespace gamemusic
 } // namespace camoto
 

@@ -74,9 +74,15 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 		>> u8(numDigInst)
 		>> u8(loopDest)
 	;
+	if (sampleOffset >= fileSize) {
+		// Sample data past EOF
+		// TESTED BY: mus_cdfm_zone66_isinstance_c01
+		return MusicType::DefinitelyNo;
+	}
+
 	if (loopDest >= orderCount) {
 		// Loop target is past end of song
-		// TESTED BY: mus_cdfm_zone66_isinstance_c01
+		// TESTED BY: mus_cdfm_zone66_isinstance_c02
 		return MusicType::DefinitelyNo;
 	}
 
@@ -85,7 +91,7 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 	for (int i = 0; i < orderCount; i++) {
 		if (patternOrder[i] >= patternCount) {
 			// Sequence specifies invalid pattern
-			// TESTED BY: mus_cdfm_zone66_isinstance_c02
+			// TESTED BY: mus_cdfm_zone66_isinstance_c03
 			return MusicType::DefinitelyNo;
 		}
 	}
@@ -103,7 +109,7 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 		input >> u32le(patternOffset);
 		if (patternStart + patternOffset >= fileSize) {
 			// Pattern data offset is past EOF
-			// TESTED BY: mus_cdfm_zone66_isinstance_c03
+			// TESTED BY: mus_cdfm_zone66_isinstance_c04
 			return MusicType::DefinitelyNo;
 		}
 	}
@@ -186,12 +192,14 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 		if (loop == 2) {
 			patch->loopStart = 0;
 			patch->loopEnd = patch->lenData;
+		} else {
+			patch->loopStart = 0;
+			patch->loopEnd = 0;
 		}
 		patches->push_back(patch);
 	}
 
 	// Read the song data
-//	music->patterns.reserve(patternCount);
 	stream::pos patternStart =
 		9                      // sizeof fixed-length part of header
 		+ 1 * orderCount  // one byte for each pattern in the sequence
@@ -210,7 +218,7 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 			TrackPtr t(new Track());
 			pattern->push_back(t);
 		}
-std::cout << "pat start at " << patternStart + *i << "\n";
+
 		// Process the events
 		uint8_t cmd;
 		unsigned int lastDelay[CDFM_CHANNEL_COUNT];
@@ -221,23 +229,22 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 			uint8_t channel = cmd & 0x0F;
 			TrackPtr& track = pattern->at(channel);
 			switch (cmd & 0xF0) {
+
 				case 0x00: { // command
 					switch (cmd) {
-						case 0x00: { // long delay
+						case 0x00: { // long delay  @todo: Confirm if this is correct
 							uint8_t data;
 							input >> u8(data);
-//std::cout << "ldelay: " << (int)data << "\n";
 							for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
-								lastDelay[i] += data;// * 255;
+								lastDelay[i] += data;
 							}
 							break;
 						}
-						case 0x01: { // short delay
+						case 0x01: { // short delay  @todo: Confirm if this is correct
 							uint8_t data;
 							input >> u8(data);
-//std::cout << "sdelay: " << (int)data << "\n";
 							for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
-								lastDelay[i] += 0;//data;///16;
+								lastDelay[i] += 0;
 							}
 							break;
 						}
@@ -249,68 +256,9 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 								<< " at offset " << std::dec << input->tellg() - 1 << std::endl;
 							break;
 					}
-/*
-					uint16_t freq, inst_vel;
-					input >> u16le(freq) >> u8(inst_vel);
-					freq %= 128; // notes larger than this wrap
-
-					TrackEvent te;
-					te.delay = lastDelay[channel];
-					lastDelay[channel] = 0;
-					NoteOnEvent *ev = new NoteOnEvent();
-					te.event.reset(ev);
-
-					unsigned int oct = (freq >> 4);
-					unsigned int note = freq & 0x0F;
-
-					ev->instrument = inst_vel >> 4;
-					if (channel > 3) {
-						// This is an OPL channel so increment instrument index
-						ev->instrument += numDigInst;
-					} else {
-						// PCM instruments use C-2 not C-4 so transpose them
-						oct += 2;
-					}
-					ev->milliHertz = midiToFreq((oct + 1) * 12 + note);
-					ev->velocity = ((inst_vel & 0x0F) << 4) | (inst_vel & 0x0F);
-
-					track->push_back(te);
-*/
 					break;
 				}
-/*
-				case 0x20: { // set volume
-					uint8_t vol;
-					input >> u8(vol);
-					vol &= 0x0F;
 
-					if (vol == 0) {
-						TrackEvent te;
-						te.delay = lastDelay[channel];
-						lastDelay[channel] = 0;
-						NoteOffEvent *ev = new NoteOffEvent();
-						te.event.reset(ev);
-						track->push_back(te);
-					} else {
-						TrackEvent te;
-						te.delay = lastDelay[channel];
-						lastDelay[channel] = 0;
-						EffectEvent *ev = new EffectEvent();
-						te.event.reset(ev);
-						ev->type = EffectEvent::Volume;
-						ev->data = (vol << 4) | vol; // 0-15 -> 0-255
-						track->push_back(te);
-					}
-					break;
-				}
-*/
-/*
-				case 0x20:
-				case 0x30:
-				case 0x50:
-				case 0x80:
-				case 0xa0:
-*/
 				case 0x40: { // note on
 					uint8_t freq, panvol, inst;
 					input
@@ -318,14 +266,6 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 						>> u8(panvol)
 						>> u8(inst)
 					;
-//					std::cout << std::hex << (int)(cmd&0xf0) << "/" << (int)channel << ": " << std::hex << (int)a << "-" << (int)b << "-" << (int)c << "\n";
-/*
-					uint8_t data;
-					input >> u8(data);
-					for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
-						lastDelay[i] += data;
-					}
-*/
 					unsigned int vol = panvol & 0x0F;
 					unsigned int pan = panvol >> 4;
 
@@ -337,20 +277,15 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 
 					ev->instrument = inst;
 					ev->milliHertz = midiToFreq(freq + 25);
-					//ev->velocity = (vol << 4) | vol; // 0-15 -> 0-255
-					//ev->velocity = b;
-					ev->velocity = 255 * log((float)vol) / log(15.0);//vol;//(vol << 4) | vol; // 0-15 -> 0-255
-					//ev->velocity = 255 * log((float)b) / log(127.0);//vol;//(vol << 4) | vol; // 0-15 -> 0-255
+					ev->velocity = z66_volume_to_velocity(vol);
+					if (ev->velocity < 0) std::cerr << "vol: " << vol << std::endl;
+					assert(ev->velocity >= 0);
 
 					track->push_back(te);
 					break;
 				}
-/*
-				case 0x60: // end of pattern
-					// Value will cause while loop to exit below
-					break;
-*/
-				case 0x80: { // ? volume?
+
+				case 0x80: { // Set volume
 					uint8_t data;
 					input >> u8(data);
 					unsigned int vol = data & 0x0F;
@@ -370,16 +305,9 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 						EffectEvent *ev = new EffectEvent();
 						te.event.reset(ev);
 						ev->type = EffectEvent::Volume;
-						ev->data = (vol << 4) | vol; // 0-15 -> 0-255
-						//ev->data = 127 * log((float)vol) / log(127.0);//vol;//(vol << 4) | vol; // 0-15 -> 0-255
+						ev->data = z66_volume_to_velocity(vol);
 						track->push_back(te);
-//						std::cout << std::hex << std::setw(2) << std::setfill('0') << (int)vol << " ";
 					}
-/*
-					for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
-						lastDelay[i] += data;
-					}
-*/
 					break;
 				}
 				default:
@@ -403,8 +331,6 @@ std::cout << "pat start at " << patternStart + *i << "\n";
 			}
 		}
 		music->patterns.push_back(pattern);
-std::cout << "got " << std::dec << music->patterns.size() << " patterns of " << (int)patternCount
-	<< " at pos " << input->tellg() << " of " << sampleOffset << "\n";
 	}
 
 	// Load the PCM samples
