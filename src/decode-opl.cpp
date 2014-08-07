@@ -31,6 +31,10 @@ using namespace camoto::gamemusic;
 ///< A default value to use since most OPL songs don't have a field for this.
 const unsigned int OPL_DEF_TICKS_PER_QUARTER_NOTE = 192;
 
+const unsigned int NUM_CHIPS = 2;
+
+const unsigned int OPL_CHANNEL_COUNT = 9 * NUM_CHIPS + 5;
+
 class OPLDecoder
 {
 	public:
@@ -67,8 +71,8 @@ class OPLDecoder
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 
-		unsigned long lastTick;    ///< Time of last event
-		uint8_t oplState[2][256];  ///< Current register values
+		unsigned long lastDelay[OPL_CHANNEL_COUNT];   ///< Delay ticks accrued since last event
+		uint8_t oplState[NUM_CHIPS][256];  ///< Current register values
 		PatchBankPtr patches;      ///< Patch storage
 
 		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel);
@@ -86,11 +90,12 @@ class OPLDecoder
 		 */
 		int savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch);
 
-		EventPtr createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
-			uint8_t oplChannel, int rhythm, int channel, int b0val);
+		void createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
+			unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
+			unsigned int rhythm, unsigned int b0val);
 
-		void createOrUpdatePitchbend(EventVectorPtr events,
-			uint8_t chipIndex, int channel, int a0val, int b0val);
+		void createOrUpdatePitchbend(const TrackPtr& track,
+			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
 };
 
 
@@ -121,169 +126,347 @@ MusicPtr OPLDecoder::decode()
 	// The patches inside the Music instance and inside our own instance are now
 	// the same, except of course the Music ones are generic, but our ones are
 	// typed as OPL instruments.
-	music->events.reset(new EventVector());
-	music->ticksPerQuarterNote = OPL_DEF_TICKS_PER_QUARTER_NOTE;
+
+	music->initialTempo.beatsPerBar = 4;
+	music->initialTempo.beatLength = 4;
+	music->initialTempo.ticksPerBeat = Tempo::US_PER_SEC / 2;
+	music->initialTempo.ticksPerQuarterNote(OPL_DEF_TICKS_PER_QUARTER_NOTE);
+	music->initialTempo.usPerTick = Tempo::US_PER_SEC;
+	music->loopDest = -1; // no loop
+	bool initialTempoSet = false;
+
+	for (unsigned int c = 0; c < OPL_CHANNEL_COUNT; c++) {
+		TrackInfo t;
+		if (c < 9) {
+			t.channelType = TrackInfo::OPLChannel;
+			t.channelIndex = c;
+		} else if (c < 9+5) {
+			t.channelType = TrackInfo::OPLPercChannel;
+			/// @todo: Make sure this correctly maps to the right perc instrument
+			t.channelIndex = c - 9;
+		} else {
+			t.channelType = TrackInfo::OPLChannel;
+			t.channelIndex = c - (9+5);
+		}
+		music->trackInfo.push_back(t);
+	}
+
+	PatternPtr pattern(new Pattern());
+	for (unsigned int track = 0; track < OPL_CHANNEL_COUNT; track++) {
+		TrackPtr t(new Track());
+		pattern->push_back(t);
+	}
 
 	// Initialise all OPL registers to zero
 	memset(oplState, 0, sizeof(oplState));
-	this->lastTick = 0;
+	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) this->lastDelay[t] = 0;
 	unsigned long lastTempo = 0;
+
+	unsigned long totalDelay = 0;
 
 	OPLEvent oplev;
 	oplev.tempo = 0;
 	while (this->cb->readNextPair(&oplev)) {
 		assert(oplev.chipIndex < 2);
+		totalDelay += oplev.delay;
 
-		if (this->delayType == DelayIsPreData) this->lastTick += oplev.delay;
+		if (this->delayType == DelayIsPreData) {
+			for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+				this->lastDelay[t] += oplev.delay;
+			}
+		}
+
+		if ((oplev.tempo) && (oplev.tempo != lastTempo)) {
+			if ((!initialTempoSet) && (totalDelay == 0)) {
+				music->initialTempo.usPerTick = oplev.tempo;
+				music->initialTempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.tempo) / 2;
+				initialTempoSet = true;
+			} else {
+				TrackEvent te;
+				te.delay = this->lastDelay[0];
+				this->lastDelay[0] = 0;
+				TempoEvent *ev = new TempoEvent();
+				te.event.reset(ev);
+				ev->tempo.usPerTick = oplev.tempo;
+				ev->tempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.tempo) / 2;
+				pattern->at(0)->push_back(te);
+				lastTempo = oplev.tempo;
+			}
+		}
 
 		// Update the current state with the new value
 		uint8_t oldval = oplState[oplev.chipIndex][oplev.reg];
 		oplState[oplev.chipIndex][oplev.reg] = oplev.val;
 #define bitsChanged(b) ((oplev.val ^ oldval) & b)
 
-		uint8_t oplChannel = oplev.reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
-		uint8_t channel = 1 + oplChannel + 14 * oplev.chipIndex;
-		switch (oplev.reg & 0xF0) {
+		unsigned int oplChannel = oplev.reg & 0x0F; // Only for regs 0xA0, 0xB0 and 0xC0!
+		//uint8_t channel = 1 + oplChannel + 14 * oplev.chipIndex;
+
+		// Figure out what track to map this event to
+#define OPL_IS_RHYTHM_ON (this->oplState[0][0xBD] & 0x20)
+		bool noteon = false;
+		unsigned int track = -1;
+		if (oplev.reg == 0xBD) {
+			// handled below, could map to multiple channels at the same time
+		} else if (oplev.reg < 0x20) {
+			track = 0;
+		} else if ((oplev.reg < 0xA0) || (oplev.reg >= 0xE0)) {
+			// Convert operator index into channel
+			unsigned int oplOpIndex = oplev.reg & 0x1F;
+			unsigned int rhythm = 99;
+			if (OPL_IS_RHYTHM_ON && (oplev.chipIndex == 0)) {
+				switch (oplOpIndex) {
+					case 13: rhythm = 0; break; // hi-hat
+					case 17: rhythm = 1; break; // top cymbal
+					case 14: rhythm = 2; break; // tom-tom
+					case 16: rhythm = 3; break; // snare
+					case 12:
+					case 15: rhythm = 4; break; // bass drum
+					default: break; // normal instrument
+				}
+			}
+			if (rhythm == 99) {
+				unsigned int oplChannel = OPL2_OFF2CHANNEL(oplOpIndex); /// @todo: This only works for OPL2
+				track = oplChannel + OPL_CHANNEL_COUNT * oplev.chipIndex;
+				noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
+			} else {
+				track = 9 + rhythm;
+				noteon = this->oplState[0][0xBD] & (1 << rhythm);
+			}
+
+		} else { // A0, B0, C0
+			assert(oplev.reg < 0xE0);
+			unsigned int oplChannel = oplev.reg & 0x0F;
+			if (oplChannel > 8) {
+				std::cout << "decode-opl: Invalid OPL channel " << oplChannel
+					<< "\n";
+
+				if (this->delayType == DelayIsPostData) {
+					for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+						this->lastDelay[t] += oplev.delay;
+					}
+				}
+				// Update the current state with the new value
+				oplState[oplev.chipIndex][oplev.reg] = oplev.val;
+				continue;
+			}
+
+			if ((OPL_IS_RHYTHM_ON) && (oplev.chipIndex == 0) && (oplChannel > 6)) {
+				// Rhythm mode instrument (except bass drum)
+				if (oplChannel == 7) {
+/// @todo: Confirm this is the right instrument here
+					noteon = this->oplState[0][0xBD] & 1; // 1 == hihat
+					track = 9 + 0;
+				} else { // oplChannel == 8
+					assert(oplChannel == 8);
+/// @todo: Confirm this is the right instrument here
+					noteon = this->oplState[0][0xBD] & 4; // 4 == tom-tom
+					track = 9 + 2;
+				}
+			} else {
+				// Normal channel (or rhythm mode bass drum)
+				track = oplChannel + OPL_CHANNEL_COUNT * oplev.chipIndex;
+				noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
+			}
+		}
+
+		unsigned int regClass = oplev.reg & 0xF0;
+		if (oplev.reg == 0xBD) regClass = 0xBD;
+		switch (regClass) {
 			case 0x00:
 				if (oplev.reg == 0x01) {
 					if (bitsChanged(0x20)) {
+						TrackEvent te;
+						te.delay = this->lastDelay[track];
+						this->lastDelay[track] = 0;
 						ConfigurationEvent *ev = new ConfigurationEvent();
-						EventPtr gev(ev);
-						ev->channel = 0; // unused
-						ev->absTime = this->lastTick;
+						te.event.reset(ev);
 						ev->configType = ConfigurationEvent::EnableWaveSel;
 						ev->value = (oplev.val & 0x20) ? 1 : 0;
-						music->events->push_back(gev);
+						pattern->at(0)->push_back(te);
 					}
 				} else if (oplev.reg == 0x05) {
 					if (bitsChanged(0x01)) {
+						TrackEvent te;
+						te.delay = this->lastDelay[track];
+						this->lastDelay[track] = 0;
 						ConfigurationEvent *ev = new ConfigurationEvent();
-						EventPtr gev(ev);
-						ev->channel = 0; // unused
-						ev->absTime = this->lastTick;
+						te.event.reset(ev);
 						ev->configType = ConfigurationEvent::EnableOPL3;
 						ev->value = (oplev.val & 0x01) ? 1 : 0;
-						music->events->push_back(gev);
+						pattern->at(0)->push_back(te);
 					}
 				}
 				break;
-			case 0xA0:
-				if (bitsChanged(0xFF) && (oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON)) {
-					// The pitch has changed while a note was playing
-					this->createOrUpdatePitchbend(music->events, oplev.chipIndex, channel,
-						oplev.val, oplState[oplev.chipIndex][0xB0 | oplChannel]);
-				}
-				break;
-			case 0xB0:
-				if (oplev.reg == 0xBD) {
-					// Percussion/rhythm mode
-					if (oplev.val & 0x20) {
-						// Rhythm mode enabled
-						for (int p = 0; p < 5; p++) {
-							int keyonBit = 1 << p;
-							// If rhythm mode has just been enabled and this instrument's
-							// keyon bit is set, OR rhythm mode was always on and this
-							// instrument's keyon bit has changed, write out a note-on or
-							// note-off event as appropriate.
-							if ((bitsChanged(0x20) && (oplev.val & keyonBit)) || bitsChanged(keyonBit)) {
-								// Hi-hat is playing or about to play
-								channel = 14 * oplev.chipIndex + 9 + p;
-								switch (p) {
-									case 0: oplChannel = 7; break; // mod
-									case 1: oplChannel = 8; break; // car
-									case 2: oplChannel = 8; break; // mod
-									case 3: oplChannel = 7; break; // car
-									case 4: oplChannel = 6; break; // both
-								}
-								EventPtr gev;
-								if (oplev.val & keyonBit) {
-									gev = this->createNoteOn(patches, oplev.chipIndex, oplChannel, p + 1,
-										channel, oplState[oplev.chipIndex][0xB0 | oplChannel]);
-								} else {
-									gev.reset(new NoteOffEvent());
-									gev->absTime = this->lastTick;
-									gev->channel = channel;
-								}
-								music->events->push_back(gev);
-							}
-						}
-					} else if (bitsChanged(0x20)) { // Rhythm mode just got disabled
-						// Turn off any currently playing rhythm instruments
-						for (int p = 0; p < 5; p++) {
-							if (oplState[oplev.chipIndex][0xBD] & (1 << p)) {
-								EventPtr gev(new NoteOffEvent());
-								gev->absTime = this->lastTick;
-								gev->channel = 1 + 9 + p;
-								music->events->push_back(gev);
-							}
-						}
-					}
-					if (bitsChanged(0x80)) {
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						EventPtr gev(ev);
-						ev->channel = 0; // unused
-						ev->absTime = this->lastTick;
-						ev->configType = ConfigurationEvent::EnableDeepTremolo;
-						ev->value = (oplev.val & 0x80) ? 1 : 0; // bit0 is enable/disable
-						if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
-						music->events->push_back(gev);
-					}
-					if (bitsChanged(0x40)) {
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						EventPtr gev(ev);
-						ev->channel = 0; // unused
-						ev->absTime = this->lastTick;
-						ev->configType = ConfigurationEvent::EnableDeepVibrato;
-						ev->value = (oplev.val & 0x40) ? 1 : 0; // bit0 is enable/disable
-						if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
-						music->events->push_back(gev);
-					}
 
-				} else if (oplChannel < 9) { // valid register/channel
-					if (bitsChanged(OPLBIT_KEYON)) {
-						if (oplev.val & OPLBIT_KEYON) {
-							// Note is on, get instrument settings of this note
-							EventPtr gev = this->createNoteOn(patches, oplev.chipIndex, oplChannel, 0, channel, oplev.val);
-							music->events->push_back(gev);
-						} else {
-							EventPtr gev(new NoteOffEvent());
-							gev->absTime = this->lastTick;
-							gev->channel = channel;
-							music->events->push_back(gev);
+			case 0x40:
+			case 0x50:
+				if (noteon && bitsChanged(0x3F)) {
+					// Volume change
+/// @todo createOrUpdateVolume, plus replace volume if it is immediately followed by noteon
+				}
+				break;
+
+			case 0xA0: {
+				if (noteon && bitsChanged(0xFF)) {
+					// The pitch has changed while a note was playing
+					this->createOrUpdatePitchbend(pattern->at(track),
+						&this->lastDelay[track], oplev.val,
+						oplState[oplev.chipIndex][0xB0 | oplChannel]);
+				}
+				break;
+			}
+
+			case 0xBD:
+				if (oplev.val & 0x20) { // can't use OPL_IS_RHYTHM_ON as that is obsolete here
+					if (bitsChanged(0x20)) {
+						// Rhythm was off, now it's on
+						track = 0;
+						TrackEvent te;
+						te.delay = this->lastDelay[track];
+						this->lastDelay[track] = 0;
+						ConfigurationEvent *ev = new ConfigurationEvent();
+						te.event.reset(ev);
+						ev->configType = ConfigurationEvent::EnableRhythm;
+						ev->value = 1;
+						pattern->at(track)->push_back(te);
+					}
+					for (int rhythm = 0; rhythm < 5; rhythm++) {
+						int keyonBit = 1 << rhythm;
+						// If rhythm mode has just been enabled and this instrument's
+						// keyon bit is set, OR rhythm mode was always on and this
+						// instrument's keyon bit has changed, write out a note-on or
+						// note-off event as appropriate.
+						if ((bitsChanged(0x20) && (oplev.val & keyonBit)) || bitsChanged(keyonBit)) {
+							// Hi-hat is playing or about to play
+							switch (rhythm) {
+								case 0: oplChannel = 7; break; // mod
+								case 1: oplChannel = 8; break; // car
+								case 2: oplChannel = 8; break; // mod
+								case 3: oplChannel = 7; break; // car
+								case 4: oplChannel = 6; break; // both
+							}
+
+							track = 9 + rhythm;
+							noteon = this->oplState[0][0xBD] & (1 << rhythm);
+
+							if (oplev.val & keyonBit) {
+								this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],
+									oplev.chipIndex, oplChannel, rhythm + 1,
+									oplState[oplev.chipIndex][0xB0 | oplChannel]);
+							} else {
+								TrackEvent te;
+								te.delay = this->lastDelay[track];
+								this->lastDelay[track] = 0;
+								te.event.reset(new NoteOffEvent());
+								pattern->at(track)->push_back(te);
+							}
 						}
-					} else if ((oplev.val & OPLBIT_KEYON) && bitsChanged(0x1F)) {
-						// The note is already on and the pitch has changed.
-						this->createOrUpdatePitchbend(music->events, oplev.chipIndex, channel,
+					}
+				} else if (bitsChanged(0x20)) { // Rhythm mode just got disabled
+					// Turn off any currently playing rhythm instruments
+					for (int rhythm = 0; rhythm < 5; rhythm++) {
+						track = 9 + rhythm;
+						noteon = this->oplState[0][0xBD] & (1 << rhythm);
+						if (noteon) {
+							TrackEvent te;
+							te.delay = this->lastDelay[track];
+							this->lastDelay[track] = 0;
+							te.event.reset(new NoteOffEvent());
+							pattern->at(track)->push_back(te);
+						}
+					}
+					// Rhythm was on, now it's off
+					track = 0;
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableRhythm;
+					ev->value = 0;
+					pattern->at(track)->push_back(te);
+				}
+				if (bitsChanged(0x80)) {
+					track = 0;
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableDeepTremolo;
+					ev->value = (oplev.val & 0x80) ? 1 : 0; // bit0 is enable/disable
+					if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
+					pattern->at(track)->push_back(te);
+				}
+				if (bitsChanged(0x40)) {
+					track = 0;
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+					ConfigurationEvent *ev = new ConfigurationEvent();
+					te.event.reset(ev);
+					ev->configType = ConfigurationEvent::EnableDeepVibrato;
+					ev->value = (oplev.val & 0x40) ? 1 : 0; // bit0 is enable/disable
+					if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
+					pattern->at(track)->push_back(te);
+				}
+				break;
+
+			case 0xB0:
+				if (oplChannel > 8) {
+					std::cerr << "decode-opl: Bad OPL note-on register/channel 0x" << std::hex
+						<< (int)oplev.reg << std::endl;
+					break;
+				}
+
+				if (OPL_IS_RHYTHM_ON && (oplev.chipIndex == 0) && (oplChannel > 5)) {
+					if (noteon && bitsChanged(0x1F)) {
+						// Rhythm-mode instrument (incl. bass drum) has changed pitch
+						this->createOrUpdatePitchbend(pattern->at(track), &this->lastDelay[track],
 							oplState[oplev.chipIndex][0xA0 | oplChannel], oplev.val);
 					}
-				} else {
-					std::cerr << "WARNING: Bad OPL register/channel 0x" << std::hex
-						<< (int)oplev.reg << std::endl;
+				} else { // normal instrument
+					if (bitsChanged(OPLBIT_KEYON)) {
+						if (oplev.val & OPLBIT_KEYON) {
+							// Note is now on
+							this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],
+								oplev.chipIndex, oplChannel, 0, oplev.val);
+						} else {
+							// Note is now off
+							TrackEvent te;
+							te.delay = this->lastDelay[track];
+							this->lastDelay[track] = 0;
+							NoteOffEvent *ev = new NoteOffEvent();
+							te.event.reset(ev);
+							pattern->at(track)->push_back(te);
+						}
+					} else if (noteon && bitsChanged(0x1F)) {
+						// The note is already on and the pitch has changed.
+						this->createOrUpdatePitchbend(pattern->at(track), &this->lastDelay[track],
+							oplState[oplev.chipIndex][0xA0 | oplChannel], oplev.val);
+					}
 				}
-
 				break;
 		} // switch (OPL reg)
-
-		if ((oplev.tempo) && (oplev.tempo != lastTempo)) {
-			TempoEvent *ev = new TempoEvent();
-			EventPtr gev(ev);
-			ev->channel = 0; // global event (all channels)
-			ev->absTime = this->lastTick;
-			ev->usPerTick = oplev.tempo;
-			music->events->push_back(gev);
-			lastTempo = oplev.tempo;
-			oplev.tempo = 0;
-		}
 
 		/// @todo If the instrument settings have changed, generate a patch change event?
 		// Will have to combine with previous patch change event if there has been no delay.
 
-		if (this->delayType == DelayIsPostData) this->lastTick += oplev.delay;
+		if (this->delayType == DelayIsPostData) {
+			for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+				this->lastDelay[t] += oplev.delay;
+			}
+		}
 
 		// Update the current state with the new value
 		oplState[oplev.chipIndex][oplev.reg] = oplev.val;
 
 	} // while (all events)
+
+	music->patterns.push_back(pattern);
+	music->patternOrder.push_back(0);
+	music->ticksPerTrack = totalDelay;
 
 	return music;
 }
@@ -333,14 +516,15 @@ int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 	return numPatches;
 }
 
-EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
-	uint8_t oplChannel, int rhythm, int channel, int b0val
-)
+void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
+	unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
+	unsigned int rhythm, unsigned int b0val)
 {
+	TrackEvent te;
+	te.delay = *lastDelay;
+	*lastDelay = 0;
 	NoteOnEvent *ev = new NoteOnEvent();
-	EventPtr gev(ev);
-	ev->channel = channel;
-	ev->absTime = this->lastTick;
+	te.event.reset(ev);
 
 	OPLPatchPtr curPatch = this->getCurrentPatch(chipIndex, oplChannel);
 	curPatch->rhythm = rhythm;
@@ -354,19 +538,18 @@ EventPtr OPLDecoder::createNoteOn(PatchBankPtr& patches, uint8_t chipIndex,
 
 	ev->milliHertz = fnumToMilliHertz(fnum, block, this->fnumConversion);
 
-	// Ignore velocity for MOD-only rhythm instruments
+	// Ignore velocity for modulator-only rhythm instruments
 	if ((rhythm == 1) || (rhythm == 3)) {
 		ev->velocity = 0;
 	} else {
-		uint8_t vel = this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F;
-		ev->velocity = pow(M_E, (double)(63.0 - vel) / 63.0 * log(256.0));
+		ev->velocity = OPL_GET_VOLUME(chipIndex, oplChannel);
 	}
-
-	return gev;
+	track->push_back(te);
+	return;
 }
 
-void OPLDecoder::createOrUpdatePitchbend(EventVectorPtr events,
-	uint8_t chipIndex, int channel, int a0val, int b0val)
+void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
+	unsigned long *lastDelay, unsigned int a0val, unsigned int b0val)
 {
 	// Get the OPL frequency number for this channel
 	int fnum = ((b0val & 0x03) << 8) | a0val;
@@ -378,32 +561,39 @@ void OPLDecoder::createOrUpdatePitchbend(EventVectorPtr events,
 	// fnum is spread across two registers and we should combine this
 	// into a single event.
 
-	// This will only check the previous event, if there's something else
-	// (like an instrument effect) in between the two pitch events then
-	// they won't be combined into a single pitchbend event.
 	bool addNew = true;
-	for (EventVector::reverse_iterator i = events->rbegin();
-		i != events->rend();
-		i++
-	) {
-		if ((*i)->absTime != this->lastTick) break; // no more events at this time
-		PitchbendEvent *pbev = dynamic_cast<PitchbendEvent *>(i->get());
-		if (pbev) {
-			// There is an existing pitchbend event at the same time, so edit
-			// that one.
-			pbev->milliHertz = freq;
-			addNew = false;
-			break;
+
+	// Still at the last event
+	if (*lastDelay == 0) {
+		// This will only check the previous event, if there's something else
+		// (like an instrument effect) in between the two pitch events then
+		// they won't be combined into a single pitchbend event.
+		for (Track::reverse_iterator
+			i = track->rbegin(); i != track->rend(); i++
+		) {
+			const TrackEvent& te = *i;
+			if (te.delay != 0) break; // no more events at this time
+			EffectEvent *pbev = dynamic_cast<EffectEvent *>(i->event.get());
+			if (pbev && (pbev->type == EffectEvent::Pitchbend)) {
+				// There is an existing pitchbend event at the same time, so edit
+				// that one.
+				pbev->data = freq;
+				addNew = false;
+				break;
+			}
 		}
 	}
+
 	if (addNew) {
 		// Last event was unrelated, create a new pitchbend event.
-		PitchbendEvent *ev = new PitchbendEvent();
-		EventPtr gev(ev);
-		ev->channel = channel;
-		ev->absTime = this->lastTick;
-		ev->milliHertz = freq;
-		events->push_back(gev);
+		TrackEvent te;
+		te.delay = *lastDelay;
+		*lastDelay = 0;
+		EffectEvent *ev = new EffectEvent();
+		te.event.reset(ev);
+		ev->type = EffectEvent::Pitchbend;
+		ev->data = freq;
+		track->push_back(te);
 	}
 	return;
 }

@@ -50,7 +50,13 @@
 /// Supplied with an operator offset, return the OPL channel it is associated
 /// with (0-8).  Note that this only works in 2-operator mode, the OPL3's 4-op
 /// mode requires a different formula.
-#define OPL_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
+#define OPL2_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
+
+/// Get the current volume on the given OPL channel (0..255)
+#define OPL_GET_VOLUME(chipIndex, oplChannel) \
+	pow(M_E, (double)(63.0 - ( \
+		this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F \
+	)) / 63.0 * log(256.0)) \
 
 #ifndef DLL_EXPORT
 #define DLL_EXPORT
