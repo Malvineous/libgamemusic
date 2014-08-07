@@ -195,7 +195,10 @@ void Playback::nextFrame()
 				this->row = 0;
 				this->order++;
 				if (this->order >= this->music->patternOrder.size()) {
-					if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1)) {
+					if (
+						(this->music->loopDest >= 0) &&
+						((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1))
+					) {
 						this->order = this->music->loopDest;
 						this->loop++;
 					} else {
