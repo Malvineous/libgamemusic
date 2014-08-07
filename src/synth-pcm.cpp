@@ -123,6 +123,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 {
 	assert(this->patches);
 	assert(trackIndex < this->trackInfo->size());
+	assert(ev->velocity < 256);
 
 	const TrackInfo& ti = this->trackInfo->at(trackIndex);
 	if (
@@ -144,27 +145,19 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	// Don't play this note if there's no patch for it
 	if (!inst) return;
 
-
-
-	for (SampleVector::iterator
-		i = this->activeSamples.begin(); i != this->activeSamples.end();
-	) {
-		Sample& sample = *i;
-		if (sample.track == trackIndex) {
-			i = this->activeSamples.erase(i);
-		} else {
-			i++;
-		}
-	}
-
-
+	this->noteOff(trackIndex);
 
 	Sample n;
 	n.track = trackIndex;
 	n.sampleRate = inst->sampleRate * ev->milliHertz / FREQ_MIDDLE_C;
 	n.patch = inst;
 	n.pos = 0;
-	n.vol = ev->velocity;
+	if (ev->velocity < 0) {
+		// Use default velocity
+		n.vol = inst->defaultVolume;
+	} else {
+		n.vol = ev->velocity;
+	}
 
 	this->activeSamples.push_back(n);
 	return;
@@ -173,7 +166,47 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const NoteOffEvent *ev)
 {
+	this->noteOff(trackIndex);
+	return;
+}
+
+void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, const EffectEvent *ev)
+{
 	// TODO: Lock mutex
+	Sample *activeSample = NULL;
+	for (SampleVector::iterator
+		i = this->activeSamples.begin(); i != this->activeSamples.end(); i++
+	) {
+		Sample& sample = *i;
+		if (sample.track == trackIndex) {
+			activeSample = &sample;
+			break;
+		}
+	}
+	// TODO: Release mutex
+	if (!activeSample) return; // no note to affect
+
+	switch (ev->type) {
+		case EffectEvent::Pitchbend:
+			activeSample->sampleRate =
+				activeSample->patch->sampleRate * ev->data / FREQ_MIDDLE_C;
+			break;
+		case EffectEvent::Volume:
+			activeSample->vol = ev->data;
+			break;
+	}
+	return;
+}
+
+void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, const ConfigurationEvent *ev)
+{
+	return;
+}
+
+void SynthPCM::noteOff(unsigned int trackIndex)
+{
 	for (SampleVector::iterator
 		i = this->activeSamples.begin(); i != this->activeSamples.end();
 	) {
@@ -184,18 +217,5 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			i++;
 		}
 	}
-	// TODO: Release mutex
-	return;
-}
-
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const EffectEvent *ev)
-{
-	return;
-}
-
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const ConfigurationEvent *ev)
-{
 	return;
 }

@@ -82,6 +82,9 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		};
 		typedef std::vector<Sample> SampleVector;
 		SampleVector activeSamples;
+
+		/// Switch all notes off on the given track.
+		void noteOff(unsigned int trackIndex);
 };
 
 } // namespace gamemusic
