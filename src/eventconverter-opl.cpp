@@ -63,11 +63,9 @@ void getOPLChannel(const TrackInfo& ti, unsigned int *oplChannel,
 }
 
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
-	const TrackInfoVector *trackInfo, const PatchBankPtr& patches,
-	double fnumConversion, unsigned int flags)
+	ConstMusicPtr music, double fnumConversion, unsigned int flags)
 	:	cb(cb),
-		trackInfo(trackInfo),
-		patches(patches),
+		music(music),
 		fnumConversion(fnumConversion),
 		flags(flags),
 		cachedDelay(0),
@@ -90,6 +88,16 @@ void EventConverter_OPL::rewind()
 	return;
 }
 
+void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
+{
+	this->EventHandler::handleAllEvents(eventOrder, this->music);
+}
+
+void EventConverter_OPL::endOfTrack(unsigned long delay)
+{
+	return;
+}
+
 void EventConverter_OPL::endOfPattern(unsigned long delay)
 {
 	this->cachedDelay += delay;
@@ -107,9 +115,9 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
-	assert(this->patches);
-	assert(trackIndex < this->trackInfo->size());
-	const TrackInfo& ti = this->trackInfo->at(trackIndex);
+	assert(this->music->patches);
+	assert(trackIndex < this->music->trackInfo.size());
+	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
 		(ti.channelType != TrackInfo::OPLChannel)
 		&& (ti.channelType != TrackInfo::OPLPercChannel)
@@ -138,13 +146,14 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	this->cachedDelay += delay;
 
 	// See if the instrument is already set
-	if (ev->instrument >= this->patches->size()) {
+	if (ev->instrument >= this->music->patches->size()) {
 		throw bad_patch(createString("Instrument bank too small - tried to play "
 			"note with instrument #" << ev->instrument + 1
-			<< " but patch bank only has " << this->patches->size()
+			<< " but patch bank only has " << this->music->patches->size()
 			<< " instruments."));
 	}
-	OPLPatchPtr inst = boost::dynamic_pointer_cast<OPLPatch>(this->patches->at(ev->instrument));
+	OPLPatchPtr inst = boost::dynamic_pointer_cast<OPLPatch>
+		(this->music->patches->at(ev->instrument));
 
 	// Don't play this note if there's no patch for it
 	if (!inst) return;
@@ -231,8 +240,8 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
-	assert(trackIndex < this->trackInfo->size());
-	const TrackInfo& ti = this->trackInfo->at(trackIndex);
+	assert(trackIndex < this->music->trackInfo.size());
+	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
 		(ti.channelType != TrackInfo::OPLChannel)
 		&& (ti.channelType != TrackInfo::OPLPercChannel)
@@ -272,8 +281,8 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const EffectEvent *ev)
 {
-	assert(trackIndex < this->trackInfo->size());
-	const TrackInfo& ti = this->trackInfo->at(trackIndex);
+	assert(trackIndex < this->music->trackInfo.size());
+	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
 		(ti.channelType != TrackInfo::OPLChannel)
 		&& (ti.channelType != TrackInfo::OPLPercChannel)

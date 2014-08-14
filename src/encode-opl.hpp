@@ -29,8 +29,8 @@
 namespace camoto {
 namespace gamemusic {
 
-void oplEncode(OPLWriterCallback *cb, DelayType delayType,
-	double fnumConversion, unsigned int flags, MusicPtr music);
+void oplEncode(OPLWriterCallback *cb, ConstMusicPtr music, DelayType delayType,
+	double fnumConversion, unsigned int flags);
 
 } // namespace gamemusic
 } // namespace camoto

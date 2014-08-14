@@ -2,7 +2,7 @@
  * @file   eventconverter-opl.hpp
  * @brief  EventConverter implementation that produces OPL data from Events.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -116,14 +116,10 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 * @param cb
 		 *   Callback to do something with the OPL data bytes.
 		 *
-		 * @param trackInfo
-		 *   Pointer to a list of track-to-channel assignments.  The pointer
-		 *   must remain valid until the EventConverter_OPL class is destroyed.
-		 *   The values (channel assignments) can be changed during event
-		 *   processing and the changes will be reflected in subsequent events.
-		 *
-		 * @param patches
-		 *   Instrument bank.
+		 * @param music
+		 *   Song to convert.  The track info values (channel assignments) and
+		 *   patches can be changed during event processing and the changes will be
+		 *   reflected in subsequent events.
 		 *
 		 * @param flags
 		 *   One or more OPLWriteFlags to use to control the conversion.
@@ -132,8 +128,8 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *   Conversion constant to use when converting Hertz into OPL frequency
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
-		EventConverter_OPL(OPLWriterCallback *cb, const TrackInfoVector *trackInfo,
-			const PatchBankPtr& patches, double fnumConversion, unsigned int flags);
+		EventConverter_OPL(OPLWriterCallback *cb, ConstMusicPtr music,
+			double fnumConversion, unsigned int flags);
 
 		/// Destructor.
 		virtual ~EventConverter_OPL();
@@ -146,7 +142,9 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		void rewind();
 
 		// EventHandler overrides
+		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
+		virtual void handleAllEvents(EventHandler::EventOrder eventOrder);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
@@ -160,8 +158,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 
 	private:
 		OPLWriterCallback *cb;      ///< Callback to handle the generated OPL data
-		const TrackInfoVector *trackInfo; ///< Track to channel assignments
-		const PatchBankPtr patches; ///< Patch bank
+		ConstMusicPtr music;        ///< Song to convert
 		double fnumConversion;      ///< Conversion value to use in Hz -> fnum calc
 		unsigned int flags;         ///< One or more OPLWriteFlags
 

@@ -31,6 +31,9 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 * @param cb
 		 *   Callback to handle generated OPL data.
 		 *
+		 * @param music
+		 *   The instance to convert to OPL data.
+		 *
 		 * @param delayType
 		 *   Where the delay is actioned - before its associated data pair is sent
 		 *   to the OPL chip, or after.
@@ -42,7 +45,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 * @param flags
 		 *   One or more OPLWriteFlags to use to control the conversion.
 		 */
-		OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
+		OPLEncoder(OPLWriterCallback *cb, ConstMusicPtr music, DelayType delayType,
 			double fnumConversion, unsigned int flags);
 
 		/// Destructor.
@@ -53,9 +56,6 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 * This function will call writeNextPair() repeatedly until all the events
 		 * in the song have been written out.
 		 *
-		 * @param music
-		 *   The instance to convert to OPL data.
-		 *
 		 * @throw stream:error
 		 *   If the output data could not be written for some reason.
 		 *
@@ -63,7 +63,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		 *   If the song could not be converted to OPL for some reason (e.g. it has
 		 *   sampled instruments.)
 		 */
-		void encode(const MusicPtr music);
+		void encode();
 
 		// OPLWriterCallback
 		virtual void writeNextPair(const OPLEvent *oplEvent);
@@ -71,6 +71,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to use when writing OPL data
+		ConstMusicPtr music;       ///< Song to convert
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 		unsigned int flags;        ///< One or more OPLWriteFlags
@@ -82,17 +83,18 @@ class OPLEncoder: virtual private OPLWriterCallback
 };
 
 
-void camoto::gamemusic::oplEncode(OPLWriterCallback *cb, DelayType delayType,
-	double fnumConversion, unsigned int flags, MusicPtr music)
+void camoto::gamemusic::oplEncode(OPLWriterCallback *cb, ConstMusicPtr music,
+	DelayType delayType, double fnumConversion, unsigned int flags)
 {
-	OPLEncoder encoder(cb, delayType, fnumConversion, flags);
-	encoder.encode(music);
+	OPLEncoder encoder(cb, music, delayType, fnumConversion, flags);
+	encoder.encode();
 	return;
 }
 
-OPLEncoder::OPLEncoder(OPLWriterCallback *cb, DelayType delayType,
-	double fnumConversion, unsigned int flags)
+OPLEncoder::OPLEncoder(OPLWriterCallback *cb, ConstMusicPtr music,
+	DelayType delayType, double fnumConversion, unsigned int flags)
 	:	cb(cb),
+		music(music),
 		delayType(delayType),
 		fnumConversion(fnumConversion),
 		flags(flags),
@@ -109,17 +111,16 @@ OPLEncoder::~OPLEncoder()
 {
 }
 
-void OPLEncoder::encode(const MusicPtr music)
+void OPLEncoder::encode()
 {
-	PatchBankPtr oplPatches = boost::dynamic_pointer_cast<PatchBank>(music->patches);
+	PatchBankPtr oplPatches = boost::dynamic_pointer_cast<PatchBank>(this->music->patches);
 	if (!oplPatches) {
 		throw format_limitation("This format can only accept OPL patches.");
 	}
-	EventConverter_OPL conv(this, &music->trackInfo, oplPatches,
-		this->fnumConversion, this->flags);
+	EventConverter_OPL conv(this, this->music, this->fnumConversion, this->flags);
 	this->tempoChange(this->music->initialTempo);
 	try {
-		conv.handleAllEvents(EventHandler::Order_Row_Track, music);
+		conv.handleAllEvents(EventHandler::Order_Row_Track);
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}

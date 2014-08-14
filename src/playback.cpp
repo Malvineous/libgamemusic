@@ -83,8 +83,8 @@ void Playback::setSong(ConstMusicPtr music)
 	this->tempoChange(music->initialTempo);
 
 	this->opl.reset();
-	this->oplConverter.reset(new EventConverter_OPL(this, &this->music->trackInfo,
-		this->music->patches, OPL_FNUM_DEFAULT, Default));
+	this->oplConverter.reset(new EventConverter_OPL(this, this->music,
+		OPL_FNUM_DEFAULT, Default));
 
 	this->pcm.reset(&this->music->trackInfo, this->music->patches);
 	return;
