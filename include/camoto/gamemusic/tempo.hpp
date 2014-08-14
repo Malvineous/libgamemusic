@@ -101,7 +101,7 @@ struct Tempo
 	}
 
 	/// Get the tempo as a number of beats per minute.
-	inline unsigned int bpm(void)
+	inline unsigned int bpm(void) const
 	{
 		return round(60.0d * US_PER_SEC / ((double)this->ticksPerBeat * this->usPerTick));
 	}
@@ -120,7 +120,7 @@ struct Tempo
 	}
 
 	/// Get the tempo as the number of ticks in a quarter note.
-	inline unsigned int ticksPerQuarterNote(void)
+	inline unsigned int ticksPerQuarterNote(void) const
 	{
 		return this->beatLength / 4 * this->ticksPerBeat;
 	}
@@ -139,14 +139,14 @@ struct Tempo
 	}
 
 	/// Get the tempo as a mod "speed" value.
-	inline unsigned int module_speed(void)
+	inline unsigned int module_speed(void) const
 	{
 		assert(this->framesPerTick != 0);
 		return this->framesPerTick;
 	}
 
 	/// Get the tempo as a mod "tempo" value.
-	inline unsigned int module_tempo(void)
+	inline unsigned int module_tempo(void) const
 	{
 		assert(this->usPerTick != 0);
 		double modTicksPerSec = (US_PER_SEC / this->usPerTick) * (double)this->framesPerTick;
@@ -167,7 +167,7 @@ struct Tempo
 	}
 
 	/// Get the tempo as the number of ticks per second.
-	inline unsigned long hertz(void)
+	inline unsigned long hertz(void) const
 	{
 		assert(this->usPerTick != 0);
 		return round(US_PER_SEC / this->usPerTick);
@@ -191,7 +191,7 @@ struct Tempo
 	/**
 	 * Divide the result by 1000 to get Hertz.
 	 */
-	inline unsigned long msPerTick(void)
+	inline unsigned long msPerTick(void) const
 	{
 		assert(this->usPerTick != 0);
 		return round(this->usPerTick / 1000.0d);
