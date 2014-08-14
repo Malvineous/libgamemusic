@@ -2,7 +2,7 @@
  * @file   gamemus.cpp
  * @brief  Command-line interface to libgamemusic.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -520,6 +520,44 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	return RET_OK;
 }
 
+/// Convert the track info struct into human-readable text
+std::string getTrackChannelText(const gm::TrackInfo& ti)
+{
+	std::string text;
+	switch (ti.channelType) {
+		case gm::TrackInfo::UnusedChannel:
+			text = "Unused";
+			break;
+		case gm::TrackInfo::AnyChannel:
+			text = "Any";
+			break;
+		case gm::TrackInfo::OPLChannel:
+			text = createString("OPL " << ti.channelIndex);
+			break;
+		case gm::TrackInfo::OPLPercChannel:
+			text = "OPL percussive ";
+			switch (ti.channelIndex) {
+				case 4: text += "bass drum"; break;
+				case 3: text += "snare"; break;
+				case 2: text += "tomtom"; break;
+				case 1: text += "top cymbal"; break;
+				case 0: text += "hi-hat"; break;
+				default:
+					text += createString("- channelIndex " << ti.channelIndex
+						<< " out of range!");
+					break;
+			}
+			break;
+		case gm::TrackInfo::MIDIChannel:
+			text = createString("MIDI " << ti.channelIndex);
+			break;
+		case gm::TrackInfo::PCMChannel:
+			text = createString("PCM " << ti.channelIndex);
+			break;
+	}
+	return text;
+}
+
 int main(int iArgC, char *cArgV[])
 {
 #ifdef __GLIBCXX__
@@ -537,7 +575,10 @@ int main(int iArgC, char *cArgV[])
 			"list all events in the song")
 
 		("list-instruments,i",
-			"list all instruments in the song")
+			"list channel map and all instruments in the song")
+
+		("remap-tracks,m", po::value<std::string>(),
+			"change the target channel for each track")
 
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
@@ -633,7 +674,7 @@ int main(int iArgC, char *cArgV[])
 				strFilename = i->value[0];
 			} else if (i->string_key.compare("help") == 0) {
 				std::cout <<
-					"Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>\n"
+					"Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>\n"
 					"This program comes with ABSOLUTELY NO WARRANTY.  This is free software,\n"
 					"and you are welcome to change and redistribute it under certain conditions;\n"
 					"see <http://www.gnu.org/licenses/> for details.\n"
@@ -934,8 +975,17 @@ int main(int iArgC, char *cArgV[])
 				}
 
 			} else if (i->string_key.compare("list-instruments") == 0) {
-				std::cout << "Listing " << pMusic->patches->size() << " instruments:\n";
+				std::cout << "Channel map:\n";
 				unsigned int j = 0;
+				for (std::vector<gm::TrackInfo>::const_iterator
+					i = pMusic->trackInfo.begin(); i != pMusic->trackInfo.end(); i++, j++
+				) {
+					std::cout << "Track " << j << ": " << getTrackChannelText(*i) << "\n";
+				}
+				std::cout << std::endl;
+
+				std::cout << "Listing " << pMusic->patches->size() << " instruments:\n";
+				j = 0;
 				for (gm::PatchBank::const_iterator
 					i = pMusic->patches->begin(); i != pMusic->patches->end(); i++, j++
 				) {
@@ -971,6 +1021,52 @@ int main(int iArgC, char *cArgV[])
 					}
 					std::cout << "\n";
 				}
+
+			} else if (i->string_key.compare("remap-tracks") == 0) {
+				if (i->value[0].empty()) {
+					std::cerr << "-m/--remap-tracks requires a parameter" << std::endl;
+					return RET_BADARGS;
+				}
+				std::string strTrack, strChan;
+				if (!split(i->value[0], '=', &strTrack, &strChan)) {
+					std::cerr << "-m/--remap-tracks must be of the form track=channel, "
+						"e.g. 4=m0 (to map track 4 to MIDI channel 0)" << std::endl;
+					return RET_BADARGS;
+				}
+				unsigned int track = strtod(strTrack.c_str(), NULL);
+				if (pMusic->trackInfo.size() <= track) {
+					std::cerr << "-m/--remap-tracks parameter out of range: cannot "
+						"change track " << track << " as the last track in the song is track "
+						<< pMusic->trackInfo.size() - 1 << std::endl;
+					return RET_BADARGS;
+				}
+				gm::TrackInfo& ti = pMusic->trackInfo[track];
+				switch (strChan[0]) {
+					case 'm':
+					case 'M':
+						ti.channelType = gm::TrackInfo::MIDIChannel;
+						break;
+					case 'p':
+					case 'P':
+						ti.channelType = gm::TrackInfo::PCMChannel;
+						break;
+					case 'o':
+					case 'O':
+						ti.channelType = gm::TrackInfo::OPLChannel;
+						break;
+					case 'r':
+					case 'R':
+						ti.channelType = gm::TrackInfo::OPLPercChannel;
+						break;
+					default:
+						std::cerr << "Unknown channel type \"" << strChan[0]
+							<< "\" passed to -m/--remap-tracks.  Must be one of M, P, O, R"
+							<< std::endl;
+						return RET_BADARGS;
+				}
+				ti.channelIndex = strtod(strChan.c_str() + 1, NULL);
+				std::cout << "Mapping track " << track << " to "
+					<< getTrackChannelText(ti) << "\n";
 
 			} else if (i->string_key.compare("newinst") == 0) {
 				if (i->value[0].empty()) {
