@@ -22,6 +22,7 @@ libgamemusic_la_SOURCES += mus-imf-idsoftware.cpp
 libgamemusic_la_SOURCES += mus-klm-wacky.cpp
 libgamemusic_la_SOURCES += mus-mid-type0.cpp
 libgamemusic_la_SOURCES += mus-raw-rdos.cpp
+libgamemusic_la_SOURCES += mus-s3m-screamtracker.cpp
 libgamemusic_la_SOURCES += opl-util.cpp
 libgamemusic_la_SOURCES += patch.cpp
 libgamemusic_la_SOURCES += patch-midi.cpp
@@ -51,6 +52,7 @@ EXTRA_libgamemusic_la_SOURCES += mus-imf-idsoftware.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-klm-wacky.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-mid-type0.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-raw-rdos.hpp
+EXTRA_libgamemusic_la_SOURCES += mus-s3m-screamtracker.hpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 
