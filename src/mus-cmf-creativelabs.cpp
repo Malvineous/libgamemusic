@@ -2,7 +2,7 @@
  * @file   mus-cmf-creativelabs.cpp
  * @brief  Support for Creative Labs' CMF format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -70,6 +70,15 @@ std::vector<std::string> MusicType_CMF::getFileExtensions() const
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("cmf");
 	return vcExtensions;
+}
+
+unsigned long MusicType_CMF::getCaps() const
+{
+	return
+		InstEmpty
+		| InstOPL
+		| HasEvents
+	;
 }
 
 MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
@@ -140,40 +149,55 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 
 	// Process the MIDI data
 	input->seekg(offMusic, stream::start);
-	unsigned long usPerQuarterNote = ticksPerQuarter * 1000000 / ticksPerSecond;
-	MusicPtr music = midiDecode(input, MIDIFlags::BasicMIDIOnly, ticksPerQuarter,
-		usPerQuarterNote);
+	Tempo initialTempo;
+	initialTempo.hertz(ticksPerSecond);
+	initialTempo.ticksPerQuarterNote(ticksPerQuarter);
+	MusicPtr music = midiDecode(input, MIDIFlags::UsePatchIndex, initialTempo);
 
-	EventPtr gev;
+	for (TrackInfoVector::iterator
+		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
+	) {
+		if (ti->channelIndex >= 11) {
+			ti->channelType = TrackInfo::OPLPercChannel;
+			ti->channelIndex = 15 - ti->channelIndex;
+		} else {
+			ti->channelType = TrackInfo::OPLChannel;
+			if (ti->channelIndex > 8) {
+				std::cout << "cmf-creativelabs: Event on MIDI channel "
+					<< ti->channelIndex << " - map this to a valid OPL channel!\n";
+			}
+			// TODO: remap channels based on channel-in-use table?
+		}
+	}
 
 	// Set standard CMF settings
-
+	TrackPtr configTrack = music->patterns.at(0)->at(0);
 	{
+		TrackEvent te;
+		te.delay = 0;
 		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
+		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepTremolo;
 		ev->value = 1;
-		music->events->insert(music->events->begin() + 1, gev);
+		configTrack->insert(configTrack->begin() + 1, te);
 	}
 	{
+		TrackEvent te;
+		te.delay = 0;
 		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
+		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepVibrato;
 		ev->value = 1;
-		music->events->insert(music->events->begin() + 2, gev);
+		configTrack->insert(configTrack->begin() + 2, te);
 	}
 	{
+		TrackEvent te;
+		te.delay = 0;
 		ConfigurationEvent *ev = new ConfigurationEvent();
-		gev.reset(ev);
-		ev->channel = 0; // global event (all channels)
-		ev->absTime = 0;
+		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableWaveSel;
 		ev->value = 1;
-		music->events->insert(music->events->begin() + 3, gev);
+		configTrack->insert(configTrack->begin() + 3, te);
 	}
 
 	// Read the instruments
@@ -246,81 +270,107 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		for (unsigned int p = 0; p < 128; p++) instMapping[t][p] = -1;
 	}
 
-	for (EventVector::iterator i = music->events->begin(); i != music->events->end(); i++) {
-		NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(i->get());
-		if (!ev) continue;
+	// Run through each event and change the MIDI-like instrument numbers to
+	// optimised values.  This will condense the 127 available standard
+	// instruments down into only those which are used, as well as duplicating
+	// any instrument used for both percussion and normal rhythm.
+	for (std::vector<unsigned int>::const_iterator
+		o = music->patternOrder.begin(); o != music->patternOrder.end(); o++
+	) {
+		const unsigned int& patternIndex = *o;
+		const PatternPtr& pattern = music->patterns[patternIndex];
 
-		// Override MIDI velocity and use zero, so the default volume setting from
-		// the instrument patch is used in EventConverter_OPL::writeOpSettings().
-		ev->velocity = 0;
+		// For each track
+		unsigned int trackIndex = 0;
+		for (Pattern::const_iterator
+			pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+		) {
+			const TrackInfo& ti = music->trackInfo[trackIndex];
 
-		// Figure out which rhythm instrument (if any) this is
-		// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
-		unsigned int targetRhythm;
-		if ((ev->sourceChannel >= 12-1) && (ev->sourceChannel <= 16-1)) {
-			targetRhythm = 16 - ev->sourceChannel; // channel 0 is global
-		} else {
-			targetRhythm = 0;
-		}
+			// For each event in the track
+			for (Track::const_iterator
+				ev = (*pt)->begin(); ev != (*pt)->end(); ev++
+			) {
+				const TrackEvent& te = *ev;
+				NoteOnEvent *nev = dynamic_cast<NoteOnEvent *>(te.event.get());
+				if (!nev) continue;
 
-		// Figure out what CMF instrument number to play
-		MIDIPatchPtr midInst = boost::dynamic_pointer_cast<MIDIPatch>(music->patches->at(ev->instrument));
-		unsigned int oplInst = midInst->midiPatch;
-		int& curTarget = instMapping[targetRhythm][oplInst];
-		if (curTarget == -1) {
-			// Don't have a mapping yet
+				// Override MIDI velocity and use zero, so the default volume setting from
+				// the instrument patch is used in EventConverter_OPL::writeOpSettings().
+				nev->velocity = 0;
 
-			// See if this is a patch for a default instrument.  We can't use
-			// oplBank->size() as it will increase as we add default instruments to
-			// the bank, so we use numInstruments which should always be the number of
-			// custom instruments only.
-			if (oplInst >= numInstruments) {
-				// Using one of the generic instruments
-				unsigned int realInst = oplInst % CMF_NUM_DEFAULT_INSTRUMENTS;
-				if (genericMapping[realInst] <= 0) {
-					// Need to add this
-					oplInst = genericMapping[realInst] = oplBank->size();
-					oplBank->push_back(oplBankDefault->at(realInst));
+				// Figure out which rhythm instrument (if any) this is
+				// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
+				int targetRhythm;
+				if (ti.channelType == TrackInfo::OPLPercChannel) {
+					targetRhythm = ti.channelIndex + 1;
 				} else {
-					oplInst = genericMapping[realInst];
+					targetRhythm = 0;
 				}
-			}
 
-			// See if it's the correct rhythm type
-			OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplInst).get());
-			if (src->rhythm == targetRhythm) {
-				// This instrument is already correct, map it to itself
-				curTarget = oplInst;
-			} else {
-				// The patch is for a different rhythm type, so we'll either have to
-				// duplicate it, or edit it if the base patch won't be used.
-				bool inUse = true;//false;
-				if (inUse) {
-					// Something already maps to this instrument, so we'll have to
-					// duplicate it.
-					OPLPatchPtr copy(new OPLPatch);
-					*copy = *src;
-					copy->rhythm = targetRhythm;
-					if ((copy->rhythm == 2) || (copy->rhythm == 4)) {
-						// For these instruments, the modulator data should be loaded into
-						// the OPL carrier instead.
-						copy->c = copy->m;
+				// Figure out what CMF instrument number to play
+				MIDIPatchPtr midiInst = boost::dynamic_pointer_cast<MIDIPatch>(music->patches->at(nev->instrument));
+				assert(midiInst);
+				unsigned int oplIndex = midiInst->midiPatch;
+				int& curTarget = instMapping[targetRhythm][oplIndex];
+				if (curTarget == -1) {
+					// Don't have a mapping yet
+
+					// See if this is a patch for a default instrument.  We can't use
+					// oplBank->size() as it will increase as we add default instruments to
+					// the bank, so we use numInstruments which should always be the number of
+					// custom instruments only.
+					if (oplIndex >= numInstruments) {
+						// Using one of the generic instruments
+						unsigned int realInst = oplIndex % CMF_NUM_DEFAULT_INSTRUMENTS;
+						if (genericMapping[realInst] <= 0) {
+							// Need to add this
+							oplIndex = genericMapping[realInst] = oplBank->size();
+							oplBank->push_back(oplBankDefault->at(realInst));
+						} else {
+							oplIndex = genericMapping[realInst];
+						}
 					}
-					curTarget = oplBank->size();
-					oplBank->push_back(copy);
-				} else {
-					// Nothing is using this instrument yet, so edit it.
-					/// @todo Enable this code, and figure out how to copy the modulator
-					/// as above without losing the carrier data in case the instrument
-					/// is used normally later.
-					src->rhythm = targetRhythm;
-					curTarget = oplInst;
+
+					// See if it's the correct rhythm type
+					OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplIndex).get());
+					if (src->rhythm == targetRhythm) {
+						// This instrument is already correct, map it to itself
+						curTarget = oplIndex;
+					} else {
+						// The patch is for a different rhythm type, so we'll either have to
+						// duplicate it, or edit it if the base patch won't be used.
+						bool inUse = true;//false;
+						if (inUse) {
+							// Something already maps to this instrument, so we'll have to
+							// duplicate it.
+							OPLPatchPtr copy(new OPLPatch);
+							*copy = *src;
+							copy->rhythm = targetRhythm;
+							if (OPL_IS_RHYTHM_CARRIER_ONLY(copy->rhythm)) {
+								// For these instruments, the modulator data should be loaded into
+								// the OPL carrier instead.
+								OPLOperator t = copy->c;
+								copy->c = copy->m;
+								copy->m = t;
+							}
+							curTarget = oplBank->size();
+							oplBank->push_back(copy);
+						} else {
+							// Nothing is using this instrument yet, so edit it.
+							/// @todo Enable this code, and figure out how to copy the modulator
+							/// as above without losing the carrier data in case the instrument
+							/// is used normally later.
+							src->rhythm = targetRhythm;
+							curTarget = oplIndex;
+						}
+					}
 				}
+				// Use the previously defined mapping
+				assert(curTarget >= 0);
+				nev->instrument = curTarget;
 			}
 		}
-		// Use the previously defined mapping
-		assert(curTarget >= 0);
-		ev->instrument = curTarget;
 	}
 
 	// Disregard the MIDI patches and use the OPL ones
@@ -346,8 +396,6 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
-	assert(music->ticksPerQuarterNote != 0);
-
 	requirePatches<OPLPatch>(music->patches);
 	if (music->patches->size() >= MIDI_PATCHES) {
 		throw bad_patch("CMF files have a maximum of 128 instruments.");
@@ -444,7 +492,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
 		assert(patch);
 		OPLOperator *o = &patch->m;
-		if ((patch->rhythm == 2) || (patch->rhythm == 4)) {
+		if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) {
 			// For these instruments, the modulator data has been loaded into
 			// the OPL carrier instead, so we must reverse it now.
 			o = &patch->c;
@@ -463,7 +511,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 			inst[6 + op] = (o->sustainRate << 4) | (o->releaseRate & 0x0F);
 			inst[8 + op] =  o->waveSelect & 7;
 
-			if ((patch->rhythm == 2) || (patch->rhythm == 4)) break; // ignore other op
+			if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) break; // ignore other op
 			o = &patch->c;
 		}
 		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
@@ -473,17 +521,20 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	}
 
 	// Call the generic OPL writer.
-	tempo_t usPerTick;
 	bool channelsUsed[MIDI_CHANNELS];
-	midiEncode(output, MIDIFlags::BasicMIDIOnly, music, &usPerTick, channelsUsed);
+	unsigned long midiFlags = MIDIFlags::UsePatchIndex;
+	if (flags & MusicType::IntegerNotesOnly) {
+		midiFlags |= MIDIFlags::IntegerNotesOnly;
+	}
+	midiEncode(output, music, midiFlags, channelsUsed,
+		EventHandler::Order_Row_Track, NULL);
 
 	// Set final filesize to this
 	output->truncate_here();
-	uint16_t ticksPerSecond = 1000000.0 / usPerTick;
 	output->seekp(10, stream::start);
 	output
-		<< u16le(music->ticksPerQuarterNote)
-		<< u16le(ticksPerSecond)
+		<< u16le(music->initialTempo.ticksPerQuarterNote())
+		<< u16le(music->initialTempo.hertz())
 	;
 
 	// Update the channel-in-use table
@@ -512,88 +563,3 @@ Metadata::MetadataTypes MusicType_CMF::getMetadataList() const
 	types.push_back(Metadata::Description);
 	return types;
 }
-
-/*
-void MusicWriter_CMF::handleEvent(NoteOnEvent *ev)
-{
-	// We need to override this event handler to do channel mapping appropriate
-	// for OPL instruments instead of MIDI ones.
-
-	// Make sure a patch bank has been set
-	assert(this->patches);
-
-	uint32_t delay = ev->absTime - this->lastTick;
-	this->writeMIDINumber(delay);
-
-	if (this->updateDeep) {
-		// Need to set CMF controller 0x63
-		uint8_t val = (this->deepTremolo ? 1 : 0) | (this->deepVibrato ? 1 : 0);
-		this->writeCommand(0xB0);
-		this->midi
-			<< u8(0x63)
-			<< u8(val)
-			<< u8(0) // delay until next event
-		;
-		this->updateDeep = false;
-	}
-
-	OPLPatchPtr patch = this->patches->getTypedPatch(ev->instrument);
-	uint8_t midiChannel;
-	if (patch->rhythm) {
-		midiChannel = 16 - patch->rhythm;
-	} else {
-		// Normal instrument
-		midiChannel = this->getMIDIchannel(ev->channel, 11);
-	}
-	this->channelMap[ev->channel] = midiChannel;
-
-	uint8_t note;
-	int16_t bend;
-	freqToMIDI(ev->milliHertz, &note, &bend, 0xFF);
-	if (!(this->flags & IntegerNotesOnly)) {
-		if (bend != this->currentPitchbend[midiChannel]) {
-			bend += 8192;
-			uint8_t msb = (bend >> 7) & 0x7F;
-			uint8_t lsb = bend & 0x7F;
-			this->writeCommand(0xE0 | midiChannel);
-			this->midi
-				<< u8(lsb)
-				<< u8(msb)
-				<< u8(0) // delay until next event
-			;
-			this->currentPitchbend[midiChannel] = bend;
-		}
-	}
-	if (ev->instrument != this->currentPatch[midiChannel]) {
-		assert(ev->instrument < MIDI_PATCHES);
-		// Instrument has changed
-		this->writeCommand(0xC0 | midiChannel);
-		this->midi
-			<< u8(ev->instrument)
-			<< u8(0) // delay until next event
-		;
-		this->currentPatch[midiChannel] = ev->instrument;
-	}
-
-	// Use 64 as the default velocity, otherwise squish it into a 7-bit value.
-	uint8_t velocity = (ev->velocity == 0) ? 64 : (ev->velocity >> 1);
-
-	assert(midiChannel < 16);
-	assert(note < 0x80);
-	assert(velocity < 0x80);
-	this->writeCommand(0x90 | midiChannel);
-	this->midi
-		<< u8(note)
-		<< u8(velocity)
-	;
-
-	this->activeNote[ev->channel] = note;
-
-	// Flag this channel as used, to be written into the CMF header later
-	this->channelsInUse[midiChannel] = 1;
-
-	this->lastTick = ev->absTime;
-	this->lastEvent[midiChannel] = ev->absTime;
-	return;
-}
-*/
