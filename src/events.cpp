@@ -34,7 +34,11 @@ std::string TempoEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< "event=tempo;us_per_tick=" << this->usPerTick
+		<< "event=tempo;us_per_tick=" << this->tempo.usPerTick
+		<< ";frames_per_tick=" << this->tempo.framesPerTick
+		<< ";ticks_per_beat=" << this->tempo.ticksPerBeat
+		<< ";beat_length=" << this->tempo.beatLength
+		<< ";beats_per_bar=" << this->tempo.beatsPerBar
 	;
 	return ss.str();
 }
