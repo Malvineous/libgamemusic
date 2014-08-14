@@ -103,6 +103,9 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	uint8_t rhythm;
 };
 
+/// True if OPLPatch::rhythm parameter is a carrier-only percussion instrument
+#define OPL_IS_RHYTHM_CARRIER_ONLY(c) ((c == 2) || (c == 4))
+
 inline bool operator== (const OPLOperator& a, const OPLOperator& b)
 {
 	return
