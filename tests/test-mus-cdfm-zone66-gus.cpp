@@ -129,9 +129,9 @@ class test_cdfm_zone66_gus: public test_music
 		void test_volume_to_velocity()
 		{
 			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity( 0),   0);
-			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity( 1),   5);
-			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity( 8),  63);
-			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity(12), 127);
+			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity( 1),   6);
+			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity( 8),  64);
+			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity(12), 128);
 			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity(14), 191);
 			BOOST_REQUIRE_EQUAL(z66_volume_to_velocity(15), 255);
 			return;

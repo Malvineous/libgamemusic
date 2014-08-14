@@ -21,6 +21,8 @@
 #ifndef _CAMOTO_GAMEMUSIC_OPL_UTIL_HPP_
 #define _CAMOTO_GAMEMUSIC_OPL_UTIL_HPP_
 
+#include <math.h>
+
 // OPL register offsets
 #define BASE_CHAR_MULT  0x20
 #define BASE_SCAL_LEVL  0x40
@@ -52,11 +54,39 @@
 /// mode requires a different formula.
 #define OPL2_OFF2CHANNEL(off)   (((off) % 8 % 3) + ((off) / 8 * 3))
 
-/// Get the current volume on the given OPL channel (0..255)
-#define OPL_GET_VOLUME(chipIndex, oplChannel) \
-	pow(M_E, (double)(63.0 - ( \
-		this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)] & 0x3F \
-	)) / 63.0 * log(256.0)) \
+/// Convert a logarithmic volume into a libgamemusic linear velocity
+/**
+ * @param vol
+ *   Logarithmic volume value, with 0 being silent, and max being loudest.
+ *
+ * @param max
+ *   Maximum value of vol.
+ *
+ * @return Linear value between 0 and 255 inclusive.
+ */
+inline unsigned int log_volume_to_lin_velocity(unsigned int vol,
+	unsigned int max)
+{
+	return round(
+		255 * (1 - log((float)(max + 1) - vol) / log((double)max + 1))
+	);
+}
+
+/// Convert a libgamemusic linear velocity into a logarithmic volume value
+/**
+ * @param vel
+ *   Linear velocity, with 0 being silent, and 255 being loudest.
+ *
+ * @param max
+ *   Maximum value of the return value, when vel is 255.
+ *
+ * @return Logarithmic value between 0 and max inclusive.
+ */
+inline unsigned int lin_velocity_to_log_volume(unsigned int vel,
+	unsigned int max)
+{
+	return round((max + 1) - pow(max + 1, 1 - vel / 255.0));
+}
 
 #ifndef DLL_EXPORT
 #define DLL_EXPORT

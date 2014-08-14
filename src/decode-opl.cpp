@@ -28,12 +28,15 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-///< A default value to use since most OPL songs don't have a field for this.
+/// A default value to use since most OPL songs don't have a field for this.
 const unsigned int OPL_DEF_TICKS_PER_QUARTER_NOTE = 192;
 
 const unsigned int NUM_CHIPS = 2;
 
 const unsigned int OPL_CHANNEL_COUNT = 9 * NUM_CHIPS + 5;
+
+/// Default volume for modulator-only percussive instruments
+const unsigned int OPL_DEFVOL_PERC = 255;
 
 class OPLDecoder
 {
@@ -540,9 +543,11 @@ void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 
 	// Ignore velocity for modulator-only rhythm instruments
 	if ((rhythm == 1) || (rhythm == 3)) {
-		ev->velocity = 0;
+		ev->velocity = OPL_DEFVOL_PERC;
 	} else {
-		ev->velocity = OPL_GET_VOLUME(chipIndex, oplChannel);
+		unsigned int curVol = 0x3F &
+			this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)];
+		ev->velocity = log_volume_to_lin_velocity(63 - curVol, 63);
 	}
 	track->push_back(te);
 	return;
