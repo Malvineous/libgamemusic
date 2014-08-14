@@ -74,8 +74,12 @@ void Playback::setSong(ConstMusicPtr music)
 	this->order = 0;
 	if (music->patternOrder.size() == 0) {
 		this->pattern = 0;
+		std::cerr << "Warning: Song has no pattern order numbers!" << std::endl;
 	} else {
 		this->pattern = music->patternOrder.at(0);
+	}
+	if (music->ticksPerTrack == 0) {
+		std::cerr << "Warning: Song's ticksPerTrack is zero!" << std::endl;
 	}
 	this->row = 0;
 	this->frame = 0;
