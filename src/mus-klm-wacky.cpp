@@ -63,6 +63,7 @@ class EventConverter_KLM: virtual public EventHandler
 		stream::output_sptr output;          ///< Where to write KLM file
 		unsigned long lastDelay;             ///< Tick value from previous event
 		uint8_t patchMap[KLM_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
+		uint8_t volMap[KLM_CHANNEL_COUNT];   ///< Volume set on each channel
 		bool atStart;                        ///< At time=0?
 
 		/// Write out the current delay, if there is one (this->lastDelay != 0)
@@ -98,7 +99,6 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 {
 	stream::pos lenFile = input->size();
 
-	input->seekg(0, stream::end);
 	uint16_t offMusic;
 	input->seekg(3, stream::start);
 	input >> u16le(offMusic);
@@ -127,7 +127,7 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 
 		// Upper two bits of base register 0xC0 are not used
 		// TESTED BY: mus_klm_wacky_isinstance_c08
-		if (instrument[10] & 0xC0) return MusicType::DefinitelyNo;
+//		if (instrument[10] & 0xC0) return MusicType::DefinitelyNo;
 
 		// If we're here, no invalid bits were set
 		// TESTED BY: mus_klm_wacky_isinstance_c09
@@ -145,17 +145,22 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 		lenFile--;
 		switch (code & 0xF0) {
 			case 0x00: lenEvent = 0; break;
-			case 0x10: lenEvent = 2; break;
+			case 0x10:
+				if (code < 0x17) lenEvent = 2;
+				else lenEvent = 0;
+				break;
 			case 0x20: lenEvent = 1; break;
 			case 0x30: lenEvent = 1; break;
 			case 0x40: lenEvent = 0; break;
 			case 0xF0:
 				switch (code) {
 					case 0xFD: lenEvent = 1; break;
+					case 0xFE: lenEvent = 2; break;
 					case 0xFF: lenEvent = 0; break;
 					default:
 						// Invalid 0xF0 event type
 						// TESTED BY: mus_klm_wacky_isinstance_c03
+						std::cout << "c\n";
 						return MusicType::DefinitelyNo;
 				}
 				break;
