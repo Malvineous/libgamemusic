@@ -220,6 +220,12 @@ void Playback::nextFrame()
 						return; // don't update this->pattern
 					}
 				}
+				if (this->music->patternOrder.size() <= this->order) {
+					// order points past end of patterns
+					this->end = true;
+					this->frame = 0;
+					return;
+				}
 				this->pattern = this->music->patternOrder[this->order];
 			}
 		}
