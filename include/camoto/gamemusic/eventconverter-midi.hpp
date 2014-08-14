@@ -2,7 +2,7 @@
  * @file   eventconverter-midi.hpp
  * @brief  EventConverter implementation that produces MIDI events from Events.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -77,14 +77,29 @@ struct MIDIFlags {
 		/// Disable pitchbends.
 		IntegerNotesOnly = 8,
 
-		/// Only play notes when there is a MIDI patch available.
+		/// Use the instrument index instead of the MIDI program number.
 		/**
-		 * The live player uses this to mute any notes that don't have MIDI patches
-		 * (since they will probably have OPL or some other patch instead) but the
-		 * CMF player can't use this because it needs MIDI notes when there are no
-		 * MIDI patches (only OPL ones) available.
+		 * Normally an instrument will be MIDI, OPL or PCM, and the MIDI instrument
+		 * will include which MIDI Program Number to use.  For example for a song
+		 * with only one instrument that is a violin will have a single instrument,
+		 * its index will be 0, and it will be of type MIDI with a program number of
+		 * 40 (since 40 is a MIDI violin).
+		 *
+		 * Normally the program number is used, so when instrument #0 is used, a
+		 * MIDI patch change event will be issued setting the channel to patch #40.
+		 * However if UsePatchIndex is specified, then the instrument number will be
+		 * used instead, so instrument #0 will cause a patch change to patch #0,
+		 * regardless of whether the patch is OPL, MIDI or PCM.
+		 *
+		 * This flag is currently not implemented when reading MIDI data.
+		 *
+		 * This is useful for formats like CMF which use MIDI patch change events
+		 * but which don't use MIDI instruments.
 		 */
-		MIDIPatchesOnly = 16,
+		UsePatchIndex = 16,
+
+		/// Set to embed the tempo as a meta (0xFF) event in the MIDI stream
+		EmbedTempo = 32,
 	};
 };
 
@@ -182,8 +197,13 @@ class MIDIEventCallback
 		 * @param usPerTick
 		 *   New tempo, in number of microseconds per tick.
 		 */
-		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick) = 0;
+		virtual void midiSetTempo(uint32_t delay, const Tempo& tempo) = 0;
 
+		/// End of a track has been reached.
+		virtual void endOfTrack() = 0;
+
+		/// End of a pattern has been reached.
+		virtual void endOfPattern() = 0;
 };
 
 /// Convert MIDI note number into milliHertz.
@@ -226,13 +246,52 @@ void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *ben
  */
 class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 {
+	public:
+		/// Prepare for event conversion.
+		/**
+		 * @param cb
+		 *   Callback which will handle all the MIDI events generated.
+		 *
+		 * @param music
+		 *   Song to be converted.
+		 *
+		 * @param midiFlags
+		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
+		 *   data is unusual in some way.
+		 */
+		EventConverter_MIDI(MIDIEventCallback *cb, ConstMusicPtr music,
+			unsigned int midiFlags);
+
+		virtual ~EventConverter_MIDI();
+
+		/// Prepare to start from the first event.
+		/**
+		 * This function must be called before re-sending an old event, otherwise
+		 * the resulting negative delay will cause an extremely long pause.
+		 */
+		void rewind();
+
+		// EventHandler functions
+		virtual void endOfTrack(unsigned long delay);
+		virtual void endOfPattern(unsigned long delay);
+		virtual void handleAllEvents(EventHandler::EventOrder eventOrder);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const TempoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOnEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOffEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const EffectEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const ConfigurationEvent *ev);
+
 	protected:
 		MIDIEventCallback *cb;             ///< Callback to handle MIDI events
-		const PatchBankPtr patches;        ///< List of instruments
+		ConstMusicPtr music;               ///< Song being converted
 		unsigned int midiFlags;            ///< Flags supplied in constructor
-		unsigned long lastTick;            ///< Time of last event
-		unsigned long ticksPerQuarterNote; ///< Required for tempo calculation
 		tempo_t usPerTick;                 ///< Current song tempo
+		unsigned long cachedDelay;         ///< Number of ticks before next event
 
 		bool deepTremolo;   ///< MIDI controller 0x63 bit 0
 		bool deepVibrato;   ///< MIDI controller 0x63 bit 1
@@ -249,71 +308,13 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 
 		/// List of notes currently being played on each channel
 		uint8_t activeNote[MAX_CHANNELS];
+		static const uint8_t ACTIVE_NOTE_NONE = 0xFF;
 
 		/// List of notes currently being played on each channel
 		uint8_t channelMap[MAX_CHANNELS];
 
 		/// Time the last event was played on this channel
 		unsigned long lastEvent[MIDI_CHANNELS];
-
-	public:
-		unsigned long first_usPerTick;           ///< Initial song tempo
-
-		/// Prepare for event conversion.
-		/**
-		 * @param cb
-		 *   Callback which will handle all the MIDI events generated.
-		 *
-		 * @param patches
-		 *   Optional MIDI patchback if the output data will be processed by
-		 *   a General MIDI device.  Set to a null pointer if GM is not
-		 *   required (e.g. CMF file with OPL instruments.)  This is needed to
-		 *   ensure MIDI percussion instruments end up on channel 10.
-		 *
-		 * @param midiFlags
-		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
-		 *   data is unusual in some way.
-		 *
-		 * @param ticksPerQuarterNote
-		 *   Number of MIDI ticks per quarter-note.  This controls how many notes appear
-		 *   in each notation bar, among other things.  It has no effect on playback
-		 *   speed.
-		 */
-		EventConverter_MIDI(MIDIEventCallback *cb, const PatchBankPtr patches,
-			unsigned int midiFlags, unsigned long ticksPerQuarterNote);
-
-		virtual ~EventConverter_MIDI();
-
-		/// Prepare to start from the first event.
-		/**
-		 * This function must be called before re-sending an old event, otherwise
-		 * the resulting negative delay will cause an extremely long pause.
-		 */
-		void rewind();
-
-		// EventHandler functions
-		virtual void handleEvent(const TempoEvent *ev);
-		virtual void handleEvent(const NoteOnEvent *ev);
-		virtual void handleEvent(const NoteOffEvent *ev);
-		virtual void handleEvent(const EffectEvent *ev);
-		virtual void handleEvent(const ConfigurationEvent *ev);
-
-	protected:
-
-		/// Get the current mapping of the input channel to a MIDI channel.
-		/**
-		 * @param channel
-		 *   Input channel number.
-		 *
-		 * @param numMIDIchans
-		 *   Number of MIDI channels to use.  Normally will be MIDI_CHANNELS (i.e.
-		 *   16) but the CMF handler sets it to 11 so notes will never be mapped
-		 *   onto the percussive channels by this function.
-		 *
-		 * @return MIDI channel number (between 0 and 15 inclusive.)
-		 */
-		uint8_t getMIDIchannel(unsigned int channel, unsigned int numMIDIchans);
-
 };
 
 } // namespace gamemusic

@@ -30,12 +30,14 @@
 using namespace camoto;
 namespace gm = camoto::gamemusic;
 
-struct midi_fixture: public default_sample {
-
+struct test_midi: public test_main
+{
 	stream::string_sptr base;
 	gm::MusicPtr music;
+	gm::PatternPtr pattern;
+	gm::TrackPtr track1, track2;
 
-	midi_fixture()
+	test_midi()
 		:	base(new stream::string())
 	{
 	}
@@ -46,14 +48,34 @@ struct midi_fixture: public default_sample {
 		this->base->seekg(0, stream::start);
 
 		stream::input_sptr s = this->base;
-		this->music = midiDecode(s, gm::MIDIFlags::Default,
-			gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE, gm::MIDI_DEF_uS_PER_QUARTER_NOTE);
+
+		gm::Tempo initialTempo;
+		initialTempo.ticksPerQuarterNote(gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE);
+		initialTempo.usPerQuarterNote(gm::MIDI_DEF_uS_PER_QUARTER_NOTE);
+
+		this->music = midiDecode(s, gm::MIDIFlags::Default, initialTempo);
 	}
 
 	void init_write()
 	{
 		this->music.reset(new gm::Music());
-		this->music->events.reset(new gm::EventVector());
+		this->pattern.reset(new gm::Pattern);
+		this->music->patterns.push_back(this->pattern);
+		this->music->patternOrder.push_back(0);
+
+		gm::TrackInfo ti;
+		ti.channelType = gm::TrackInfo::MIDIChannel;
+		ti.channelIndex = 0;
+		this->music->trackInfo.push_back(ti);
+
+		ti.channelType = gm::TrackInfo::MIDIChannel;
+		ti.channelIndex = 1;
+		this->music->trackInfo.push_back(ti);
+
+		this->track1.reset(new gm::Track);
+		this->track2.reset(new gm::Track);
+		this->pattern->push_back(this->track1);
+		this->pattern->push_back(this->track2);
 
 		gm::PatchBankPtr pb(new gm::PatchBank());
 		pb->reserve(1);
@@ -68,14 +90,15 @@ struct midi_fixture: public default_sample {
 	{
 		gm::tempo_t usPerTick;
 		stream::output_sptr s = this->base;
-		midiEncode(s, gm::MIDIFlags::Default, this->music, &usPerTick, NULL);
+		midiEncode(s, this->music, gm::MIDIFlags::Default, NULL,
+			gm::EventHandler::Order_Row_Track, NULL);
 
-		return this->default_sample::is_equal(strExpected, this->base->str());
+		return this->test_main::is_equal(strExpected, this->base->str());
 	}
 
 };
 
-BOOST_FIXTURE_TEST_SUITE(midi, midi_fixture)
+BOOST_FIXTURE_TEST_SUITE(midi, test_midi)
 
 BOOST_AUTO_TEST_CASE(noteToFreq)
 {
@@ -119,17 +142,21 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 {
 	BOOST_TEST_MESSAGE("Testing interpretation of pitchbend event");
 
-	this->init_read(makeString("\x00\x90\x45\x7f" "\x00\xe0\x00\x38"));
+	this->init_read(STRING_WITH_NULLS("\x00\x90\x45\x7f" "\x00\xe0\x00\x38"));
+
+	gm::PatternPtr pattern = this->music->patterns[0];
+	gm::TrackPtr track = pattern->at(0);
 
 	// Make sure enough events were generated
-	BOOST_REQUIRE_GT(this->music->events->size(), 2);
-	gm::EventPtr ev = this->music->events->at(2); // 0=tempo,1=note on,2=pitchbend
+	BOOST_REQUIRE_EQUAL(track->size(), 2);
+	gm::TrackEvent& te = track->at(1); // 0=note on,1=pitchbend
 
-	gm::PitchbendEvent *pevTyped = dynamic_cast<gm::PitchbendEvent *>(ev.get());
+	gm::EffectEvent *pevTyped = dynamic_cast<gm::EffectEvent *>(te.event.get());
 	BOOST_REQUIRE_MESSAGE(pevTyped, createString(
-		"Pitchbend event was wrongly interpreted as " << ev->getContent()));
+		"Pitchbend event was wrongly interpreted as " << te.event->getContent()));
 
-	BOOST_REQUIRE_CLOSE(pevTyped->milliHertz / 1000.0, 433.700, 0.01);
+	BOOST_REQUIRE_EQUAL(pevTyped->type, gm::EffectEvent::Pitchbend);
+	BOOST_REQUIRE_CLOSE(pevTyped->data / 1000.0, 433.700, 0.01);
 }
 
 BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
@@ -138,23 +165,28 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 
 	this->init_write();
 
-	gm::NoteOnEvent *pevNote = new gm::NoteOnEvent();
-	gm::EventPtr ev(pevNote);
-	pevNote->absTime = 0;
-	pevNote->channel = 1;
-	pevNote->milliHertz = 440000;
-	pevNote->instrument = 0;
-	this->music->events->push_back(ev);
-
-	gm::PitchbendEvent *pevTyped = new gm::PitchbendEvent();
-	ev.reset(pevTyped);
-	pevTyped->absTime = 10;
-	pevTyped->channel = 1;
-	pevTyped->milliHertz = 433700;
-	this->music->events->push_back(ev);
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
+		te.event.reset(ev);
+		ev->milliHertz = 440000;
+		ev->instrument = 0;
+		this->track1->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 10;
+		gm::EffectEvent *ev = new gm::EffectEvent();
+		te.event.reset(ev);
+		ev->type = gm::EffectEvent::Pitchbend;
+		ev->data = 433700;
+		this->track1->push_back(te);
+	}
+	this->music->ticksPerTrack = 10;
 
 	BOOST_CHECK_MESSAGE(
-		is_equal(makeString(
+		is_equal(STRING_WITH_NULLS(
 			"\x00\xc0\x14"        // set instrument
 			"\x00\x90\x45\x7f"    // note on
 			"\x0a\xe0\x00\x38"    // pitchbend
@@ -162,7 +194,6 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 		)),
 		"Error generating pitchbend event"
 	);
-
 }
 
 BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
@@ -171,51 +202,58 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 
 	this->init_write();
 
-	gm::NoteOnEvent *pevNote = new gm::NoteOnEvent();
-	gm::EventPtr ev(pevNote);
-	pevNote->absTime = 0;
-	pevNote->channel = 1;
-	pevNote->milliHertz = 440000;
-	pevNote->instrument = 0;
-	this->music->events->push_back(ev);
-
-	gm::NoteOffEvent *pevNoteOff = new gm::NoteOffEvent();
-	ev.reset(pevNoteOff);
-	pevNoteOff->absTime = 0;
-	pevNoteOff->channel = 1;
-	this->music->events->push_back(ev);
-
-	pevNote = new gm::NoteOnEvent();
-	ev.reset(pevNote);
-	pevNote->absTime = 0;
-	pevNote->channel = 2;
-	pevNote->milliHertz = 440000;
-	pevNote->instrument = 0;
-	this->music->events->push_back(ev);
-
-	pevNoteOff = new gm::NoteOffEvent();
-	ev.reset(pevNoteOff);
-	pevNoteOff->absTime = 0;
-	pevNoteOff->channel = 2;
-	this->music->events->push_back(ev);
-
-	pevNote = new gm::NoteOnEvent();
-	ev.reset(pevNote);
-	pevNote->absTime = 0;
-	pevNote->channel = 2;
-	pevNote->milliHertz = 440000;
-	pevNote->instrument = 0;
-	this->music->events->push_back(ev);
-
-	pevNoteOff = new gm::NoteOffEvent();
-	ev.reset(pevNoteOff);
-	pevNoteOff->absTime = 0;
-	pevNoteOff->channel = 2;
-	this->music->events->push_back(ev);
-
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
+		te.event.reset(ev);
+		ev->milliHertz = 440000;
+		ev->instrument = 0;
+		this->track1->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
+		te.event.reset(ev);
+		this->track1->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
+		te.event.reset(ev);
+		ev->milliHertz = 440000;
+		ev->instrument = 0;
+		this->track2->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
+		te.event.reset(ev);
+		this->track2->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
+		te.event.reset(ev);
+		ev->milliHertz = 440000;
+		ev->instrument = 0;
+		this->track2->push_back(te);
+	}
+	{
+		gm::TrackEvent te;
+		te.delay = 0;
+		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
+		te.event.reset(ev);
+		this->track2->push_back(te);
+	}
+	this->music->ticksPerTrack = 10;
 
 	BOOST_CHECK_MESSAGE(
-		is_equal(makeString(
+		is_equal(STRING_WITH_NULLS(
 			"\x00\xc0\x14"        // set instrument
 			"\x00\x90\x45\x7f"    // note on
 			"\x00\x45\x00"        // note off
@@ -228,7 +266,6 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 		)),
 		"Error generating of running status events"
 	);
-
 }
 
 BOOST_AUTO_TEST_SUITE_END()

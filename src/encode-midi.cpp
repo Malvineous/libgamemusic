@@ -2,7 +2,7 @@
  * @file   encode-midi.cpp
  * @brief  Function to convert a Music instance into raw MIDI data.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,18 +29,23 @@ using namespace camoto::gamemusic;
 class MIDIEncoder: virtual private MIDIEventCallback
 {
 	public:
-		bool channelsUsed[MIDI_CHANNELS];  ///< Was this MIDI channel used?
-
 		/// Set encoding parameters.
 		/**
 		 * @param output
 		 *   Data stream to write the MIDI data to.
 		 *
+		 * @param music
+		 *   The instance to convert to MIDI data.
+		 *
 		 * @param midiFlags
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
+		 *
+		 * @param cbEndOfTrack
+		 *   Callback notified at the end of each track.  May be NULL.
 		 */
-		MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags);
+		MIDIEncoder(stream::output_sptr& output, ConstMusicPtr music,
+			unsigned int midiFlags, boost::function<void()> cbEndOfTrack);
 
 		/// Destructor.
 		~MIDIEncoder();
@@ -50,12 +55,10 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * This function will write SMF (standard MIDI format) data to the output
 		 * stream, until all the events in the song have been written out.
 		 *
-		 * @param music
-		 *   The instance to convert to MIDI data.
-		 *
-		 * @return The initial number of microseconds per MIDI tick.  This could
-		 *   have been changed during the song, but this is the initial value to
-		 *   write into any file headers.
+		 * @param channelsUsed
+		 *   Pointer to an array of MIDI_CHANNELS entries of bool.  On return, this
+		 *   each entry is set to true where that MIDI channel was used.  Set to
+		 *   NULL if this information is not required.
 		 *
 		 * @throw stream:error
 		 *   If the output data could not be written for some reason.
@@ -64,31 +67,29 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   If the song could not be converted to MIDI for some reason (e.g. it has
 		 *   sampled instruments.)
 		 */
-		unsigned long encode(const MusicPtr music);
+		void encode(EventHandler::EventOrder eventOrder, bool *channelsUsed);
 
 		// MIDIEventCallback
-
 		virtual void midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 			uint8_t velocity);
-
 		virtual void midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
 			uint8_t velocity);
-
 		virtual void midiPatchChange(uint32_t delay, uint8_t channel,
 			uint8_t instrument);
-
 		virtual void midiController(uint32_t delay, uint8_t channel,
 			uint8_t controller, uint8_t value);
-
 		virtual void midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend);
-
-		virtual void midiSetTempo(uint32_t delay, tempo_t usPerTick);
+		virtual void midiSetTempo(uint32_t delay, const Tempo& tempo);
+		virtual void endOfTrack();
+		virtual void endOfPattern();
 
 	protected:
 		stream::output_sptr output;        ///< Target stream for SMF MIDI data
+		ConstMusicPtr music;               ///< Song to convert
 		unsigned int midiFlags;            ///< One or more MIDIFlags
+		boost::function<void()> cbEndOfTrack;///< Callback used at end of each track
 		uint8_t lastCommand;               ///< Last MIDI command written
-		unsigned long ticksPerQuarterNote; ///< Timing information
+		bool channelsUsed[MIDI_CHANNELS];  ///< Which MIDI channels had events on them
 
 		/// Write an integer in variable-length MIDI notation.
 		/**
@@ -118,24 +119,22 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		void writeCommand(uint32_t delay, uint8_t cmd);
 };
 
-
-void camoto::gamemusic::midiEncode(stream::output_sptr& output,
-	unsigned int midiFlags, MusicPtr music, tempo_t *usPerTick, bool *channelsUsed)
+void camoto::gamemusic::midiEncode(stream::output_sptr& output, ConstMusicPtr music,
+	unsigned int midiFlags, bool *channelsUsed,
+	EventHandler::EventOrder eventOrder, boost::function<void()> cbEndOfTrack)
 {
-	MIDIEncoder encoder(output, midiFlags);
-	*usPerTick = encoder.encode(music);
-	if (*usPerTick == 0) {
-		*usPerTick = MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE;
-	}
-	if (channelsUsed) memcpy(channelsUsed, encoder.channelsUsed, sizeof(encoder.channelsUsed));
+	MIDIEncoder encoder(output, music, midiFlags, cbEndOfTrack);
+	encoder.encode(eventOrder, channelsUsed);
 	return;
 }
 
-MIDIEncoder::MIDIEncoder(stream::output_sptr& output, unsigned int midiFlags)
+MIDIEncoder::MIDIEncoder(stream::output_sptr& output, ConstMusicPtr music,
+	unsigned int midiFlags, boost::function<void()> cbEndOfTrack)
 	:	output(output),
+		music(music),
 		midiFlags(midiFlags),
-		lastCommand(0xFF),
-		ticksPerQuarterNote(0)
+		cbEndOfTrack(cbEndOfTrack),
+		lastCommand(0xFF)
 {
 	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
 		this->channelsUsed[i] = false;
@@ -146,19 +145,25 @@ MIDIEncoder::~MIDIEncoder()
 {
 }
 
-unsigned long MIDIEncoder::encode(const MusicPtr music)
+void MIDIEncoder::encode(EventHandler::EventOrder eventOrder, bool *channelsUsed)
 {
-	// Remember this for this->midiSetTempo()
-	this->ticksPerQuarterNote = music->ticksPerQuarterNote;
+	EventConverter_MIDI conv(this, this->music, this->midiFlags);
 
-	EventConverter_MIDI conv(this, music->patches, this->midiFlags,
-		music->ticksPerQuarterNote);
-	conv.handleAllEvents(music->events);
+	if (this->midiFlags & MIDIFlags::EmbedTempo) {
+		TempoEvent tempoEvent;
+		tempoEvent.tempo = this->music->initialTempo;
+		conv.handleEvent(0, 0, 0, &tempoEvent);
+	}
+
+	conv.handleAllEvents(eventOrder);
 
 	// Write an end-of-song event
 	this->output->write("\x00\xFF\x2F\x00", 4);
 
-	return conv.first_usPerTick;
+	if (channelsUsed) {
+		memcpy(channelsUsed, this->channelsUsed, sizeof(this->channelsUsed));
+	}
+	return;
 }
 
 void MIDIEncoder::writeMIDINumber(uint32_t value)
@@ -260,9 +265,9 @@ void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 	return;
 }
 
-void MIDIEncoder::midiSetTempo(uint32_t delay, tempo_t usPerTick)
+void MIDIEncoder::midiSetTempo(uint32_t delay, const Tempo& tempo)
 {
-	unsigned long usPerQuarterNote = usPerTick * this->ticksPerQuarterNote;
+	unsigned long usPerQuarterNote = tempo.usPerQuarterNote();
 	this->writeMIDINumber(delay);
 	this->output->write("\xFF\x51\x03", 3);
 	this->output
@@ -270,5 +275,17 @@ void MIDIEncoder::midiSetTempo(uint32_t delay, tempo_t usPerTick)
 		<< u8(usPerQuarterNote >> 8)
 		<< u8(usPerQuarterNote & 0xFF)
 	;
+	return;
+}
+
+void MIDIEncoder::endOfTrack()
+{
+	if (this->cbEndOfTrack) this->cbEndOfTrack();
+	return;
+}
+
+void MIDIEncoder::endOfPattern()
+{
+	//if (this->cbEndOfPattern) this->cbEndOfPattern();
 	return;
 }
