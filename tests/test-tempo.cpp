@@ -135,4 +135,20 @@ BOOST_AUTO_TEST_CASE(module)
 	BOOST_CHECK_EQUAL(t.module_speed(), 6);
 }
 
+BOOST_AUTO_TEST_CASE(usqn)
+{
+	BOOST_TEST_MESSAGE("Testing tempo in usPerQuarterNote");
+
+	gm::Tempo t;
+	t.ticksPerBeat = 400;
+	t.ticksPerQuarterNote(100);
+
+	t.usPerQuarterNote(200000);
+	BOOST_CHECK_EQUAL(round(t.usPerTick), 2000);
+	BOOST_CHECK_EQUAL(t.bpm(), 300);
+	BOOST_CHECK_EQUAL(t.module_tempo(), 7500);
+	BOOST_CHECK_EQUAL(t.hertz(), 500);
+	BOOST_CHECK_EQUAL(t.msPerTick(), 2);
+}
+
 BOOST_AUTO_TEST_SUITE_END()

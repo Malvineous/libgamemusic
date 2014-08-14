@@ -125,6 +125,25 @@ struct Tempo
 		return this->beatLength / 4 * this->ticksPerBeat;
 	}
 
+	/// Set the tempo by the number of ticks in a quarter note.
+	/**
+	 * @pre \ref beatLength is valid and correct for the song.
+	 *
+	 * @post \ref ticksPerBeat is changed to achieve the desired number of ticks
+	 *   per quarter note.
+	 */
+	inline void usPerQuarterNote(unsigned int us)
+	{
+		this->usPerTick = us / this->ticksPerQuarterNote();
+		return;
+	}
+
+	/// Get the tempo as the number of ticks in a quarter note.
+	inline unsigned int usPerQuarterNote(void) const
+	{
+		return this->usPerTick * this->ticksPerQuarterNote();
+	}
+
 	/// Set the tempo as a .mod speed and tempo value.
 	/**
 	 * @post \ref usPerTick is changed to achieve the desired number of ticks per
