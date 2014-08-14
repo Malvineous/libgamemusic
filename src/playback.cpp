@@ -57,7 +57,7 @@ Playback::Playback(unsigned long sampleRate, unsigned int channels,
 		outputBits(bits),
 		loopCount(1),
 		frameBufferPos(0),
-		pcm(sampleRate),
+		pcm(sampleRate, this),
 		opl(sampleRate)
 {
 }
@@ -79,14 +79,8 @@ void Playback::setSong(ConstMusicPtr music)
 	}
 	this->row = 0;
 	this->frame = 0;
-	this->tempo = music->initialTempo;
 
-	unsigned long samplesPerTick = this->outputSampleRate
-		* music->initialTempo.usPerTick / Tempo::US_PER_SEC;
-	this->framesPerRow = music->initialTempo.framesPerTick;
-	this->samplesPerFrame = samplesPerTick / this->framesPerRow;
-	this->frameBuffer.assign(this->samplesPerFrame * 2, 0); // *2 == stereo
-	this->frameBufferPos = this->frameBuffer.size();
+	this->tempoChange(music->initialTempo);
 
 	this->opl.reset();
 	this->oplConverter.reset(new EventConverter_OPL(this, &this->music->trackInfo,
@@ -188,7 +182,7 @@ void Playback::nextFrame()
 	this->frameBufferPos = 0;
 	if (!this->end) {
 		this->frame++;
-		if (this->frame >= this->framesPerRow) {
+		if (this->frame >= this->tempo.framesPerTick) {
 			this->frame = 0;
 			this->row++;
 			if (this->row >= this->music->ticksPerTrack) {
@@ -222,10 +216,15 @@ void Playback::writeNextPair(const OPLEvent *oplEvent)
 	return;
 }
 
-void Playback::writeTempoChange(const Tempo& tempo)
+void Playback::tempoChange(const Tempo& tempo)
 {
 	// Make this thread-safe
 	this->tempo = tempo;
-	std::cerr << "TODO: update tempo variables, realloc arrays" << std::endl;
+
+	unsigned long samplesPerTick = this->outputSampleRate
+		* tempo.usPerTick / Tempo::US_PER_SEC;
+	this->samplesPerFrame = samplesPerTick / tempo.framesPerTick;
+	this->frameBuffer.assign(this->samplesPerFrame * 2, 0); // *2 == stereo
+	this->frameBufferPos = this->frameBuffer.size();
 	return;
 }

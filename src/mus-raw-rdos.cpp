@@ -158,17 +158,17 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(tempo_t usPerTick)
+		virtual void tempoChange(const Tempo& tempo)
 		{
 			// Write a tempo change if the tempo has indeed changed
-			if (usPerTick != this->lastTempo) {
-				uint16_t clock = uS_TO_RAWCLOCK(usPerTick);
+			if (tempo.usPerTick != this->lastTempo) {
+				uint16_t clock = uS_TO_RAWCLOCK(tempo.usPerTick);
 				this->output
 					<< u8(0x00) // clock change
 					<< u8(0x02) // control data
 					<< u16le(clock)
 				;
-				this->lastTempo = usPerTick;
+				this->lastTempo = tempo.usPerTick;
 
 				// Remember it, so we can go back later and write it into the header
 				if (this->first) this->firstClock = clock;

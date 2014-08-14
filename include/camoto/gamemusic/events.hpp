@@ -416,6 +416,18 @@ class DLL_EXPORT EventHandler
 
 };
 
+/// Callback used for passing tempo-change events outside the EventHandler.
+class DLL_EXPORT TempoCallback
+{
+	public:
+		/// Change the length of the delay values for subsequent events.
+		/**
+		 * @param tempo
+		 *   New tempo to use.
+		 */
+		virtual void tempoChange(const Tempo& tempo) = 0;
+};
+
 } // namespace gamemusic
 } // namespace camoto
 

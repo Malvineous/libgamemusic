@@ -67,7 +67,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 
 		// OPLWriterCallback
 		virtual void writeNextPair(const OPLEvent *oplEvent);
-		virtual void writeTempoChange(const Tempo& tempo);
+		virtual void tempoChange(const Tempo& tempo);
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to use when writing OPL data
@@ -117,7 +117,7 @@ void OPLEncoder::encode(const MusicPtr music)
 	}
 	EventConverter_OPL conv(this, &music->trackInfo, oplPatches,
 		this->fnumConversion, this->flags);
-	this->writeTempoChange(music->initialTempo);
+	this->tempoChange(this->music->initialTempo);
 	try {
 		conv.handleAllEvents(EventHandler::Order_Row_Track, music);
 	} catch (const bad_patch& e) {
@@ -173,10 +173,10 @@ void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 	return;
 }
 
-void OPLEncoder::writeTempoChange(const Tempo& tempo)
+void OPLEncoder::tempoChange(const Tempo& tempo)
 {
 	if (tempo.usPerTick != this->lastTempo) {
-		this->cb->writeTempoChange(tempo);
+		this->cb->tempoChange(tempo);
 		this->lastTempo = tempo.usPerTick;
 	}
 	return;

@@ -233,10 +233,10 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			return;
 		}
 
-		virtual void writeTempoChange(tempo_t usPerTick)
+		virtual void tempoChange(const Tempo& tempo)
 		{
 			assert(usPerTick != 0);
-			this->usPerTick = usPerTick;
+			this->usPerTick = tempo.usPerTick;
 			return;
 		}
 

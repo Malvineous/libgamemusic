@@ -33,8 +33,9 @@ using namespace camoto::gamemusic;
 /// Middle-C frequency in milliHertz
 #define FREQ_MIDDLE_C 261625
 
-SynthPCM::SynthPCM(unsigned long sampleRate)
-	:	outputSampleRate(sampleRate)
+SynthPCM::SynthPCM(unsigned long sampleRate, SynthPCMCallback *cb)
+	:	outputSampleRate(sampleRate),
+		cb(cb)
 {
 }
 
@@ -115,6 +116,7 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 void SynthPCM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
+	this->cb->tempoChange(ev->tempo);
 	return;
 }
 

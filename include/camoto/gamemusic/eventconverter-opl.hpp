@@ -76,7 +76,8 @@ const float OPL_FNUM_ROUND = 50000.0;    ///< Alternate value used occasionally
 #define MAX_OPL_CHANNELS 18
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
-class OPLWriterCallback {
+class DLL_EXPORT OPLWriterCallback: virtual public TempoCallback
+{
 	public:
 		/// Handle the next OPL register/value pair.
 		/**
@@ -90,13 +91,6 @@ class OPLWriterCallback {
 		 *   bytes are actioned, i.e. as if DelayIsPreData is always set.
 		 */
 		virtual void writeNextPair(const OPLEvent *oplEvent) = 0;
-
-		/// Change the length of the delay values for subsequent events.
-		/**
-		 * @param usPerTick
-		 *   Number of microseconds per tick.
-		 */
-		virtual void writeTempoChange(const Tempo& tempo) = 0;
 };
 
 /// Immediate conversion between incoming events and OPL data.

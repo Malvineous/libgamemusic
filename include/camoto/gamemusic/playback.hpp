@@ -30,7 +30,8 @@ namespace camoto {
 namespace gamemusic {
 
 /// Helper class to assist with song playback.
-class Playback: public OPLWriterCallback
+class Playback: virtual public OPLWriterCallback,
+                virtual public SynthPCMCallback
 {
 	public:
 		struct Position
@@ -85,9 +86,11 @@ class Playback: public OPLWriterCallback
 		 */
 		void generate(int16_t *output, unsigned long samples, Position *pos);
 
+		// TempoCallback
+		virtual void tempoChange(const Tempo& tempo);
+
 		// OPLWriterCallback
 		virtual void writeNextPair(const OPLEvent *oplEvent);
-		virtual void writeTempoChange(const Tempo& tempo);
 
 	protected:
 		unsigned long outputSampleRate; ///< in Hertz, e.g. 44100
@@ -108,7 +111,6 @@ class Playback: public OPLWriterCallback
 		unsigned int frame;
 		Tempo tempo;
 
-		unsigned int framesPerRow; ///< Current speed
 		unsigned int samplesPerFrame;
 
 		/// A single frame of audio, copied into the output buffer as needed

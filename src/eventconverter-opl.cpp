@@ -100,7 +100,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	assert(ev->tempo.usPerTick > 0);
-	this->cb->writeTempoChange(ev->tempo);
+	this->cb->tempoChange(ev->tempo);
 	return;
 }
 

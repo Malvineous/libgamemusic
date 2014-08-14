@@ -29,6 +29,12 @@
 namespace camoto {
 namespace gamemusic {
 
+class DLL_EXPORT SynthPCMCallback: virtual public TempoCallback
+{
+};
+
+typedef boost::shared_ptr<SynthPCMCallback> SynthPCMCallbackPtr;
+
 /// Interface to an PCM/FM/Adlib synthesizer.
 class DLL_EXPORT SynthPCM: virtual public EventHandler
 {
@@ -38,9 +44,15 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		 * @param sampleRate
 		 *   Sample rate to generate output audio, in Hertz.
 		 *
+		 * @param cb
+		 *   Callback to process events requiring external changes, like tempo
+		 *   changes.  The caller must keep the object alive while the SynthPCM
+		 *   object is alive.  This is done so that a class can pass 'this' as
+		 *   the callback parameter.
+		 *
 		 * @post Object is in initial state, no need to call reset().
 		 */
-		SynthPCM(unsigned long sampleRate);
+		SynthPCM(unsigned long sampleRate, SynthPCMCallback *cb);
 		~SynthPCM();
 
 		/// Reset the synthesiser to initial state.
@@ -69,9 +81,10 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
-		unsigned long outputSampleRate; ///< in Hertz, e.g. 44100
+		unsigned long outputSampleRate;   ///< in Hertz, e.g. 44100
+		SynthPCMCallback *cb;             ///< Callback for tempo change events
 		const TrackInfoVector *trackInfo; ///< Track to channel assignments
-		PatchBankPtr patches; ///< Patch bank
+		PatchBankPtr patches;             ///< Patch bank
 
 		struct Sample {
 			unsigned long track;      ///< Source track (for finding note again)
