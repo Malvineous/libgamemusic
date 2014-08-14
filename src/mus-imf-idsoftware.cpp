@@ -2,7 +2,7 @@
  * @file   mus-imf-idsoftware.cpp
  * @brief  Support for id Software's .IMF format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,6 +145,14 @@ MusicType_IMF_Common::MusicType_IMF_Common(unsigned int imfType, unsigned int sp
 {
 }
 
+unsigned long MusicType_IMF_Common::getCaps() const
+{
+	return
+		InstOPL
+		| HasEvents
+	;
+}
+
 MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) const
 {
 	stream::pos len = input->size();
@@ -261,7 +269,7 @@ void MusicType_IMF_Common::write(stream::output_sptr output, SuppData& suppData,
 	// IMF files need the first channel free, as games use this for Adlib SFX.
 	flags |= ReserveFirstChan;
 
-	oplEncode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, flags, music);
+	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
 
 	if (this->imfType == 1) {
 		// Update the placeholder we wrote in the constructor with the file size

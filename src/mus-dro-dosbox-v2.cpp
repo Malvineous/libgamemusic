@@ -2,7 +2,7 @@
  * @file   mus-dro-dosbox-v2.cpp
  * @brief  Support for the second version of the DOSBox Raw OPL .DRO format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -135,7 +135,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_DRO_v2()
-			:	usPerTick(DRO_CLOCK),
+			:	usPerTick(Tempo::US_PER_SEC / DRO_CLOCK),  // 1ms per tick
 				buffer(new stream::string()),
 				oplType(DRO2_OPLTYPE_OPL2),
 				codemapLength(0),
@@ -270,7 +270,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		}
 
 	protected:
-		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
+		double usPerTick;           ///< Latest microseconds per tick value (tempo)
 		stream::string_sptr buffer; ///< Buffer to store output data until finish()
 		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 		uint8_t codemapLength;      ///< Number of valid entries in codemap array
@@ -295,6 +295,14 @@ std::vector<std::string> MusicType_DRO_v2::getFileExtensions() const
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("dro");
 	return vcExtensions;
+}
+
+unsigned long MusicType_DRO_v2::getCaps() const
+{
+	return
+		InstOPL
+		| HasEvents
+	;
 }
 
 MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) const
@@ -338,7 +346,7 @@ void MusicType_DRO_v2::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_DRO_v2 cb;
-	oplEncode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, flags, music);
+	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
 	cb.write(output);
 
 	// Write out any metadata

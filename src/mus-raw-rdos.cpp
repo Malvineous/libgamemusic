@@ -2,7 +2,7 @@
  * @file   mus-raw-rdos.cpp
  * @brief  Support for Rdos RAW OPL capture (.raw) format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -203,6 +203,13 @@ std::vector<std::string> MusicType_RAW::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_RAW::getCaps() const
+{
+	return
+		InstOPL
+		| HasEvents
+	;
+}
 
 MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
 {
@@ -247,7 +254,7 @@ void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_RAW cb(output);
-	oplEncode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, flags, music);
+	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
 
 	// Write out the EOF marker
 	output << u8(0xFF) << u8(0xFF);

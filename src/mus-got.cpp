@@ -2,7 +2,7 @@
  * @file   mus-got.cpp
  * @brief  Support for God of Thunder song files.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -149,6 +149,14 @@ std::vector<std::string> MusicType_GOT::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_GOT::getCaps() const
+{
+	return
+		InstOPL
+		| HasEvents
+	;
+}
+
 MusicType::Certainty MusicType_GOT::isInstance(stream::input_sptr input) const
 {
 	stream::len len = input->size();
@@ -198,7 +206,7 @@ void MusicType_GOT::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_GOT cb(output, 120);
-	oplEncode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, flags, music);
+	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
 
 	// Zero event (3 bytes) plus final 0x00
 	output << nullPadded("", 4);

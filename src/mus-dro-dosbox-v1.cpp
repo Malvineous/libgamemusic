@@ -2,7 +2,7 @@
  * @file   mus-dro-dosbox-v1.cpp
  * @brief  Support for the first version of the DOSBox Raw OPL .DRO format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -224,6 +224,14 @@ std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_DRO_v1::getCaps() const
+{
+	return
+		InstOPL
+		| HasEvents
+	;
+}
+
 MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr input) const
 {
 	// Make sure the signature matches
@@ -272,7 +280,7 @@ void MusicType_DRO_v1::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_DRO_v1 cb(output);
-	oplEncode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, flags, music);
+	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
 
 	// Update the placeholder we wrote in the constructor with the file size
 	int size = output->tellp();

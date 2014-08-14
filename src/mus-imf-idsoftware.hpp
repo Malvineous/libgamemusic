@@ -2,7 +2,7 @@
  * @file   mus-imf-idsoftware.hpp
  * @brief  Support for id Software's .IMF format.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,17 +31,13 @@ class MusicType_IMF_Common: virtual public MusicType
 {
 	public:
 		MusicType_IMF_Common(unsigned int imfType, unsigned int speed);
-
+		virtual unsigned long getCaps() const;
 		virtual Certainty isInstance(stream::input_sptr input) const;
-
 		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const;
-
 		virtual void write(stream::output_sptr output, SuppData& suppData,
 			MusicPtr music, unsigned int flags) const;
-
 		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
 			const std::string& filenameMusic) const;
-
 		virtual Metadata::MetadataTypes getMetadataList() const;
 
 	protected:
@@ -56,9 +52,7 @@ class MusicType_IMF_Type0: virtual public MusicType_IMF_Common
 		MusicType_IMF_Type0();
 
 		virtual std::string getCode() const;
-
 		virtual std::string getFriendlyName() const;
-
 		virtual std::vector<std::string> getFileExtensions() const;
 };
 
@@ -69,9 +63,7 @@ class MusicType_IMF_Type1: virtual public MusicType_IMF_Common
 		MusicType_IMF_Type1();
 
 		virtual std::string getCode() const;
-
 		virtual std::string getFriendlyName() const;
-
 		virtual std::vector<std::string> getFileExtensions() const;
 };
 
@@ -82,9 +74,7 @@ class MusicType_WLF_Type0: virtual public MusicType_IMF_Common
 		MusicType_WLF_Type0();
 
 		virtual std::string getCode() const;
-
 		virtual std::string getFriendlyName() const;
-
 		virtual std::vector<std::string> getFileExtensions() const;
 };
 
@@ -95,9 +85,7 @@ class MusicType_WLF_Type1: virtual public MusicType_IMF_Common
 		MusicType_WLF_Type1();
 
 		virtual std::string getCode() const;
-
 		virtual std::string getFriendlyName() const;
-
 		virtual std::vector<std::string> getFileExtensions() const;
 };
 
@@ -108,9 +96,7 @@ class MusicType_IMF_Duke2: virtual public MusicType_IMF_Common
 		MusicType_IMF_Duke2();
 
 		virtual std::string getCode() const;
-
 		virtual std::string getFriendlyName() const;
-
 		virtual std::vector<std::string> getFileExtensions() const;
 };
 
