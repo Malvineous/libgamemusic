@@ -5,7 +5,7 @@
  * This file format is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/IBK_Format
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -56,6 +56,13 @@ std::vector<std::string> MusicType_IBK::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_IBK::getCaps() const
+{
+	return
+		InstOPL
+	;
+}
+
 MusicType::Certainty MusicType_IBK::isInstance(stream::input_sptr psMusic) const
 {
 	// Make sure the signature matches
@@ -77,8 +84,6 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 {
 	MusicPtr music(new Music());
 	music->patches.reset(new PatchBank());
-	music->events.reset(new EventVector());
-	music->ticksPerQuarterNote = 0;
 
 	uint8_t names[IBK_INST_COUNT * IBK_NAME_LEN];
 	input->seekg(4 + IBK_INST_COUNT * IBK_INST_LEN, stream::start);
