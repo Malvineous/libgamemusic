@@ -91,6 +91,21 @@ void Playback::setSong(ConstMusicPtr music)
 		OPL_FNUM_DEFAULT, Default));
 
 	this->pcm.reset(&this->music->trackInfo, this->music->patches);
+
+	// Turn rhythm mode on or off depending on the presence of rhythm tracks
+	bool rhythm = false;
+	for (TrackInfoVector::const_iterator
+		i = music->trackInfo.begin(); i != music->trackInfo.end(); i++
+	) {
+		if (i->channelType == TrackInfo::OPLPercChannel) {
+			rhythm = true;
+			break;
+		}
+	}
+	ConfigurationEvent rhythmEvent;
+	rhythmEvent.configType = ConfigurationEvent::EnableRhythm;
+	rhythmEvent.value = rhythm ? 1 : 0;
+	this->oplConverter->handleEvent(0, 0, 0, &rhythmEvent);
 	return;
 }
 
