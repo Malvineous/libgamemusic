@@ -31,6 +31,7 @@
 #include "mus-cdfm-zone66-gus.hpp"
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
+#include "mus-mus-vinyl.hpp"
 #include "mus-ibk-instrumentbank.hpp"
 #include "mus-s3m-screamtracker.hpp"
 
@@ -71,6 +72,7 @@ ActualManager::ActualManager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Duke2()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_MUS_Vinyl()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_S3M()));
 }
