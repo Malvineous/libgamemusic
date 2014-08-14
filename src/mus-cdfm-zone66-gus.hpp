@@ -22,6 +22,7 @@
 #define _CAMOTO_GAMEMUSIC_MUS_CDFM_GUS_ZONE66_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
+#include <camoto/gamemusic/opl-util.hpp>
 
 namespace camoto {
 namespace gamemusic {
@@ -47,7 +48,7 @@ class MusicType_CDFM_GUS: virtual public MusicType
 /// Convert a volume value (0..15) to a libgamemusic linear velocity (0..255)
 inline unsigned int z66_volume_to_velocity(unsigned int vol)
 {
-	return 255 * (1-log((float)16-vol) / log(16.0));
+	return log_volume_to_lin_velocity(vol, 15);
 }
 
 } // namespace gamemusic

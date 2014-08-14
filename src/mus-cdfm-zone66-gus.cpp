@@ -28,7 +28,11 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define CDFM_CHANNEL_COUNT 16 ///< Number of storage channels in CDFM file
+/// Number of storage channels in CDFM file
+#define CDFM_CHANNEL_COUNT 16
+
+/// Fixed module tempo/bpm for all songs (but module 'speed' can change)
+#define CDFM_TEMPO 144
 
 std::string MusicType_CDFM_GUS::getCode() const
 {
@@ -139,20 +143,19 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 
 	input->seekg(0, stream::start);
 
-	uint8_t speed, orderCount, patternCount, numDigInst;
+	uint8_t unknown, orderCount, patternCount, numDigInst;
 	uint8_t loopDest;
 	uint32_t sampleOffset;
 	input
 		>> u32le(sampleOffset)
-		>> u8(speed)
+		>> u8(unknown)
 		>> u8(orderCount)
 		>> u8(patternCount)
 		>> u8(numDigInst)
 		>> u8(loopDest)
 	;
 	music->loopDest = loopDest;
-	//music->initialTempo.bpm(speed*1.2);
-	music->initialTempo.usPerTick = 1100 * speed; /// @todo: Fix
+	music->initialTempo.module(6, CDFM_TEMPO);
 
 	for (unsigned int i = 0; i < orderCount; i++) {
 		uint8_t order;
@@ -177,20 +180,18 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 	patches->reserve(numDigInst);
 
 	for (int i = 0; i < numDigInst; i++) {
-		uint8_t loop;
-		uint32_t unknown2;
+		uint8_t flags;
 		PCMPatchPtr patch(new PCMPatch());
 		input
-			>> u8(loop)
+			>> u8(flags)
 			>> u16le(patch->sampleRate)
-			>> u32le(unknown2)
+			>> u32le(patch->loopStart)
 			>> u32le(patch->lenData)
 		;
 		patch->defaultVolume = 255;
 		patch->bitDepth = 8;
-		patch->numChannels = 1;
-		if (loop == 2) {
-			patch->loopStart = 0;
+		patch->numChannels = (flags & 1) ? 2 : 1;
+		if (flags & 2) {
 			patch->loopEnd = patch->lenData;
 		} else {
 			patch->loopStart = 0;
@@ -232,7 +233,7 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 
 				case 0x00: { // command
 					switch (cmd) {
-						case 0x00: { // long delay  @todo: Confirm if this is correct
+						case 0x00: { // delay
 							uint8_t data;
 							input >> u8(data);
 							for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
@@ -240,12 +241,16 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 							}
 							break;
 						}
-						case 0x01: { // short delay  @todo: Confirm if this is correct
+						case 0x01: { // speed change
 							uint8_t data;
 							input >> u8(data);
-							for (unsigned int i = 0; i < CDFM_CHANNEL_COUNT; i++) {
-								lastDelay[i] += 0;
-							}
+							TrackEvent te;
+							te.delay = lastDelay[channel];
+							lastDelay[channel] = 0;
+							TempoEvent *ev = new TempoEvent();
+							te.event.reset(ev);
+							ev->tempo.module(data, CDFM_TEMPO);
+							track->push_back(te);
 							break;
 						}
 						case 0x02:

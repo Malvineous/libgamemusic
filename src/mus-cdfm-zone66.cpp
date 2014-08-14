@@ -29,7 +29,11 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define CDFM_CHANNEL_COUNT (4+9) ///< Number of storage channels in CDFM file
+/// Number of storage channels in CDFM file
+#define CDFM_CHANNEL_COUNT (4+9)
+
+/// Fixed module tempo/bpm for all songs (but module 'speed' can change)
+#define CDFM_TEMPO 144
 
 std::string MusicType_CDFM::getCode() const
 {
@@ -157,7 +161,7 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 		>> u32le(sampleOffset)
 	;
 	music->loopDest = loopDest;
-	music->initialTempo.module(speed, 144);
+	music->initialTempo.module(speed, CDFM_TEMPO);
 
 	for (unsigned int i = 0; i < orderCount; i++) {
 		uint8_t order;
