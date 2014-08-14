@@ -113,6 +113,16 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 	return;
 }
 
+void SynthPCM::endOfTrack(unsigned long delay)
+{
+	return;
+}
+
+void SynthPCM::endOfPattern(unsigned long delay)
+{
+	return;
+}
+
 void SynthPCM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {

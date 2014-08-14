@@ -354,7 +354,7 @@ class DLL_EXPORT EventHandler
 		 * @param delay
 		 *   Number of ticks worth of silence until the end of the track.
 		 */
-		virtual void endOfTrack(unsigned long delay);
+		virtual void endOfTrack(unsigned long delay) = 0;
 
 		/// Callback when handleAllEvents() has reached the end of a pattern.
 		/**
@@ -366,7 +366,7 @@ class DLL_EXPORT EventHandler
 		 * @param delay
 		 *   Number of ticks worth of silence until the end of the pattern.
 		 */
-		virtual void endOfPattern(unsigned long delay);
+		virtual void endOfPattern(unsigned long delay) = 0;
 
 		/// The tempo is being changed.
 		/**
@@ -403,17 +403,19 @@ class DLL_EXPORT EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev) = 0;
 
-		void handleAllEvents(EventOrder eventOrder, const MusicPtr& music);
+		void handleAllEvents(EventOrder eventOrder, ConstMusicPtr music);
 
 	private:
 		/// Merge the given pattern into a single track and process that.
-		void processPattern_mergeTracks(const MusicPtr& music,
+		void processPattern_mergeTracks(const ConstMusicPtr& music,
 			const PatternPtr& pattern, unsigned int patternIndex);
 
 		/// Process the events in each track, track by track.
-		void processPattern_separateTracks(const MusicPtr& music,
+		void processPattern_separateTracks(const ConstMusicPtr& music,
 			const PatternPtr& pattern, unsigned int patternIndex);
 
+	protected:
+		ConstMusicPtr music;  ///< Song being converted
 };
 
 /// Callback used for passing tempo-change events outside the EventHandler.

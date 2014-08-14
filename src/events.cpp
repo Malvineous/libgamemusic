@@ -137,16 +137,6 @@ void ConfigurationEvent::processEvent(unsigned long delay, unsigned int trackInd
 	return;
 }
 
-void EventHandler::endOfTrack(unsigned long delay)
-{
-	return;
-}
-
-void EventHandler::endOfPattern(unsigned long delay)
-{
-	return;
-}
-
 struct MergedEvent
 {
 	MergedEvent(const EventPtr& ev)
@@ -164,7 +154,7 @@ bool trackMergeByTime(const MergedEvent& a, const MergedEvent& b)
 }
 
 void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
-	const MusicPtr& music)
+	ConstMusicPtr music)
 {
 	switch (eventOrder) {
 		case Pattern_Row_Track: {
@@ -220,7 +210,7 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 	return;
 }
 
-void EventHandler::processPattern_mergeTracks(const MusicPtr& music,
+void EventHandler::processPattern_mergeTracks(const ConstMusicPtr& music,
 	const PatternPtr& pattern, unsigned int patternIndex)
 {
 	// Merge all the tracks together into one big track, with all events in
@@ -268,7 +258,7 @@ void EventHandler::processPattern_mergeTracks(const MusicPtr& music,
 	return;
 }
 
-void EventHandler::processPattern_separateTracks(const MusicPtr& music,
+void EventHandler::processPattern_separateTracks(const ConstMusicPtr& music,
 	const PatternPtr& pattern, unsigned int patternIndex)
 {
 	unsigned int trackIndex = 0;

@@ -69,6 +69,8 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		void mix(int16_t *output, unsigned long len);
 
 		// EventHandler overrides
+		virtual void endOfTrack(unsigned long delay);
+		virtual void endOfPattern(unsigned long delay);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
