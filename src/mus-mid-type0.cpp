@@ -44,6 +44,14 @@ std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
 	return vcExtensions;
 }
 
+unsigned long MusicType_MID_Type0::getCaps() const
+{
+	return
+		InstMIDI
+		| HasEvents
+	;
+}
+
 MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic) const
 {
 	// Make sure the signature matches
@@ -90,8 +98,10 @@ MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData)
 
 	/// @todo Clip input to lenData
 
-	MusicPtr music = midiDecode(input, MIDIFlags::Default, ticksPerQuarter,
-		MIDI_DEF_uS_PER_QUARTER_NOTE);
+	Tempo initialTempo;
+	initialTempo.ticksPerQuarterNote(ticksPerQuarter);
+	initialTempo.usPerQuarterNote(MIDI_DEF_uS_PER_QUARTER_NOTE);
+	MusicPtr music = midiDecode(input, MIDIFlags::Default, initialTempo);
 
 	return music;
 }
@@ -111,14 +121,19 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 		"\x00\x00\x00\x00" // MTrk block length placeholder
 	, 22);
 
-	tempo_t usPerTick;
-	midiEncode(output, MIDIFlags::Default, music, &usPerTick, NULL);
+	unsigned long midiFlags = MIDIFlags::EmbedTempo;
+	if (flags & MusicType::IntegerNotesOnly) {
+		midiFlags |= MIDIFlags::IntegerNotesOnly;
+	}
+
+	midiEncode(output, music, midiFlags, NULL, EventHandler::Order_Row_Track,
+		NULL);
 
 	uint32_t mtrkLen = output->tellp();
 	mtrkLen -= 22; // 22 == header from start()
 
 	output->seekp(12, stream::start);
-	output << u16be(music->ticksPerQuarterNote);
+	output << u16be(music->initialTempo.ticksPerQuarterNote());
 
 	output->seekp(18, stream::start);
 	output << u32be(mtrkLen);
