@@ -69,6 +69,7 @@ class EventConverter_S3M: virtual public EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::len> lenPattern; ///< Offset of each pattern
+		Tempo lastTempo; ///< Last tempo set by song (or initial tempo)
 
 	protected:
 		stream::output_sptr output;  ///< Where to write data
@@ -441,6 +442,7 @@ C-4 note
 		input >> u16le(lenPackedRow);
 		unsigned int lenRead = 2;
 
+		Tempo lastTempo = music->initialTempo;
 		unsigned int lastInstrument = 0;
 		for (unsigned int row = 0; row < S3M_ROWS_PER_PATTERN; row++) {
 			uint8_t what;
@@ -469,8 +471,6 @@ C-4 note
 						>> u8(info)
 					;
 					lenRead += 2;
-					std::cout << "S3M: Disregarding unimplemented effect " << std::hex
-						<< (int)command << std::dec << "\n";
 				}
 				if (what & 0x20) {
 					if (note == 255) {
@@ -518,6 +518,38 @@ C-4 note
 					else ev->data = (volume << 2) | (volume >> 4);
 					track->push_back(te);
 					lastRow[channel] = row;
+				}
+				if (what & 0x80) {
+					switch (command) {
+						case 0x01: { // A: set speed
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							TempoEvent *ev = new TempoEvent();
+							te.event.reset(ev);
+							ev->tempo = lastTempo;
+							ev->tempo.module(info, lastTempo.module_tempo());
+							track->push_back(te);
+							lastRow[channel] = row;
+							lastTempo = ev->tempo;
+							break;
+						}
+						case 0x20: { // T: set tempo
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							TempoEvent *ev = new TempoEvent();
+							te.event.reset(ev);
+							ev->tempo = lastTempo;
+							ev->tempo.module(lastTempo.module_speed(), info);
+							track->push_back(te);
+							lastRow[channel] = row;
+							lastTempo = ev->tempo;
+							break;
+						}
+						default:
+							std::cout << "S3M: Disregarding unimplemented effect " << std::hex
+								<< (int)command << std::dec << "\n";
+							break;
+					}
 				}
 			} while (what);
 		}
@@ -798,6 +830,7 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 
 	// Write out the patterns
 	EventConverter_S3M conv(output, music->patches);
+	conv.lastTempo = music->initialTempo;
 	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
 
 	// Set final filesize to this
@@ -873,16 +906,25 @@ void EventConverter_S3M::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const TempoEvent *ev)
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->writeDelay(delay);
-	std::cerr << "S3M: TODO - handle tempo event\n";
+	if (this->lastTempo.module_speed() != ev->tempo.module_speed()) {
+		*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // effect
+		*this->patBufPos++ = 0x01; // A: set speed
+		*this->patBufPos++ = ev->tempo.module_speed(); // new speed
+	} else if (this->lastTempo.module_tempo() != ev->tempo.module_tempo()) {
+		*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // effect
+		*this->patBufPos++ = 0x20; // T: set tempo
+		*this->patBufPos++ = ev->tempo.module_tempo(); // new tempo
+	}
+	this->lastTempo = ev->tempo;
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const NoteOnEvent *ev)
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	this->writeDelay(delay);
 	uint8_t midiNote;
@@ -909,8 +951,8 @@ void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackInde
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const NoteOffEvent *ev)
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->writeDelay(delay);
 	*this->patBufPos++ = (trackIndex & 0x1F) | 0x20; // event with note+inst
@@ -920,8 +962,8 @@ void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackInde
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const EffectEvent *ev)
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
@@ -937,8 +979,9 @@ void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackInde
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, const ConfigurationEvent *ev)
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex,
+	const ConfigurationEvent *ev)
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
