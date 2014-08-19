@@ -1058,9 +1058,15 @@ int main(int iArgC, char *cArgV[])
 					case 'R':
 						ti.channelType = gm::TrackInfo::OPLPercChannel;
 						break;
+					case '-':
+						ti.channelType = gm::TrackInfo::UnusedChannel;
+						break;
+					case '*':
+						ti.channelType = gm::TrackInfo::AnyChannel;
+						break;
 					default:
 						std::cerr << "Unknown channel type \"" << strChan[0]
-							<< "\" passed to -m/--remap-tracks.  Must be one of M, P, O, R"
+							<< "\" passed to -m/--remap-tracks.  Must be one of M, P, O, R, -, *"
 							<< std::endl;
 						return RET_BADARGS;
 				}
