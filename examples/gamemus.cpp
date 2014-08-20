@@ -975,6 +975,9 @@ int main(int iArgC, char *cArgV[])
 				}
 
 			} else if (i->string_key.compare("list-instruments") == 0) {
+				std::cout << "Loop return: ";
+				if (pMusic->loopDest == -1) std::cout << "[no loop]\n";
+				else std::cout << "Order " << pMusic->loopDest << "\n";
 				std::cout << "Channel map:\n";
 				unsigned int j = 0;
 				for (std::vector<gm::TrackInfo>::const_iterator
