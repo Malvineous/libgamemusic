@@ -246,8 +246,10 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 	;
 	assert(input->tellg() == patternStart);
 
+	unsigned int patternIndex = 0;
+	const unsigned int& firstOrder = music->patternOrder[0];
 	for (std::vector<uint16_t>::const_iterator
-		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++
+		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++, patternIndex++
 	) {
 		// Jump to the start of the pattern data
 		input->seekg(patternStart + *i, stream::start);
@@ -255,7 +257,11 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 		for (unsigned int track = 0; track < CDFM_CHANNEL_COUNT; track++) {
 			TrackPtr t(new Track());
 			pattern->push_back(t);
-			if (firstPattern) {
+			if (
+				firstPattern
+				&& (patternIndex == firstOrder)
+				&& (track == 4)
+			) { // first OPL track in pattern being played first in order list
 				// Set standard settings
 				{
 					TrackEvent te;

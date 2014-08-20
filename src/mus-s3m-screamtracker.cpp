@@ -138,7 +138,6 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 {
 	MusicPtr music(new Music());
 	music->patches.reset(new PatchBank());
-	//music->events.reset(new EventVector());
 
 	// All S3M files seem to be in 4/4 time?
 	music->initialTempo.beatsPerBar = 4;
@@ -183,6 +182,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 		throw stream::error(createString("S3M: Unknown type " << (int)type));
 	}
 
+	int adlibTrack1 = -1; // index of first OPL track
 	uint8_t channelSettings[S3M_CHANNEL_COUNT];
 	input->read(channelSettings, S3M_CHANNEL_COUNT);
 	for (unsigned int i = 0; i < S3M_CHANNEL_COUNT; i++) {
@@ -195,6 +195,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 		} else if (c < 25) {
 			t.channelType = TrackInfo::OPLChannel;
 			t.channelIndex = c - 16;
+			if (adlibTrack1 < 0) adlibTrack1 = i;
 		} else if (c < 30) {
 			t.channelType = TrackInfo::OPLPercChannel;
 			/// @todo: Make sure this correctly maps to the right perc instrument
@@ -381,8 +382,10 @@ C-4 note
 	// Read the song data
 	music->patterns.reserve(patternCount);
 	bool firstPattern = true;
+	unsigned int patternIndex = 0;
+	const unsigned int& firstOrder = music->patternOrder[0];
 	for (std::vector<uint16_t>::const_iterator
-		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++
+		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++, patternIndex++
 	) {
 		// Jump to the parapointer destination
 		input->seekg(*i << 4, stream::start);
@@ -390,7 +393,11 @@ C-4 note
 		for (unsigned int track = 0; track < S3M_CHANNEL_COUNT; track++) {
 			TrackPtr t(new Track());
 			pattern->push_back(t);
-			if (firstPattern) {
+			if (
+				firstPattern
+				&& (patternIndex == firstOrder)
+				&& ((signed int)track == adlibTrack1)
+			) { // first OPL track in pattern being played first in order list
 				// Set standard settings
 				{
 					TrackEvent te;
