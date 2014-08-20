@@ -881,11 +881,8 @@ EventConverter_S3M::~EventConverter_S3M()
 
 void EventConverter_S3M::endOfPattern(unsigned long delay)
 {
-	this->curRow += delay;
-	while (this->curRow < 64) {
-		*this->patBufPos++ = 0x00; // finish row
-		this->curRow++;
-	}
+	this->writeDelay(delay);
+	this->writeDelay(64 - this->curRow);
 	if (this->curRow != 64) {
 		throw stream::error(createString("Tried to write an S3M pattern with "
 			<< this->curRow << " rows, but this format only supports 64 rows per "
