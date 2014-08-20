@@ -56,6 +56,7 @@ class EventConverter_S3M: virtual public EventHandler
 		virtual ~EventConverter_S3M();
 
 		// EventHandler overrides
+		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
@@ -877,6 +878,11 @@ EventConverter_S3M::EventConverter_S3M(stream::output_sptr output,
 
 EventConverter_S3M::~EventConverter_S3M()
 {
+}
+
+void EventConverter_S3M::endOfTrack(unsigned long delay)
+{
+	return;
 }
 
 void EventConverter_S3M::endOfPattern(unsigned long delay)
