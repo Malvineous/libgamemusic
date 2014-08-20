@@ -589,6 +589,9 @@ int main(int iArgC, char *cArgV[])
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
 
+		("rename-instrument,e", po::value<std::string>(),
+			"rename the given instrument (-e index=name)")
+
 		("play,p",
 			"play the song on the default audio device")
 
@@ -626,7 +629,7 @@ int main(int iArgC, char *cArgV[])
 			"force OPL2 mode (11 channels) with -c")
 		("loop,l", po::value<int>(),
 			"repeat the song (-1=loop forever, 0=no loop, 1=loop once) [default=1]")
-		("extra-time,e", po::value<int>(),
+		("extra-time,x", po::value<int>(),
 			"number of seconds to linger after song finishes to allow notes to fade "
 			"out [default=2]")
 	;
@@ -756,7 +759,7 @@ int main(int iArgC, char *cArgV[])
 			) {
 				userLoop = strtod(i->value[0].c_str(), NULL);
 			} else if (
-				(i->string_key.compare("e") == 0) ||
+				(i->string_key.compare("x") == 0) ||
 				(i->string_key.compare("extra-time") == 0)
 			) {
 				extraTime = strtod(i->value[0].c_str(), NULL);
@@ -1076,6 +1079,37 @@ int main(int iArgC, char *cArgV[])
 				ti.channelIndex = strtod(strChan.c_str() + 1, NULL);
 				std::cout << "Mapping track " << track << " to "
 					<< getTrackChannelText(ti) << "\n";
+
+			} else if (i->string_key.compare("rename-instrument") == 0) {
+				if (i->value[0].empty()) {
+					std::cerr << "-e/--rename-instrument requires a parameter" << std::endl;
+					return RET_BADARGS;
+				}
+				std::string strIndex, strName;
+				if (!split(i->value[0], '=', &strIndex, &strName)) {
+					std::cerr << "-e/--rename-instrument must be of the form index=name, "
+						"e.g. 0=test (to rename the first instrument to 'test')"
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				unsigned int index = strtod(strIndex.c_str(), NULL);
+				gm::PatchPtr inst;
+				if (pMusic->patches->size() < index) {
+					std::cerr << "-e/--rename-instrument parameter out of range: cannot "
+						"change instrument " << index << " as the last instrument in the "
+						"song is number " << pMusic->patches->size() - 1 << std::endl;
+					return RET_BADARGS;
+				} else if (pMusic->patches->size() == index) {
+					// Trying to add one past the end, append a blank
+					inst.reset(new gm::Patch);
+					pMusic->patches->push_back(inst);
+					std::cout << "Added empty";
+				} else {
+					inst = pMusic->patches->at(index);
+					std::cout << "Renamed";
+				}
+				inst->name = strName;
+				std::cout << " instrument " << index << " as " << inst->name << "\n";
 
 			} else if (i->string_key.compare("newinst") == 0) {
 				if (i->value[0].empty()) {
