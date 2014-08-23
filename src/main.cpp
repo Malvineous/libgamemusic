@@ -29,6 +29,7 @@
 #include "mus-cmf-creativelabs.hpp"
 #include "mus-cdfm-zone66.hpp"
 #include "mus-cdfm-zone66-gus.hpp"
+#include "mus-dsm-dsik.hpp"
 #include "mus-klm-wacky.hpp"
 #include "mus-mid-type0.hpp"
 #include "mus-mus-vinyl.hpp"
@@ -63,6 +64,7 @@ ActualManager::ActualManager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM_GUS()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_DSM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_GOT()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IBK()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type0()));
