@@ -42,22 +42,30 @@ void test_main::printNice(boost::test_tools::predicate_result& res,
 {
 	const char *c = CLR_YELLOW;
 	res.message() << c;
-	for (int i = 0; i < s.length(); i++) {
+	std::ostringstream text;
+	unsigned int len = s.length();
+	for (unsigned int i = 0; i < len; i++) {
 		if ((i > 0) && (i % this->outputWidth == 0)) {
+			res.message() << ' ' << text.str();
 //res.message() << "\" \\";
 			res.message() << CLR_NORM << "\n" << std::setfill('0') << std::setw(3)
 				<< std::hex << i << ": " << c;
+			text.str("");
+			text.seekp(0, std::ios::beg);
+			text << c;
 //res.message() << "\"";
 		}
 		if ((i >= diff.length()) || (s[i] != diff[i])) {
 			if (c != CLR_MAG) {
 				c = CLR_MAG;
-				res.message() << CLR_MAG;
+				res.message() << c;
+				text << c;
 			}
 		} else {
 			if (c != CLR_YELLOW) {
 				c = CLR_YELLOW;
-				res.message() << CLR_YELLOW;
+				res.message() << c;
+				text << c;
 			}
 		}
 /*
@@ -65,12 +73,21 @@ void test_main::printNice(boost::test_tools::predicate_result& res,
 			<< std::hex << (int)((uint8_t)s[i]);
 /*/
 		if ((s[i] < 32) || (s[i] == 127)) {
-			res.message() << std::setfill('0') << std::setw(2)
-				<< std::hex << (int)((uint8_t)s[i]) << ' ';
+			text << '.';
 		} else {
-			res.message() << '_' << s[i] << ' ';
+			text << s[i];
 		}
+		res.message() << std::setfill('0') << std::setw(2)
+			<< std::hex << (int)((uint8_t)s[i]) << ' ';
 // */
+	}
+
+	// If the last row was only a partial one, pad it out and write the text side
+	if (len % this->outputWidth) {
+		for (int i = len % this->outputWidth; i < this->outputWidth; i++) {
+			res.message() << "   ";
+		}
+		res.message() << ' ' << text.str();
 	}
 	return;
 }
