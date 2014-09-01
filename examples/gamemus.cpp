@@ -54,9 +54,11 @@ using namespace camoto;
 #define RET_UNCOMMON_FAILURE   5
 
 /// @see libgamearchive/examples/gamearch.cpp
+/// find_last_of() changed to find_first_of() here so equal signs can be put
+/// into instrument names, e.g. for URLs
 bool split(const std::string& in, char delim, std::string *out1, std::string *out2)
 {
-	std::string::size_type iEqualPos = in.find_last_of(delim);
+	std::string::size_type iEqualPos = in.find_first_of(delim);
 	*out1 = in.substr(0, iEqualPos);
 	// Does the destination have a different filename?
 	bool bAltDest = iEqualPos != std::string::npos;
