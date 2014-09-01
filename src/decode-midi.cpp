@@ -59,7 +59,7 @@ class MIDIDecoder
 		 *   Number of microseconds in a quarter-note.  Default is 500,000
 		 *   (MIDI_DEF_uS_PER_QUARTER_NOTE).
 		 */
-		MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
+		MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
 			const Tempo& initialTempo);
 
 		virtual ~MIDIDecoder();
@@ -147,7 +147,7 @@ class MIDIDecoder
 			unsigned int midiChannel);
 };
 
-MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr& input,
+MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr input,
 	unsigned int flags, const Tempo& initialTempo)
 {
 	MIDIDecoder decoder(input, flags, initialTempo);
@@ -155,7 +155,7 @@ MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr& input,
 }
 
 
-MIDIDecoder::MIDIDecoder(stream::input_sptr& input, unsigned int midiFlags,
+MIDIDecoder::MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
 	const Tempo& initialTempo)
 	:	input(input),
 		totalDelay(0),
@@ -242,6 +242,10 @@ MusicPtr MIDIDecoder::decode()
 						// Record this note as inactive on the channel
 						this->noteOnTrack[track] = false;
 						track = -1; // ref to this->activeNotes
+					} else {
+						std::cout << "decode-midi: Got note-off for note that wasn't "
+							"playing (channel " << (int)midiChannel << " note " << (int)note
+							<< ")\n";
 					}
 					break;
 				}

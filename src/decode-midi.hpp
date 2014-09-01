@@ -56,7 +56,7 @@ namespace gamemusic {
  * @param usPerQuarterNote
  *   Number of microseconds in a quarter-note.  Defaults to 500,000.
  */
-MusicPtr midiDecode(stream::input_sptr& input, unsigned int flags,
+MusicPtr midiDecode(stream::input_sptr input, unsigned int flags,
 	const Tempo& initialTempo);
 
 } // namespace gamemusic
