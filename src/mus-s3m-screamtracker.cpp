@@ -263,12 +263,12 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 			}
 			case 1: {
 				PCMPatchPtr p(new PCMPatch());
-				uint32_t ppSample, len;
+				uint32_t ppSample;
 				uint8_t ppSampleHigh, volume, reserved, pack, flags;
 				input
 					>> u8(ppSampleHigh)
 					>> u16le(ppSample)
-					>> u32le(len)
+					>> u32le(p->lenData)
 					>> u32le(p->loopStart)
 					>> u32le(p->loopEnd)
 					>> u8(volume)
@@ -292,20 +292,18 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 				if (volume > 63) volume = 63;
 				p->defaultVolume = (volume << 2) | (volume >> 4); // 0-63 -> 0-255
 
-				/// @todo: Keep default volume and apply it to any events with no volume specified
 				input->seekg(12, stream::cur);
 				input >> nullPadded(p->name, 28);
 
 				// Read the PCM data
 				input->seekg(ppSample << 4, stream::start);
-				p->data.reset(new uint8_t[len]);
-				p->lenData = len;
-				input->read(p->data.get(), len);
+				p->data.reset(new uint8_t[p->lenData]);
+				input->read(p->data.get(), p->lenData);
 
 				// Convert from little-endian to host byte order if 16-bit
 				if (p->bitDepth == 16) {
 					int16_t *data = (int16_t *)p->data.get();
-					for (unsigned long i = 0; i < len / 2; i++) {
+					for (unsigned long i = 0; i < p->lenData / 2; i++) {
 						*data = le16toh(*data);
 						data++;
 					}
@@ -441,8 +439,10 @@ C-4 note
 		}
 
 		unsigned int lastRow[S3M_CHANNEL_COUNT];
+		unsigned int lastInstrument[S3M_CHANNEL_COUNT];
 		for (unsigned int r = 0; r < S3M_CHANNEL_COUNT; r++) {
 			lastRow[r] = 0;
+			lastInstrument[r] = 0;
 		}
 
 		// Skip length field
@@ -451,7 +451,6 @@ C-4 note
 		unsigned int lenRead = 2;
 
 		Tempo lastTempo = music->initialTempo;
-		unsigned int lastInstrument = 0;
 		for (unsigned int row = 0; row < S3M_ROWS_PER_PATTERN; row++) {
 			uint8_t what;
 			do {
@@ -497,10 +496,10 @@ C-4 note
 						NoteOnEvent *ev = new NoteOnEvent();
 						te.event.reset(ev);
 
-						if (instrument == 0) instrument = lastInstrument;
+						if (instrument == 0) instrument = lastInstrument[channel];
 						else {
 							instrument--;
-							lastInstrument = instrument;
+							lastInstrument[channel] = instrument;
 						}
 
 						ev->instrument = instrument;
