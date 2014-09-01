@@ -150,7 +150,6 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
 	bool diff = false;
 	int dm = OPLOFFSET_MOD(c), dc = OPLOFFSET_CAR(c);
 	if (isOpChanged(o, n, dm) || isOpChanged(o, n, dc) ||
-		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
 		(o[0xC0 | c] ^ n[0xC0 | c])
 	) {
 		std::cout << "Channel " << std::dec << c+1;
@@ -161,7 +160,10 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
 		printOp(n, dc);
 		std::cout << ' ' << std::hex << 0xC0 + c << '=' << std::setw(2) <<
 			(int)n[0xC0 | c] << "\n";
-
+	}
+	if (
+		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c])
+	) {
 		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
@@ -177,6 +179,9 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
 void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 {
 	assert(p < 5);
+	int bit = 1 << p;
+	bool newKeyOn = (!(o[0xBD] & bit)) && (n[0xBD] & bit);
+
 	int c;
 	bool bm, bc;
 	switch (p) {
@@ -190,7 +195,6 @@ void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 	if (
 		(bm && isOpChanged(o, n, OPLOFFSET_MOD(c))) ||
 		(bc && isOpChanged(o, n, OPLOFFSET_CAR(c))) ||
-		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
 		(o[0xC0 | c] ^ n[0xC0 | c])
 	) {
 		std::cout << "Perc " << percName(p);
@@ -206,7 +210,11 @@ void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 		} else std::cout << std::setfill(' ') << std::setw(30) << ' ' << std::setfill('0');
 		std::cout << 0xC0 + c << '=' << std::setw(2) <<
 			(int)n[0xC0 | c] << "\n";
-
+	}
+	if (
+		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
+		newKeyOn
+	) {
 		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
@@ -332,7 +340,7 @@ int main(void)
 							PRINT_DELAY;
 							std::cout << "Perc " << percName(p) << " off\n";
 						} else if (nextOplState[chip][0xBD] & bit) {
-							// This channel is playing
+							// This channel is playing, or is about to
 							diffPercState(oplState[chip], nextOplState[chip], p, chip);
 						}
 					}
