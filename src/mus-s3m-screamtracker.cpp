@@ -199,7 +199,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 		} else if (c < 30) {
 			t.channelType = TrackInfo::OPLPercChannel;
 			/// @todo: Make sure this correctly maps to the right perc instrument
-			t.channelIndex = c - 25;
+			t.channelIndex = 4 - (c - 25);
 		} else {
 			t.channelType = TrackInfo::UnusedChannel;
 			t.channelIndex = c - 30;
@@ -639,8 +639,7 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 				break;
 			case TrackInfo::OPLPercChannel:
 				assert(ti->channelIndex < 5);
-				/// @todo: Make sure this correctly maps to the right perc instrument
-				chanAlloc = 25 + ti->channelIndex;
+				chanAlloc = 25 + (4 - ti->channelIndex);
 				break;
 			case TrackInfo::MIDIChannel:
 				throw stream::error("S3M files cannot store MIDI instruments.");
