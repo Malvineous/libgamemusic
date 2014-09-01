@@ -159,9 +159,16 @@ void Playback::setLoopCount(unsigned int count)
 
 void Playback::seekByOrder(unsigned int destOrder)
 {
-	this->order = destOrder;
 	this->row = 0;
 	this->frame = 0;
+	this->order = destOrder;
+	if (this->music->patternOrder.size() <= this->order) {
+		// order points past end of patterns
+		this->end = true;
+		this->frame = 0;
+		return;
+	}
+	this->pattern = this->music->patternOrder[this->order];
 	return;
 }
 
