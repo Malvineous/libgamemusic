@@ -132,11 +132,11 @@ MusicType::Certainty MusicType_DSM::isInstance(stream::input_sptr input) const
 
 	// Invalid RIFF signature
 	// TESTED BY: mus_dsm_dsik_isinstance_c01
-	if (sig1.compare("RIFF") != 0) return MusicType::DefinitelyNo;
+	if (sig1.compare(FOURCC_RIFF) != 0) return MusicType::DefinitelyNo;
 
 	// Invalid DSMF signature
 	// TESTED BY: mus_dsm_dsik_isinstance_c02
-	if (sig2.compare("DSMF") != 0) return MusicType::DefinitelyNo;
+	if (sig2.compare(FOURCC_DSMF) != 0) return MusicType::DefinitelyNo;
 
 	// File truncated
 	// TESTED BY: mus_dsm_dsik_isinstance_c03
@@ -365,6 +365,19 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 					}
 					if (what & 0x10) {
 						switch (command) {
+							case 0x0c: { // volume change
+								// Volume change
+								TrackEvent te;
+								te.delay = row - lastRow[channel];
+								EffectEvent *ev = new EffectEvent();
+								te.event.reset(ev);
+								ev->type = EffectEvent::Volume;
+								if (info >= 64) ev->data = 255;
+								else ev->data = (info << 2) | (info >> 4);
+								track->push_back(te);
+								lastRow[channel] = row;
+								break;
+							}
 							case 0x0f: { // set speed
 								if (info == 0) break; // ignore
 								TrackEvent te;
