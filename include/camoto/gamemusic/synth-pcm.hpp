@@ -68,6 +68,22 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		 */
 		void mix(int16_t *output, unsigned long len);
 
+		/// Set a MIDI patch bank to use.
+		/**
+		 * If a patch bank is set that contains PCM instruments, then events on
+		 * MIDI channels will be played using the bank given here.  MIDI events
+		 * can be ignored again by setting an empty patch bank here.
+		 *
+		 * @param bankMIDI
+		 *   Patch bank to use.  An empty patch bank will mute any MIDI events.
+		 *   A supplied patch bank will mute any PCM events.
+		 *   The patch bank can contain different instrument types - only PCM
+		 *   instruments will be played.
+		 *   Entries 0 to 127 inclusive are for GM instruments, entries 128 to 255
+		 *   are for percussion (128=note 0, 129=note 1, etc.)
+		 */
+		void setBankMIDI(PatchBankPtr bankMIDI);
+
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
@@ -87,6 +103,7 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		SynthPCMCallback *cb;             ///< Callback for tempo change events
 		const TrackInfoVector *trackInfo; ///< Track to channel assignments
 		PatchBankPtr patches;             ///< Patch bank
+		PatchBankPtr bankMIDI;            ///< Optional patch bank for MIDI notes
 
 		struct Sample {
 			unsigned long track;      ///< Source track (for finding note again)

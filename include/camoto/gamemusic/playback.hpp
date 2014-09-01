@@ -30,8 +30,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Helper class to assist with song playback.
-class Playback: virtual public OPLWriterCallback,
-                virtual public SynthPCMCallback
+class Playback: virtual public SynthPCMCallback
 {
 	public:
 		struct Position
@@ -69,13 +68,69 @@ class Playback: virtual public OPLWriterCallback,
 			}
 		};
 
+		class OPLHandler: virtual public OPLWriterCallback
+		{
+			public:
+				OPLHandler(Playback *playback, bool midi);
+
+				// TempoCallback
+				virtual void tempoChange(const Tempo& tempo);
+
+				// OPLWriterCallback
+				virtual void writeNextPair(const OPLEvent *oplEvent);
+
+			protected:
+				Playback *playback;
+				bool midi;
+		};
+
 		Playback(unsigned long sampleRate, unsigned int channels,
 			unsigned int bits);
 		~Playback();
 
+		/// Set the MIDI patch bank to use for MIDI events.
+		/**
+		 * @param bankMIDI
+		 *   OPL or PCM patch bank to use.  Obviously this can't be a MIDI patch
+		 *   bank as the point is to translate the MIDI patches to something
+		 *   audible.
+		 */
+		void setBankMIDI(PatchBankPtr bankMIDI);
+
+		/// Set the song to play.
+		/**
+		 * This also resets playback to the start of the song.
+		 *
+		 * @param music
+		 *   The song to play.
+		 */
 		void setSong(ConstMusicPtr music);
+
+		/// Set the number of times the song should loop.
+		/**
+		 * @param count
+		 *   The number of times the song should be played.  1 means play once, 2
+		 *   means play twice (so loop once), and 0 means loop forever.
+		 */
 		void setLoopCount(unsigned int count);
+
+		/// Jump to a specific point in the song, specified by order number.
+		/**
+		 * @param destOrder
+		 *   The order to start playing from.  0 will jump back to the start of the
+		 *   song.  An order number that is out of range will immediately end the
+		 *   song, or jump back to the loop point if the song is set to loop.
+		 */
 		void seekByOrder(unsigned int destOrder);
+
+		/// Jump to a specific point in the song, specified in milliseconds.
+		/**
+		 * @param ms
+		 *   The new playback point, in milliseconds.  The actual playback point
+		 *   will always be at the start of a row, so the playback time may not
+		 *   be exactly at this number of milliseconds, but will be as close to
+		 *   it as possible.
+		 */
 		void seekByTime(unsigned long ms);
 
 		/// Synthesize and mix audio into the given buffer.
@@ -88,9 +143,6 @@ class Playback: virtual public OPLWriterCallback,
 
 		// TempoCallback
 		virtual void tempoChange(const Tempo& tempo);
-
-		// OPLWriterCallback
-		virtual void writeNextPair(const OPLEvent *oplEvent);
 
 	protected:
 		unsigned long outputSampleRate; ///< in Hertz, e.g. 44100
@@ -117,9 +169,15 @@ class Playback: virtual public OPLWriterCallback,
 		std::vector<int16_t> frameBuffer;
 		unsigned int frameBufferPos;
 
+		PatchBankPtr bankMIDI;            ///< Optional patch bank for MIDI notes
 		SynthPCM pcm;
+		SynthPCM pcmMIDI;
 		SynthOPL opl;
+		SynthOPL oplMIDI;
+		OPLHandler oplHandler;
+		OPLHandler oplHandlerMIDI;
 		boost::shared_ptr<EventConverter_OPL> oplConverter;
+		boost::shared_ptr<EventConverter_OPL> oplConvMIDI;
 
 		/// Populate frameBuffer with the next frame
 		void nextFrame();

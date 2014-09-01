@@ -50,6 +50,31 @@ bool Playback::Position::operator== (const Playback::Position& b)
 	;
 }
 
+
+Playback::OPLHandler::OPLHandler(Playback *playback, bool midi)
+	:	playback(playback),
+		midi(midi)
+{
+}
+
+void Playback::OPLHandler::writeNextPair(const OPLEvent *oplEvent)
+{
+	// Ignore the delay and write it immediately
+	if (this->midi) {
+		this->playback->oplMIDI.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
+	} else {
+		this->playback->opl.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
+	}
+	return;
+}
+
+void Playback::OPLHandler::tempoChange(const Tempo& tempo)
+{
+	this->playback->tempoChange(tempo);
+	return;
+}
+
+
 Playback::Playback(unsigned long sampleRate, unsigned int channels,
 	unsigned int bits)
 	:	outputSampleRate(sampleRate),
@@ -58,12 +83,22 @@ Playback::Playback(unsigned long sampleRate, unsigned int channels,
 		loopCount(1),
 		frameBufferPos(0),
 		pcm(sampleRate, this),
-		opl(sampleRate)
+		pcmMIDI(sampleRate, this),
+		opl(sampleRate),
+		oplMIDI(sampleRate),
+		oplHandler(this, false),
+		oplHandlerMIDI(this, true)
 {
 }
 
 Playback::~Playback()
 {
+}
+
+void Playback::setBankMIDI(PatchBankPtr bankMIDI)
+{
+	this->bankMIDI = bankMIDI;
+	return;
 }
 
 void Playback::setSong(ConstMusicPtr music)
@@ -87,10 +122,17 @@ void Playback::setSong(ConstMusicPtr music)
 	this->tempoChange(music->initialTempo);
 
 	this->opl.reset();
-	this->oplConverter.reset(new EventConverter_OPL(this, this->music,
+	this->oplConverter.reset(new EventConverter_OPL(&this->oplHandler, this->music,
 		OPL_FNUM_DEFAULT, Default));
 
+	this->oplMIDI.reset();
+	this->oplConvMIDI.reset(new EventConverter_OPL(&this->oplHandlerMIDI, this->music,
+		OPL_FNUM_DEFAULT, Default));
+	this->oplConvMIDI->setBankMIDI(this->bankMIDI);
+
 	this->pcm.reset(&this->music->trackInfo, this->music->patches);
+	this->pcmMIDI.reset(&this->music->trackInfo, this->music->patches);
+	this->pcmMIDI.setBankMIDI(this->bankMIDI);
 
 	// Turn rhythm mode on or off depending on the presence of rhythm tracks
 	bool rhythm = false;
@@ -161,8 +203,9 @@ void Playback::nextFrame()
 			const PatternPtr& pattern = this->music->patterns.at(this->pattern);
 			unsigned int trackIndex = 0;
 			// For each track
+			TrackInfoVector::const_iterator ti = this->music->trackInfo.begin();
 			for (Pattern::const_iterator
-				pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+				pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++, ti++
 			) {
 				unsigned int trackPos = 0; // current track position in ticks
 				// For each event in the track
@@ -175,8 +218,26 @@ void Playback::nextFrame()
 					if (trackPos == this->row) {
 						// delay is zero here because we want it to sound immediately (not
 						// that is really matters as the delay is ignored later anyway)
-						te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
-						te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
+						if (
+							(ti->channelType == TrackInfo::AnyChannel)
+							|| (ti->channelType == TrackInfo::OPLChannel)
+							|| (ti->channelType == TrackInfo::OPLPercChannel)
+						) {
+							te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
+						}
+						if (
+							(ti->channelType == TrackInfo::AnyChannel)
+							|| (ti->channelType == TrackInfo::MIDIChannel)
+						) {
+							te.event->processEvent(0, trackIndex, this->pattern, this->oplConvMIDI.get());
+						te.event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
+						}
+						if (
+							(ti->channelType == TrackInfo::AnyChannel)
+							|| (ti->channelType == TrackInfo::PCMChannel)
+						) {
+							te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
+						}
 					} else if (trackPos > this->row) {
 						// Not up to this event yet, don't keep looking
 						break;
@@ -196,6 +257,12 @@ void Playback::nextFrame()
 
 	// Mix the OPL source in to the frame buffer
 	this->opl.mix(this->frameBuffer.data(), this->frameBuffer.size());
+
+	// Mix the MIDI PCM source in to the frame buffer
+	this->pcmMIDI.mix(this->frameBuffer.data(), this->frameBuffer.size());
+
+	// Mix the MIDI OPL source in to the frame buffer
+	this->oplMIDI.mix(this->frameBuffer.data(), this->frameBuffer.size());
 
 	// Increment the frame, row, order, etc.
 	this->frameBufferPos = 0;
@@ -231,13 +298,6 @@ void Playback::nextFrame()
 		}
 	}
 
-	return;
-}
-
-void Playback::writeNextPair(const OPLEvent *oplEvent)
-{
-	// Ignore the delay and write it immediately
-	this->opl.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
 	return;
 }
 

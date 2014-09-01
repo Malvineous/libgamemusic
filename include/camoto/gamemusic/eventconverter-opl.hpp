@@ -134,12 +134,17 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		/// Destructor.
 		virtual ~EventConverter_OPL();
 
-		/// Prepare to start from the first event.
+		/// Set the samples to use for playing MIDI instruments.
 		/**
-		 * This function must be called before re-sending an old event, otherwise
-		 * the resulting negative delay will cause an extremely long pause.
+		 * @param bankMIDI
+		 *   Patch bank to use.  An empty patch bank will mute any MIDI events.
+		 *   A supplied patch bank will mute any OPL events.
+		 *   The patch bank can contain different instrument types - only PCM
+		 *   instruments will be played.
+		 *   Entries 0 to 127 inclusive are for GM instruments, entries 128 to 255
+		 *   are for percussion (128=note 0, 129=note 1, etc.)
 		 */
-		void rewind();
+		void setBankMIDI(PatchBankPtr bankMIDI);
 
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
@@ -161,6 +166,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		ConstMusicPtr music;        ///< Song to convert
 		double fnumConversion;      ///< Conversion value to use in Hz -> fnum calc
 		unsigned int flags;         ///< One or more OPLWriteFlags
+		PatchBankPtr bankMIDI;      ///< Optional patch bank for MIDI notes
 
 		unsigned long cachedDelay;  ///< Delay to add on to next reg write
 		bool oplSet[2][256];        ///< Has this register been set yet?

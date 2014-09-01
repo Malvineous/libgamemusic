@@ -22,6 +22,8 @@
 #include <assert.h>
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/synth-pcm.hpp>
+#include <camoto/gamemusic/eventconverter-midi.hpp>
+#include <camoto/gamemusic/patch-midi.hpp>
 #include "audio-util.hpp"
 
 using namespace camoto;
@@ -41,6 +43,12 @@ SynthPCM::SynthPCM(unsigned long sampleRate, SynthPCMCallback *cb)
 
 SynthPCM::~SynthPCM()
 {
+}
+
+void SynthPCM::setBankMIDI(PatchBankPtr bankMIDI)
+{
+	this->bankMIDI = bankMIDI;
+	return;
 }
 
 void SynthPCM::reset(const TrackInfoVector *trackInfo, PatchBankPtr patches)
@@ -137,22 +145,47 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	assert(trackIndex < this->trackInfo->size());
 	assert(ev->velocity < 256);
 
-	const TrackInfo& ti = this->trackInfo->at(trackIndex);
-	if (
-		(ti.channelType != TrackInfo::PCMChannel)
-	) {
-		// This isn't a PCM track, so ignore it
-		return;
-	}
-
-	// See if the instrument is already set
 	if (ev->instrument >= this->patches->size()) {
 		throw bad_patch(createString("Instrument bank too small - tried to play "
 			"note with instrument #" << ev->instrument + 1
 			<< " but patch bank only has " << this->patches->size()
 			<< " instruments."));
 	}
-	PCMPatchPtr inst = boost::dynamic_pointer_cast<PCMPatch>(this->patches->at(ev->instrument));
+	PatchPtr patch = this->patches->at(ev->instrument);
+
+	const TrackInfo& ti = this->trackInfo->at(trackIndex);
+	if (this->bankMIDI) {
+		// We are handling MIDI events
+		if (
+			(ti.channelType != TrackInfo::MIDIChannel)
+			&& (ti.channelType != TrackInfo::AnyChannel)
+		) {
+			// Not a MIDI track
+			return;
+		}
+		MIDIPatchPtr instMIDI = boost::dynamic_pointer_cast<MIDIPatch>(patch);
+		if (!instMIDI) return; // non-MIDI instrument on a MIDI channel, ignore
+		unsigned long target = instMIDI->midiPatch;
+		if (instMIDI->percussion) {
+			target += MIDI_PATCHES;
+		}
+		if (target < this->bankMIDI->size()) {
+			patch = this->bankMIDI->at(target);
+		} else {
+			// No patch, bank too small
+			return;
+		}
+	} else {
+		// We are handling PCM events
+		if (
+			(ti.channelType != TrackInfo::PCMChannel)
+			&& (ti.channelType != TrackInfo::AnyChannel)
+		) {
+			// Not a PCM track
+			return;
+		}
+	}
+	PCMPatchPtr inst = boost::dynamic_pointer_cast<PCMPatch>(patch);
 
 	// Don't play this note if there's no patch for it
 	if (!inst) return;

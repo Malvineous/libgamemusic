@@ -235,6 +235,9 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
  * @param music
  *   Song to play.
  *
+ * @param bankMIDI
+ *   Patch bank to use for MIDI notes.
+ *
  * @param loopCount
  *   Number of times to play the song.  1=once, 2=twice (loop once), 0=loop
  *   forever.  If 0, this function never returns.  Note these values are
@@ -243,7 +246,8 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
  * @param extraTime
  *   Number of seconds to linger after song finishes, to let notes fade out.
  */
-int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTime)
+int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
+	unsigned int loopCount, unsigned int extraTime)
 {
 #ifdef USE_PORTAUDIO
 	// Init PA
@@ -270,6 +274,7 @@ int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTi
 
 	unsigned int sampleRate = 48000;
 	gm::Playback playback(sampleRate, NUM_CHANNELS, 16);
+	playback.setBankMIDI(bankMIDI);
 	playback.setSong(music);
 	playback.setLoopCount(loopCount);
 	PBCallback pbcb;
@@ -355,7 +360,6 @@ int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTi
 				if (audiblePos.order < music->patternOrder.size()) {
 					pattern = music->patternOrder[audiblePos.order];
 				}
-
 				unsigned int beat = (audiblePos.row / audiblePos.tempo.ticksPerBeat)
 					% audiblePos.tempo.beatsPerBar;
 
@@ -399,6 +403,9 @@ int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTi
  * @param music
  *   Song to play.
  *
+ * @param bankMIDI
+ *   Patch bank to use for MIDI notes.
+ *
  * @param loopCount
  *   Number of times to play the song.  1=once, 2=twice (loop once), 0=loop
  *   forever.  If 0, this function never returns.  Note these values are
@@ -408,7 +415,8 @@ int play(const gm::MusicPtr& music, unsigned int loopCount, unsigned int extraTi
  *   Number of seconds to linger after song finishes, to let notes fade out.
  */
 int render(const std::string& wavFilename, const gm::MusicPtr& music,
-	unsigned int loopCount, unsigned int extraTime)
+	const gm::PatchBankPtr& bankMIDI, unsigned int loopCount,
+	unsigned int extraTime)
 {
 	if (loopCount == 0) {
 		std::cerr << "Can't loop forever when writing to .wav or you will run out "
@@ -429,6 +437,7 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	unsigned int bitDepth = 16;
 	unsigned int sampleRate = 48000;
 	gm::Playback playback(sampleRate, numChannels, bitDepth);
+	playback.setBankMIDI(bankMIDI);
 	playback.setSong(music);
 	playback.setLoopCount(loopCount);
 
@@ -623,7 +632,7 @@ int main(int iArgC, char *cArgV[])
 			"force open even if the file is not in the given format")
 		("list-types",
 			"list available input/output file formats")
-		("no-pitchbends,b",
+		("no-pitchbends,o",
 			"don't use pitchbends with -c")
 		("force-opl3,3",
 			"force OPL3 mode (18 channels) with -c")
@@ -634,6 +643,9 @@ int main(int iArgC, char *cArgV[])
 		("extra-time,x", po::value<int>(),
 			"number of seconds to linger after song finishes to allow notes to fade "
 			"out [default=2]")
+		("midibank,b", po::value<std::string>(),
+			"patch bank to use for MIDI instruments with --play and --wav "
+			"[default=none, MIDI is silent]")
 	;
 
 	po::options_description poHidden("Hidden parameters");
@@ -662,6 +674,7 @@ int main(int iArgC, char *cArgV[])
 	bool bForceOPL3 = false; // force OPL3 mode?
 	int userLoop = 1; // repeat once by default
 	int extraTime = 2; // two seconds extra by default
+	gm::PatchBankPtr bankMIDI; // instruments to use for MIDI notes
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
 
@@ -741,7 +754,7 @@ int main(int iArgC, char *cArgV[])
 			) {
 				bForceOpen = true;
 			} else if (
-				(i->string_key.compare("b") == 0) ||
+				(i->string_key.compare("o") == 0) ||
 				(i->string_key.compare("no-pitchbends") == 0)
 			) {
 				bUsePitchbends = false;
@@ -765,6 +778,30 @@ int main(int iArgC, char *cArgV[])
 				(i->string_key.compare("extra-time") == 0)
 			) {
 				extraTime = strtod(i->value[0].c_str(), NULL);
+			} else if (
+				(i->string_key.compare("b") == 0) ||
+				(i->string_key.compare("midibank") == 0)
+			) {
+				std::string strInstFile;
+				std::string strInstType;
+				if (!split(i->value[0], ':', &strInstType, &strInstFile)) {
+					strInstType.clear(); // no type given, autodetect
+				}
+
+				gm::MusicPtr pInst;
+				try {
+					pInst = openMusicFile(strInstFile, "-b/--midibank", strInstType,
+						pManager, bForceOpen);
+				} catch (int ret) {
+					return ret;
+				}
+
+				if (!pInst->patches) {
+					std::cerr << "MIDI bank given with -b/--midibank has no instruments!"
+						<< std::endl;
+					return RET_BADARGS;
+				}
+				bankMIDI = pInst->patches;
 			}
 		}
 
@@ -1200,7 +1237,7 @@ int main(int iArgC, char *cArgV[])
 					return RET_BADARGS;
 				}
 
-				int ret = play(pMusic, userLoop+1, extraTime);
+				int ret = play(pMusic, bankMIDI, userLoop+1, extraTime);
 				if (ret != RET_OK) return ret;
 
 			} else if (i->string_key.compare("wav") == 0) {
@@ -1216,7 +1253,7 @@ int main(int iArgC, char *cArgV[])
 				}
 				std::string wavFilename = i->value[0];
 
-				int ret = render(wavFilename, pMusic, userLoop+1, extraTime);
+				int ret = render(wavFilename, pMusic, bankMIDI, userLoop+1, extraTime);
 				if (ret != RET_OK) return ret;
 
 			} else if (
