@@ -195,7 +195,7 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 			>> u32le(patch->loopEnd)
 		;
 		patch->defaultVolume = 255;
-		patch->sampleRate = 8287;//8268;//8363;
+		patch->sampleRate = 8287;
 		patch->bitDepth = 8;
 		patch->numChannels = 1;
 		if (patch->loopEnd == 0x00FFFFFF) patch->loopEnd = 0; // no loop
