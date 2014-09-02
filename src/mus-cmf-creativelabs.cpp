@@ -22,6 +22,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/opl-util.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-cmf-creativelabs.hpp"
@@ -332,39 +333,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 						}
 					}
 
-					// See if it's the correct rhythm type
-					OPLPatch *src = static_cast<OPLPatch *>(oplBank->at(oplIndex).get());
-					if (src->rhythm == targetRhythm) {
-						// This instrument is already correct, map it to itself
-						curTarget = oplIndex;
-					} else {
-						// The patch is for a different rhythm type, so we'll either have to
-						// duplicate it, or edit it if the base patch won't be used.
-						bool inUse = true;//false;
-						if (inUse) {
-							// Something already maps to this instrument, so we'll have to
-							// duplicate it.
-							OPLPatchPtr copy(new OPLPatch);
-							*copy = *src;
-							copy->rhythm = targetRhythm;
-							if (OPL_IS_RHYTHM_CARRIER_ONLY(copy->rhythm)) {
-								// For these instruments, the modulator data should be loaded into
-								// the OPL carrier instead.
-								OPLOperator t = copy->c;
-								copy->c = copy->m;
-								copy->m = t;
-							}
-							curTarget = oplBank->size();
-							oplBank->push_back(copy);
-						} else {
-							// Nothing is using this instrument yet, so edit it.
-							/// @todo Enable this code, and figure out how to copy the modulator
-							/// as above without losing the carrier data in case the instrument
-							/// is used normally later.
-							src->rhythm = targetRhythm;
-							curTarget = oplIndex;
-						}
-					}
+					curTarget = oplIndex;
 				}
 				// Use the previously defined mapping
 				assert(curTarget >= 0);
@@ -390,6 +359,9 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		input >> nullTerminated(music->metadata[Metadata::Description], 256);
 	}
 
+	// Swap operators for required percussive patches
+	oplDenormalisePerc(music, OPLPerc_CarFromMod);
+
 	return music;
 }
 
@@ -400,6 +372,9 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	if (music->patches->size() >= MIDI_PATCHES) {
 		throw bad_patch("CMF files have a maximum of 128 instruments.");
 	}
+
+	// Swap operators for required percussive patches
+	PatchBankPtr patches = oplNormalisePerc(music, OPLPerc_CarFromMod);
 
 	output->write(
 		"CTMF"
@@ -450,7 +425,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		}
 	}
 	uint16_t offInst = offNext;
-	uint16_t numInstruments = music->patches->size();
+	uint16_t numInstruments = patches->size();
 	offNext += 16 * numInstruments;
 	uint16_t offMusic = offNext;
 
@@ -487,17 +462,35 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		output << nullTerminated(itDesc->second, 65535);
 	}
 
+	// Create a new TrackInfo that moves everything onto the correct MIDI channels
+	TrackInfoVector midiTrackInfo;
+	for (TrackInfoVector::iterator
+		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
+	) {
+		TrackInfo nti;
+		nti.channelType = TrackInfo::MIDIChannel;
+		if (ti->channelType == TrackInfo::OPLPercChannel) {
+			nti.channelIndex = 15 - ti->channelIndex;
+		} else {
+			nti = *ti;
+		}
+		if (nti.channelIndex > 15) {
+			throw format_limitation("CMF files can only have up to 16 channels.");
+		}
+		midiTrackInfo.push_back(nti);
+	}
+	MusicPtr musicMIDI(new Music);
+	*musicMIDI = *music;
+	musicMIDI->trackInfo = midiTrackInfo;
+	// musicMIDI is now the same as music, but with the CMF MIDI track assignment
+	// for midiEncode to use to place percussive events on the right channels.
+
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
+		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(i));
 		assert(patch);
+
 		OPLOperator *o = &patch->m;
-		if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) {
-			// For these instruments, the modulator data has been loaded into
-			// the OPL carrier instead, so we must reverse it now.
-			o = &patch->c;
-			memset(inst, 0, sizeof(inst)); // blank out other op
-		}
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =
 				((o->enableTremolo & 1) << 7) |
@@ -526,7 +519,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	if (flags & MusicType::IntegerNotesOnly) {
 		midiFlags |= MIDIFlags::IntegerNotesOnly;
 	}
-	midiEncode(output, music, midiFlags, channelsUsed,
+	midiEncode(output, musicMIDI, midiFlags, channelsUsed,
 		EventHandler::Order_Row_Track, NULL);
 
 	// Set final filesize to this
