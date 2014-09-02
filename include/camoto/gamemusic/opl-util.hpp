@@ -23,6 +23,9 @@
 
 #include <math.h>
 
+namespace camoto {
+namespace gamemusic {
+
 // OPL register offsets
 #define BASE_CHAR_MULT  0x20
 #define BASE_SCAL_LEVL  0x40
@@ -91,9 +94,6 @@ inline unsigned int lin_velocity_to_log_volume(unsigned int vel,
 #ifndef DLL_EXPORT
 #define DLL_EXPORT
 #endif
-
-namespace camoto {
-namespace gamemusic {
 
 /// Convert the given f-number and block into a note frequency.
 /**

@@ -81,19 +81,19 @@ BOOST_AUTO_TEST_CASE(oplCalc)
 
 BOOST_AUTO_TEST_CASE(log_volume)
 {
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity(  0,  15),   0);
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity(  8,  15),  64);
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity( 15,  15), 255);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity(  0,  15),   0);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity(  8,  15),  64);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity( 15,  15), 255);
 
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume(  0,  15),   0);
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume( 64,  15),   8);
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume(255,  15),  15);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume(  0,  15),   0);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume( 64,  15),   8);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume(255,  15),  15);
 
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity(  0, 127),   0);
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity( 63, 127),  36);
-	BOOST_CHECK_EQUAL(log_volume_to_lin_velocity(127, 127), 255);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity(  0, 127),   0);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity( 63, 127),  36);
+	BOOST_CHECK_EQUAL(gm::log_volume_to_lin_velocity(127, 127), 255);
 
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume(  0, 127),   0);
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume( 36, 127),  63);
-	BOOST_CHECK_EQUAL(lin_velocity_to_log_volume(255, 127), 127);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume(  0, 127),   0);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume( 36, 127),  63);
+	BOOST_CHECK_EQUAL(gm::lin_velocity_to_log_volume(255, 127), 127);
 }
