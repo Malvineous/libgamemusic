@@ -78,6 +78,14 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 				// We have, so either loop if the sample supports this or silence it
 				if (sample.patch->loopEnd) {
 					sample.pos = sample.patch->loopStart;
+					if (sample.patch->bitDepth == 16) sample.pos *= 2;
+					sample.pos = sample.pos * this->outputSampleRate / sample.sampleRate;
+					if (sample.pos >= numOutputSamples) {
+						std::cout << "synth-pcm: Silencing instrument with loop start "
+							"beyond end of sample\n";
+						complete = true;
+						break;
+					}
 				} else {
 					complete = true;
 					break;
