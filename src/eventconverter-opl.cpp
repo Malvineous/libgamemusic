@@ -353,7 +353,9 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 
 			// Write 0xB0 w/ keyon bit
 			this->processNextPair(chipIndex, 0xB0 | oplChannel,
-				OPLBIT_KEYON  // keyon enabled (wouldn't have a pitchbend with no note playing)
+				// Use whatever keyon bit was set before - this will prevent rhythm
+				// instruments from having the keyon bit set erroneously
+				(this->oplState[chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON)
 				| (block << 2) // and the octave
 				| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 			);
