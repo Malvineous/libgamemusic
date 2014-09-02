@@ -497,7 +497,7 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 		outputLevel = o->outputLevel;
 		if (velocity != -1) {
 			// Not using default velocity
-			outputLevel = 0x3F - 0x3F * log((float)velocity) / log(256.0);
+			outputLevel = 63 - lin_velocity_to_log_volume(velocity, 63);
 			// Note the CMF reader sets the velocity to -1 to skip this
 			// @todo: Use a flag: inst output val is max note vel, or note vel overrides inst output val
 		}
