@@ -326,6 +326,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 			int lastVolume = -1, lastInstrument = 0, lastIncrement = 1;
 			double lastShift = 0.0;
 			int delay = 0;
+			bool noteOn = false;
 			for (int row = 0; row < TBSA_MAX_PATSEG_LEN; row++) {
 				uint8_t code;
 				input >> u8(code);
@@ -348,10 +349,11 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 						ev->velocity = lastVolume;
 
 						t->push_back(te);
+						noteOn = true;
 						break;
 					}
-					case 3:   // 6x,7x: ?
-						break;
+					//case 3:   // 6x,7x: ?
+					//	break;
 					case 4:   // 8x,9x: set instrument
 						lastInstrument = value;
 						break;
@@ -377,10 +379,27 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 							case 0xFD: // set volume
 								input >> u8(value);
 								lastVolume = log_volume_to_lin_velocity(value, 127);
+								if (noteOn) {
+									TrackEvent te;
+									te.delay = delay;
+									delay = 0;
+									EffectEvent *ev = new EffectEvent();
+									te.event.reset(ev);
+									ev->type = EffectEvent::Volume;
+									ev->data = lastVolume;
+									t->push_back(te);
+								}
 								break;
-							case 0xFE: // dummy event to take up a row
-								delay += lastIncrement;
+							case 0xFE: { // note off
+								TrackEvent te;
+								te.delay = delay;
+								delay = lastIncrement;
+								NoteOffEvent *ev = new NoteOffEvent();
+								te.event.reset(ev);
+								t->push_back(te);
+								noteOn = false;
 								break;
+							}
 							default:
 								std::cout << "TBSA: Unrecognised extended command: "
 									<< std::hex << (int)code << std::dec << "\n";
