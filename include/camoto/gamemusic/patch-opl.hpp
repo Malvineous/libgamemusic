@@ -93,6 +93,15 @@ struct DLL_EXPORT OPLPatch: public Patch {
 
 	/// Rhythm mode instrument.
 	/**
+	 * Rhythm mode instruments that only use a single operator, always load the
+	 * settings from the respective operator fields.  So a modulator-only
+	 * instrument always gets its settings from the m member, and a carrier-only
+	 * instrument always gets its settings from the c member.
+	 *
+	 * Note that some file formats load carrier-only instruments from the
+	 * modulator fields so these will need to be reversed upon loading.
+	 * oplNormalisePerc() can help with this.
+	 *
 	 * 0 == normal instrument (c and m valid)
 	 * 1 == hihat (m only)
 	 * 2 == top cymbal (c only)
@@ -105,6 +114,9 @@ struct DLL_EXPORT OPLPatch: public Patch {
 
 /// True if OPLPatch::rhythm parameter is a carrier-only percussion instrument
 #define OPL_IS_RHYTHM_CARRIER_ONLY(c) ((c == 2) || (c == 4))
+
+/// True if OPLPatch::rhythm parameter is a modulator-only percussion instrument
+#define OPL_IS_RHYTHM_MODULATOR_ONLY(c) ((c == 1) || (c == 3))
 
 inline bool operator== (const OPLOperator& a, const OPLOperator& b)
 {

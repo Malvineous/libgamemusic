@@ -21,6 +21,7 @@
 #include <iostream>
 #include <cassert>
 #include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
 
 #define log2(x) (log(x) / 0.30102999566398119521373889472449)
 
@@ -99,6 +100,137 @@ void milliHertzToFnum(unsigned int milliHertz,
 	//assert(*fnum >= 0);
 	//assert(*fnum < 1024);
 	if (*fnum > 1024) *fnum = 1024; // TEMP
+	return;
+}
+
+
+struct Purpose {
+	int rhythm;
+	int map[6];
+};
+
+void mapInstrument(std::vector<Purpose>& instPurpose, unsigned int rhythm,
+	unsigned int *inst, PatchBankPtr& patches)
+{
+	Purpose& p = instPurpose[*inst];
+
+	if (p.map[rhythm] >= 0) {
+		// This instrument has been set already, use that
+		*inst = p.map[rhythm];
+	} else {
+		// This instrument hasn't been set
+		if (p.rhythm < 0) {
+			// This instrument hasn't been used yet, so keep the original def
+			p.map[rhythm] = *inst;
+			p.rhythm = rhythm;
+			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(*inst));
+			oplPatch->rhythm = rhythm;
+		} else {
+			// This instrument has already been used for another purpose, so make a
+			// copy of it for this purpose.
+			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(*inst));
+			OPLPatchPtr copy(new OPLPatch(*oplPatch));
+			copy->rhythm = rhythm;
+			// Update the original to map here, but only in this rhythm mode
+			*inst = patches->size();
+			p.map[rhythm] = *inst;
+			patches->push_back(copy);
+
+			Purpose p2;
+			// We could assign these to point to itself as we have effectively mapped
+			// this new instrument to itself, however the song should never refer to
+			// these instrument numbers, so it would be a waste of effort to assign
+			// them here.  If the song did ever do this for some reason, the new
+			// instrument would just appear as unassigned and it would be pointed at
+			// itself on that first use anyway.
+			for (unsigned int i = 0; i < 6; i++) p2.map[i] = -1;
+			// But we do have to set the use so the duplicated instrument will have
+			// its operators swapped if the format requires that.
+			p2.rhythm = rhythm;
+			instPurpose.push_back(p2);
+		}
+	}
+	return;
+}
+
+void oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
+{
+	std::vector<Purpose> instPurpose;
+	for (PatchBank::const_iterator
+		i = music->patches->begin(); i != music->patches->end(); i++
+	) {
+		Purpose p;
+		p.rhythm = -1;
+		for (unsigned int i = 0; i < 6; i++) p.map[i] = -1;
+		instPurpose.push_back(p);
+	}
+	// For each pattern
+	unsigned int patternIndex = 0;
+	for (std::vector<PatternPtr>::iterator
+		pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
+	) {
+		PatternPtr& pattern = *pp;
+
+		// For each track
+		unsigned int trackIndex = 0;
+		for (Pattern::iterator
+			pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+		) {
+			TrackInfo& ti = music->trackInfo[trackIndex];
+
+			// For each event in the track
+			for (Track::iterator
+				tev = (*pt)->begin(); tev != (*pt)->end(); tev++
+			) {
+				TrackEvent& te = *tev;
+				NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(te.event.get());
+				if (!ev) continue;
+
+				// If we are here, this is a note-on event
+				if (ev->instrument > music->patches->size()) continue;
+
+				//Purpose& p = instPurpose[ev->instrument];
+				int rhythm = -1;
+				if (ti.channelType == TrackInfo::OPLChannel) {
+					rhythm = 0;
+				} else if (ti.channelType == TrackInfo::OPLPercChannel) {
+					rhythm = ti.channelIndex + 1;
+				}
+				if (rhythm >= 0) {
+					mapInstrument(instPurpose, rhythm, &ev->instrument, music->patches);
+				}
+			}
+		}
+	}
+
+	// Swap the operators for those instruments used on one channel-type only
+	std::vector<Purpose>::iterator p = instPurpose.begin();
+	for (PatchBank::iterator
+		i = music->patches->begin(); i != music->patches->end(); i++, p++
+	) {
+		OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(*i);
+		if (!oplPatch) continue;
+		switch (method) {
+			case OPLPerc_CarFromMod:
+				if (OPL_IS_RHYTHM_CARRIER_ONLY(p->rhythm)) {
+					// This instrument is only used on a carrier-only channel, and the
+					// format says the carrier should be loaded from the modulator
+					// settings.
+					std::swap(oplPatch->c, oplPatch->m);
+				}
+				break;
+			case OPLPerc_ModFromCar:
+				if (OPL_IS_RHYTHM_MODULATOR_ONLY(p->rhythm)) {
+					// This instrument is only used on a modulator-only channel, and the
+					// format says the modulator should be loaded from the carrier
+					// settings.
+					std::swap(oplPatch->m, oplPatch->c);
+				}
+				break;
+			case OPLPerc_MatchingOps:
+				break;
+		}
+	}
 	return;
 }
 

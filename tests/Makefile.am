@@ -17,6 +17,7 @@ tests_SOURCES += test-mus-mid-type0.cpp
 tests_SOURCES += test-mus-s3m-screamtracker.cpp
 tests_SOURCES += test-music.cpp
 tests_SOURCES += test-opl.cpp
+tests_SOURCES += test-opl-normalise.cpp
 tests_SOURCES += test-tempo.cpp
 
 EXTRA_tests_SOURCES = tests.hpp

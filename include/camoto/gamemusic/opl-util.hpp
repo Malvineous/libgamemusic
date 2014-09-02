@@ -142,6 +142,42 @@ int DLL_EXPORT fnumToMilliHertz(unsigned int fnum, unsigned int block,
 void DLL_EXPORT milliHertzToFnum(unsigned int milliHertz,
 	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor);
 
+typedef enum {
+	/// Matching operators: mod -> mod, car -> car, for all rhythm instruments.
+	OPLPerc_MatchingOps,
+	/// Carrier-only perc have settings loaded from the modulator fields.
+	OPLPerc_CarFromMod,
+	/// Modulator-only perc have settings loaded from the carrier fields.
+	OPLPerc_ModFromCar,
+} OPL_NORMALISE_PERC;
+
+} // namespace gamemusic
+} // namespace camoto
+
+#include <camoto/gamemusic/music.hpp>
+
+namespace camoto {
+namespace gamemusic {
+
+/// Ensure all the percussive instruments are set correctly.
+/**
+ * This runs through all the events on all channels and any instrument played
+ * on a percussive channel is set as a percussive instrument.  If the same
+ * instrument is also played on a normal channel then it is duplicated.
+ *
+ * It also swaps the modulator and carrier fields for those file formats
+ * where the percussive operators are cross-loaded into different operators
+ * than they are stored in in the music file.
+ *
+ * @param music
+ *   Song to examine and alter.
+ *
+ * @param method
+ *   Flag indicating whether percussive instruments need their operators
+ *   swapped.
+ */
+void oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
+
 } // namespace gamemusic
 } // namespace camoto
 
