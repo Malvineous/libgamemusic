@@ -35,6 +35,7 @@
 #include "mus-mus-vinyl.hpp"
 #include "mus-ibk-instrumentbank.hpp"
 #include "mus-s3m-screamtracker.hpp"
+#include "mus-tbsa-doofus.hpp"
 
 namespace camoto {
 namespace gamemusic {
@@ -77,6 +78,7 @@ ActualManager::ActualManager()
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_MUS_Vinyl()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_S3M()));
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_TBSA()));
 }
 
 ActualManager::~ActualManager()

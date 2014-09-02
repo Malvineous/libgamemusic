@@ -19,3 +19,5 @@ Outstanding tasks
 
  - Add new test: include delay, then tempo change, then another delay and
    verify the values are calculated correctly
+
+ - Add write support and test code for TBSA0.01 (Doofus)
