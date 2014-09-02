@@ -197,6 +197,26 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	bool mod, car;
 	getOPLChannel(ti, &oplChannel, &chipIndex, &mod, &car);
 
+	// If the note is already playing, turn it off first before we update the
+	// instrument parameters.  This makes a clean note and prevents it from
+	// audibly morphing into the new patch.
+	if (ti.channelType == TrackInfo::OPLPercChannel) {
+		int keyBit = 1 << ti.channelIndex;
+		if (this->oplState[chipIndex][0xBD] & keyBit) {
+			// Note is already playing, disable
+			this->processNextPair(chipIndex, 0xBD,
+				this->oplState[chipIndex][0xBD] ^ keyBit
+			);
+		}
+	} else { // normal instrument
+		if (this->oplState[chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON) {
+			// Note already playing, switch it off first
+			this->processNextPair(chipIndex, 0xB0 | oplChannel,
+				(this->oplState[chipIndex][0xB0 | oplChannel] & ~OPLBIT_KEYON)
+			);
+		}
+	}
+
 	// We always have to set the patch in case the velocity has changed.
 	// Duplicate register writes will be dropped later.
 
@@ -240,25 +260,15 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			);
 		//}
 
-		int keyBit = 1 << ti.channelIndex; // instrument-specific keyon
-		if (this->oplState[chipIndex][0xBD] & keyBit) {
-			// Note is already playing, disable
-			this->processNextPair(chipIndex, 0xBD,
-				this->oplState[chipIndex][0xBD] ^ keyBit
-			);
-		}
 		// Write keyon for correct instrument
+		int keyBit = 1 << ti.channelIndex;
 		this->processNextPair(chipIndex, 0xBD,
 			0x20 |  // enable percussion mode
 			this->oplState[chipIndex][0xBD] | keyBit
 		);
+
 	} else { // normal instrument
-		if (this->oplState[chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON) {
-			// Note already playing, switch it off first
-			this->processNextPair(chipIndex, 0xB0 | oplChannel,
-				(this->oplState[chipIndex][0xB0 | oplChannel] & ~OPLBIT_KEYON)
-			);
-		}
+
 		// Write lower eight bits of note freq
 		this->processNextPair(chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
 
