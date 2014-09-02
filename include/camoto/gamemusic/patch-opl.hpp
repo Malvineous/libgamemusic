@@ -102,6 +102,7 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	 * modulator fields so these will need to be reversed upon loading.
 	 * oplNormalisePerc() can help with this.
 	 *
+	 * -1 == unknown/multiple
 	 * 0 == normal instrument (c and m valid)
 	 * 1 == hihat (m only)
 	 * 2 == top cymbal (c only)
@@ -109,7 +110,7 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	 * 4 == snare drum (c only)
 	 * 5 == bass drum (c and m)
 	 */
-	uint8_t rhythm;
+	int rhythm;
 };
 
 /// True if OPLPatch::rhythm parameter is a carrier-only percussion instrument
@@ -138,27 +139,26 @@ inline bool operator== (const OPLOperator& a, const OPLOperator& b)
 
 inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 {
-	if (a.rhythm != b.rhythm) return false;
+	// We want to be able to compare patches that target different rhythm
+	// instruments to see if the actual patch parameters are equal.
+//	if (a.rhythm != b.rhythm) return false;
 
 	if ((
-		(a.rhythm == 0) ||
-		(a.rhythm == 1) ||
-		(a.rhythm == 3) ||
-		(a.rhythm == 5)
+		(!OPL_IS_RHYTHM_MODULATOR_ONLY(a.rhythm))
+		|| (!OPL_IS_RHYTHM_MODULATOR_ONLY(a.rhythm))
 	) && (
 		!(a.c == b.c)
 	)) return false;  // carrier used and didn't match
 
 	if ((
-		(a.rhythm == 0) ||
-		(a.rhythm == 2) ||
-		(a.rhythm == 4) ||
-		(a.rhythm == 5)
+		(!OPL_IS_RHYTHM_CARRIER_ONLY(a.rhythm))
+		|| (!OPL_IS_RHYTHM_CARRIER_ONLY(a.rhythm))
 	) && (
 		!(a.m == b.m)
 	)) return false;  // modulator used and didn't match
 
 	if ((
+		(a.rhythm == -1) ||
 		(a.rhythm == 0) ||
 		(a.rhythm == 5)
 	) && (
