@@ -196,6 +196,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	}
 
 	this->cb->midiNoteOn(this->cachedDelay, midiChannel, note, velocity);
+	this->cachedDelay = 0;
 
 	this->activeNote[trackIndex] = note;
 	return;
@@ -214,6 +215,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 
 	this->cb->midiNoteOff(this->cachedDelay, midiChannel, this->activeNote[trackIndex],
 		MIDI_DEFAULT_RELEASE_VELOCITY);
+	this->cachedDelay = 0;
 	this->activeNote[trackIndex] = ACTIVE_NOTE_NONE;
 
 	return;
@@ -242,6 +244,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 			if (bend != this->currentPitchbend[midiChannel]) {
 				bend += 8192;
 				this->cb->midiPitchbend(this->cachedDelay, midiChannel, bend);
+				this->cachedDelay = 0;
 				this->currentPitchbend[midiChannel] = bend;
 			}
 			break;
@@ -261,6 +264,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		case ConfigurationEvent::EnableRhythm:
 			// Controller 0x67 (CMF rhythm)
 			this->cb->midiController(this->cachedDelay, 0, 0x67, ev->value);
+			this->cachedDelay = 0;
 			break;
 		case ConfigurationEvent::EnableDeepTremolo:
 			this->deepTremolo = ev->value;
