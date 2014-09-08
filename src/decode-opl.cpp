@@ -169,6 +169,7 @@ MusicPtr OPLDecoder::decode()
 
 	OPLEvent oplev;
 	oplev.tempo = 0;
+	bool opl3 = false;
 	while (this->cb->readNextPair(&oplev)) {
 		assert(oplev.chipIndex < 2);
 		totalDelay += oplev.delay;
@@ -290,14 +291,21 @@ MusicPtr OPLDecoder::decode()
 					}
 				} else if (oplev.reg == 0x05) {
 					if (bitsChanged(0x01)) {
-						TrackEvent te;
-						te.delay = this->lastDelay[track];
-						this->lastDelay[track] = 0;
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						te.event.reset(ev);
-						ev->configType = ConfigurationEvent::EnableOPL3;
-						ev->value = (oplev.val & 0x01) ? 1 : 0;
-						pattern->at(0)->push_back(te);
+						unsigned int newState = (oplev.val & 0x01) ? 1 : 0;
+						if (
+							((opl3) && (newState == 0))
+							|| ((!opl3) && (newState == 1))
+						) {
+							TrackEvent te;
+							te.delay = this->lastDelay[track];
+							this->lastDelay[track] = 0;
+							ConfigurationEvent *ev = new ConfigurationEvent();
+							te.event.reset(ev);
+							ev->configType = ConfigurationEvent::EnableOPL3;
+							ev->value = newState;
+							pattern->at(0)->push_back(te);
+							opl3 = newState == 1;
+						}
 					}
 				}
 				break;
