@@ -550,7 +550,7 @@ void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 	ev->milliHertz = fnumToMilliHertz(fnum, block, this->fnumConversion);
 
 	// Ignore velocity for modulator-only rhythm instruments
-	if ((rhythm == 1) || (rhythm == 3)) {
+	if (OPL_IS_RHYTHM_MODULATOR_ONLY(rhythm)) {
 		ev->velocity = OPL_DEFVOL_PERC;
 	} else {
 		unsigned int curVol = 0x3F &
