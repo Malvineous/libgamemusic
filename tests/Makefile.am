@@ -11,6 +11,7 @@ tests_SOURCES += test-mus-dro-dosbox-v2.cpp
 tests_SOURCES += test-mus-cmf-creativelabs.cpp
 tests_SOURCES += test-mus-cdfm-zone66.cpp
 tests_SOURCES += test-mus-cdfm-zone66-gus.cpp
+tests_SOURCES += test-mus-dsm-dsik.cpp
 tests_SOURCES += test-mus-got.cpp
 tests_SOURCES += test-mus-klm-wacky.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
