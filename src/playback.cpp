@@ -111,7 +111,7 @@ void Playback::setSong(ConstMusicPtr music)
 		this->pattern = 0;
 		std::cerr << "Warning: Song has no pattern order numbers!" << std::endl;
 	} else {
-		this->pattern = music->patternOrder.at(0);
+		this->pattern = music->patternOrder.at(this->order);
 	}
 	if (music->ticksPerTrack == 0) {
 		std::cerr << "Warning: Song's ticksPerTrack is zero!" << std::endl;
@@ -237,7 +237,7 @@ void Playback::nextFrame()
 							|| (ti->channelType == TrackInfo::MIDIChannel)
 						) {
 							te.event->processEvent(0, trackIndex, this->pattern, this->oplConvMIDI.get());
-						te.event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
+							te.event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
 						}
 						if (
 							(ti->channelType == TrackInfo::AnyChannel)
