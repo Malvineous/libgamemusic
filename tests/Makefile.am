@@ -22,8 +22,6 @@ tests_SOURCES += test-tempo.cpp
 tests_SOURCES += test-track-split.cpp
 
 EXTRA_tests_SOURCES = tests.hpp
-EXTRA_tests_SOURCES += test-musictype-read.hpp
-EXTRA_tests_SOURCES += test-musictype-write.hpp
 EXTRA_tests_SOURCES += test-mus-imf-idsoftware-common.hpp
 
 TESTS = tests
