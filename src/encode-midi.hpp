@@ -59,7 +59,7 @@ namespace gamemusic {
  * @param cbEndOfTrack
  *   Callback notified at the end of each track.  May be NULL.
  */
-void midiEncode(stream::output_sptr& output, ConstMusicPtr music,
+void midiEncode(stream::output_sptr output, ConstMusicPtr music,
 	unsigned int midiFlags, bool *channelsUsed,
 	EventHandler::EventOrder eventOrder, boost::function<void()> cbEndOfTrack
 );

@@ -44,7 +44,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * @param cbEndOfTrack
 		 *   Callback notified at the end of each track.  May be NULL.
 		 */
-		MIDIEncoder(stream::output_sptr& output, ConstMusicPtr music,
+		MIDIEncoder(stream::output_sptr output, ConstMusicPtr music,
 			unsigned int midiFlags, boost::function<void()> cbEndOfTrack);
 
 		/// Destructor.
@@ -120,7 +120,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		void writeCommand(uint32_t delay, uint8_t cmd);
 };
 
-void camoto::gamemusic::midiEncode(stream::output_sptr& output, ConstMusicPtr music,
+void camoto::gamemusic::midiEncode(stream::output_sptr output, ConstMusicPtr music,
 	unsigned int midiFlags, bool *channelsUsed,
 	EventHandler::EventOrder eventOrder, boost::function<void()> cbEndOfTrack)
 {
@@ -129,7 +129,7 @@ void camoto::gamemusic::midiEncode(stream::output_sptr& output, ConstMusicPtr mu
 	return;
 }
 
-MIDIEncoder::MIDIEncoder(stream::output_sptr& output, ConstMusicPtr music,
+MIDIEncoder::MIDIEncoder(stream::output_sptr output, ConstMusicPtr music,
 	unsigned int midiFlags, boost::function<void()> cbEndOfTrack)
 	:	output(output),
 		music(music),
