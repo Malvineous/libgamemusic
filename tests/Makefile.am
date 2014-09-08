@@ -19,6 +19,7 @@ tests_SOURCES += test-music.cpp
 tests_SOURCES += test-opl.cpp
 tests_SOURCES += test-opl-normalise.cpp
 tests_SOURCES += test-tempo.cpp
+tests_SOURCES += test-track-split.cpp
 
 EXTRA_tests_SOURCES = tests.hpp
 EXTRA_tests_SOURCES += test-musictype-read.hpp

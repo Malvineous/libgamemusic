@@ -35,6 +35,7 @@ libgamemusic_la_SOURCES += patchbank.cpp
 libgamemusic_la_SOURCES += playback.cpp
 libgamemusic_la_SOURCES += synth-opl.cpp
 libgamemusic_la_SOURCES += synth-pcm.cpp
+libgamemusic_la_SOURCES += track-split.cpp
 
 EXTRA_libgamemusic_la_SOURCES = audio-util.hpp
 EXTRA_libgamemusic_la_SOURCES += dbopl.hpp
@@ -59,6 +60,7 @@ EXTRA_libgamemusic_la_SOURCES += mus-mus-vinyl.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-raw-rdos.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-s3m-screamtracker.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-tbsa-doofus.hpp
+EXTRA_libgamemusic_la_SOURCES += track-split.hpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 
