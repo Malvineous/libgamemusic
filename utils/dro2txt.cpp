@@ -66,46 +66,59 @@ void printOp(uint8_t *oplState, int offset)
 
 #define BIT_TOGGLED(b, v) ((o[b] ^ n[b]) & (v))
 #define BIT_STATE(b, v)   (n[b] & (v))
-void diffGlobalState(uint8_t *o, uint8_t *n, int chip)
+bool diffGlobalState(uint8_t *o, uint8_t *n, int chip)
 {
+	bool sync = false;
 	if (BIT_TOGGLED(0x01, 0x20)) {
 		// WSEnable toggled
 		std::cout << "Extended wavesel mode " << (BIT_STATE(0x01, 0x20) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
 	if (chip == 1) {
 		if (BIT_TOGGLED(0x04, 0x01)) {
 			std::cout << "4-OP 0-3 " << (BIT_STATE(0x04, 0x01) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x02)) {
 			std::cout << "4-OP 1-4 " << (BIT_STATE(0x04, 0x02) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x04)) {
 			std::cout << "4-OP 2-5 " << (BIT_STATE(0x04, 0x04) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x08)) {
 			std::cout << "4-OP 9-C " << (BIT_STATE(0x04, 0x08) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x10)) {
 			std::cout << "4-OP A-D " << (BIT_STATE(0x04, 0x10) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x20)) {
 			std::cout << "4-OP B-E " << (BIT_STATE(0x04, 0x20) ? "enabled" : "disabled") << "\n";
+			sync = true;
 		}
 	} else {
 		if (BIT_TOGGLED(0x04, 0x01)) {
 			std::cout << "T1 " << (BIT_STATE(0x04, 0x01) ? "start" : "stop") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x02)) {
 			std::cout << "T2 " << (BIT_STATE(0x04, 0x02) ? "start" : "stop") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x20)) {
 			std::cout << "T1 " << (BIT_STATE(0x04, 0x20) ? "masked" : "unmasked") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x40)) {
 			std::cout << "T2 " << (BIT_STATE(0x04, 0x40) ? "masked" : "unmasked") << "\n";
+			sync = true;
 		}
 		if (BIT_TOGGLED(0x04, 0x80)) {
 			std::cout << "IRQ reset " << (BIT_STATE(0x04, 0x80) ? "(set)" : "(unset)") << "\n";
+			sync = true;
 		}
 	}
 	if (BIT_TOGGLED(0x05, 0x01)) {
@@ -115,23 +128,29 @@ void diffGlobalState(uint8_t *o, uint8_t *n, int chip)
 			std::cout << " but on wrong chip index (so no effect)";
 		}
 		std::cout << "\n";
+		sync = true;
 	}
 	if (BIT_TOGGLED(0x08, 0x80)) {
 		std::cout << "CSW mode " << (BIT_STATE(0x08, 0x80) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
 	if (BIT_TOGGLED(0x08, 0x40)) {
 		std::cout << "NOTE-SEL mode " << (BIT_STATE(0x08, 0x40) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
 	if (BIT_TOGGLED(0xBD, 0x80)) {
 		std::cout << "Deep tremolo " << (BIT_STATE(0xBD, 0x80) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
 	if (BIT_TOGGLED(0xBD, 0x40)) {
 		std::cout << "Deep vibrato " << (BIT_STATE(0xBD, 0x40) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
 	if (BIT_TOGGLED(0xBD, 0x20)) {
 		std::cout << "Rhythm mode " << (BIT_STATE(0xBD, 0x20) ? "enabled" : "disabled") << "\n";
+		sync = true;
 	}
-	return;
+	return sync;
 }
 
 bool isOpChanged(uint8_t *o, uint8_t *n, int d)
@@ -145,13 +164,27 @@ bool isOpChanged(uint8_t *o, uint8_t *n, int d)
 	;
 }
 
-void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
+#define PRINT_DELAY	  \
+		if (nextDelay) { \
+			std::cout << "Delay for " << std::dec << nextDelay << "ms\n"; \
+			nextDelay = 0; \
+		}
+
+bool diffChannelState(uint8_t *o, uint8_t *n, int c, int chip, unsigned long& nextDelay)
 {
-	bool diff = false;
 	int dm = OPLOFFSET_MOD(c), dc = OPLOFFSET_CAR(c);
-	if (isOpChanged(o, n, dm) || isOpChanged(o, n, dc) ||
-		(o[0xC0 | c] ^ n[0xC0 | c])
-	) {
+
+	bool patchChanged =
+		isOpChanged(o, n, dm) ||
+		isOpChanged(o, n, dc) ||
+		(o[0xC0 | c] ^ n[0xC0 | c]);
+	bool freqChanged = (o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]);
+	bool keyStayingOn = n[0xB0 | c] & OPLBIT_KEYON;
+	bool newKeyOn = (!(o[0xB0 | c] & OPLBIT_KEYON)) && (n[0xB0 | c] & OPLBIT_KEYON);
+
+	bool sync = false;
+	if (keyStayingOn && patchChanged) {
+		PRINT_DELAY;
 		std::cout << "Channel " << std::dec << c+1;
 		if (chip > 0) std::cout << 'b';
 		std::cout << " patch: ";
@@ -160,28 +193,29 @@ void diffChannelState(uint8_t *o, uint8_t *n, int c, int chip)
 		printOp(n, dc);
 		std::cout << ' ' << std::hex << 0xC0 + c << '=' << std::setw(2) <<
 			(int)n[0xC0 | c] << "\n";
+		sync = true;
 	}
-	if (
-		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c])
-	) {
+	if (newKeyOn || (keyStayingOn && freqChanged)) {
+		PRINT_DELAY;
 		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
-		std::cout << "Channel " << std::dec << c+1 << " on @ " <<
+		std::cout << "Channel " << std::dec << c+1 << " "
+			<< (newKeyOn ? "  on" : "bend") << " @ " <<
 			block << '/' << std::hex << std::setw(3) << fnum << " = " <<
 			std::setw(7) << std::setfill(' ') << std::dec <<
 			milliHertz << " mHz" << std::setfill('0') <<
 			"\n";
+		sync = true;
 	}
-	return;
+	return sync;
 }
 
-void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
+bool diffPercState(uint8_t *o, uint8_t *n, int p, int chip, unsigned long& nextDelay)
 {
 	assert(p < 5);
 	int bit = 1 << p;
 	bool newKeyOn = (!(o[0xBD] & bit)) && (n[0xBD] & bit);
-
 	int c;
 	bool bm, bc;
 	switch (p) {
@@ -190,13 +224,18 @@ void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 		case 2: c = 8; bm = true; bc = false; break; // TT
 		case 3: c = 7; bm = false; bc = true; break; // SD
 		case 4: c = 6; bm = true; bc = true;  break; // BD
-		default: return;
+		default: return false;
 	}
-	if (
+
+	bool patchChanged =
 		(bm && isOpChanged(o, n, OPLOFFSET_MOD(c))) ||
 		(bc && isOpChanged(o, n, OPLOFFSET_CAR(c))) ||
-		(o[0xC0 | c] ^ n[0xC0 | c])
-	) {
+		(o[0xC0 | c] ^ n[0xC0 | c]);
+	bool freqChanged = (o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]);
+	bool keyStayingOn = n[0xBD] & bit;
+	bool sync = false;
+	if (keyStayingOn && patchChanged) {
+		PRINT_DELAY;
 		std::cout << "Perc " << percName(p);
 		if (chip > 0) std::cout << 'b';
 		std::cout << " patch: ";
@@ -210,21 +249,22 @@ void diffPercState(uint8_t *o, uint8_t *n, int p, int chip)
 		} else std::cout << std::setfill(' ') << std::setw(30) << ' ' << std::setfill('0');
 		std::cout << 0xC0 + c << '=' << std::setw(2) <<
 			(int)n[0xC0 | c] << "\n";
+		sync = true;
 	}
-	if (
-		(o[0xA0 | c] ^ n[0xA0 | c]) || (o[0xB0 | c] ^ n[0xB0 | c]) ||
-		newKeyOn
-	) {
+	if (newKeyOn || (keyStayingOn && freqChanged)) {
+		PRINT_DELAY;
 		int fnum = n[0xA0 | c] | ((n[0xB0 | c] & 0x03) << 8);
 		int block = (n[0xB0 | c] >> 2) & 7;
 		int milliHertz = gm::fnumToMilliHertz(fnum, block, 49716);
-		std::cout << "Perc " << percName(p) << "   on @ " <<
+		std::cout << "Perc " << percName(p) << "   " << (newKeyOn ? "  on" : "bend")
+			<< " @ " <<
 			block << '/' << std::hex << std::setw(3) << fnum << " = " <<
 			std::setw(7) << std::setfill(' ') << std::dec <<
 			milliHertz << " mHz" << std::setfill('0') <<
 			"\n";
+		sync = true;
 	}
-	return;
+	return sync;
 }
 
 int main(void)
@@ -267,17 +307,11 @@ int main(void)
 	std::cout << std::setfill('0');
 
 	bool first = true;
-
+	bool sync = false;
 	try {
 		cin->read((char *)codeMap, lenCodemap);
 
 		unsigned long nextDelay = 0;
-
-#define PRINT_DELAY	  \
-		if (nextDelay) { \
-			std::cout << "Delay for " << std::dec << nextDelay << "ms\n"; \
-			nextDelay = 0; \
-		}
 
 		for (;;) {
 			uint8_t code;
@@ -300,53 +334,61 @@ int main(void)
 				nextOplState[chip][reg] = val;
 			}
 
-			// Only print changes if they will be audible
-			if (nextDelay > 5) {
-				for (int chip = 0; chip < 2; chip++) {
-					// Check for any chip-wide changes.  Strictly this is only important if
-					// a note is playing (we don't need to see changes that won't affect the
-					// sound) but that would mean tracking the state separately between
-					// notes.  We can't just check this when a note is playing (like we used
-					// to) because that loses any changes made during silence.
-					diffGlobalState(oplState[chip], nextOplState[chip], chip);
+			for (int chip = 0; chip < 2; chip++) {
+				// Check for any chip-wide changes.  Strictly this is only important if
+				// a note is playing (we don't need to see changes that won't affect the
+				// sound) but that would mean tracking the state separately between
+				// notes.  We can't just check this when a note is playing (like we used
+				// to) because that loses any changes made during silence.
+				if (diffGlobalState(oplState[chip], nextOplState[chip], chip)) {
+					sync = true;
+				}
 
-					// Now run through all the normal channels and see if any notes have
-					// been toggled.
-					for (int c = 0; c < 9; c++) {
-						if (
-							(oplState[chip][0xB0 | c] & OPLBIT_KEYON) &&
-							(!(nextOplState[chip][0xB0 | c] & OPLBIT_KEYON))
-						) {
-							// keyon bit switched off
-							PRINT_DELAY;
-							std::cout << "Channel " << std::dec << c+1;
-							if (chip > 0) std::cout << 'b';
-							std::cout << " off\n";
-						} else if (nextOplState[chip][0xB0 | c] & OPLBIT_KEYON) {
-							// This channel is playing
-							diffChannelState(oplState[chip], nextOplState[chip], c, chip);
+				// Now run through all the normal channels and see if any notes have
+				// been toggled.
+				for (int c = 0; c < 9; c++) {
+					if (
+						(oplState[chip][0xB0 | c] & OPLBIT_KEYON) &&
+						(!(nextOplState[chip][0xB0 | c] & OPLBIT_KEYON))
+					) {
+						// keyon bit switched off
+						PRINT_DELAY;
+						std::cout << "Channel " << std::dec << c+1;
+						if (chip > 0) std::cout << 'b';
+						std::cout << " off\n";
+						sync = true;
+					} else if (nextOplState[chip][0xB0 | c] & OPLBIT_KEYON) {
+						// This channel is playing
+						if (diffChannelState(oplState[chip], nextOplState[chip], c, chip, nextDelay)) {
+							sync = true;
 						}
 					}
+				}
 
-					// Same again but for perc.  Strictly this should be only if rhythm mode
-					// is enabled, but we check anyway just in case.
-					for (int p = 0; p < 5; p++) {
-						int bit = 1 << p;
-						if (
-							(oplState[chip][0xBD] & bit) &&
-							(!(nextOplState[chip][0xBD] & bit))
-						) {
-							// keyon bit switched off
-							PRINT_DELAY;
-							std::cout << "Perc " << percName(p) << " off\n";
-						} else if (nextOplState[chip][0xBD] & bit) {
-							// This channel is playing, or is about to
-							diffPercState(oplState[chip], nextOplState[chip], p, chip);
+				// Same again but for perc.  Strictly this should be only if rhythm mode
+				// is enabled, but we check anyway just in case.
+				for (int p = 0; p < 5; p++) {
+					int bit = 1 << p;
+					if (
+						(oplState[chip][0xBD] & bit) &&
+						(!(nextOplState[chip][0xBD] & bit))
+					) {
+						// keyon bit switched off
+						PRINT_DELAY;
+						std::cout << "Perc " << percName(p) << " off\n";
+						sync = true;
+					} else if (nextOplState[chip][0xBD] & bit) {
+						// This channel is playing, or is about to
+						if (diffPercState(oplState[chip], nextOplState[chip], p, chip, nextDelay)) {
+							sync = true;
 						}
 					}
+				}
 
+				if (sync) {
 					// Now all the differences have been shown, so sync the two register maps
 					memcpy(oplState[chip], nextOplState[chip], sizeof(oplState[chip]));
+					sync = false;
 				}
 			}
 		}
