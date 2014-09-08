@@ -72,8 +72,11 @@ struct OPLEvent {
 const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value
 const float OPL_FNUM_ROUND = 50000.0;    ///< Alternate value used occasionally
 
+/// Value returned by getOPLChannel() if there aren't enough channels available
+const unsigned int OPL_INVALID_CHIP = 2;
+
 /// Maximum number of OPL channels that will ever be used
-#define MAX_OPL_CHANNELS 18
+const unsigned int OPL_MAX_CHANNELS = 18;
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
 class DLL_EXPORT OPLWriterCallback: virtual public TempoCallback
@@ -174,6 +177,10 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		bool modeOPL3;              ///< Is OPL3/dual OPL2 mode on?
 		bool modeRhythm;            ///< Is rhythm mode enabled?
 
+		/// Mapping between track indices and OPL channels
+		typedef std::map<unsigned int, int> MIDIChannelMap;
+		/// Mapping between track indices and OPL channels
+		MIDIChannelMap midiChannelMap;
 		/// Update oplState then call handleNextPair()
 		/**
 		 * @param chipIndex
@@ -216,6 +223,33 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		void writeOpSettings(int chipIndex, int oplChannel, int opNum,
 			OPLPatchPtr i, int velocity);
 
+		/// Get the OPL channel to use for the given track.
+		/**
+		 * @param ti
+		 *   Track being used.
+		 *
+		 * @param trackIndex
+		 *   Zero-based index of the track.
+		 *
+		 * @param oplChannel
+		 *   On return, set to the OPL channel to use.
+		 *
+		 * @param chipIndex
+		 *   On return, set to the index of the OPL chip to use.  Can be
+		 *   OPL_INVALID_CHIP if there are not enough channels available.
+		 *
+		 * @param mod
+		 *   On return, set to true if this instrument uses the modulator operator.
+		 *
+		 * @param car
+		 *   On return, set to true if this instrument uses the carrier operator.
+		 */
+		void getOPLChannel(const TrackInfo& ti, unsigned int trackIndex,
+			unsigned int *oplChannel, unsigned int *chipIndex, bool *mod, bool *car);
+
+		/// Unmap a channel when no more events are active, freeing it up for later
+		/// use.
+		void clearOPLChannel(unsigned int trackIndex);
 };
 
 } // namespace gamemusic

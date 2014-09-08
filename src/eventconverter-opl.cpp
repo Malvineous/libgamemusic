@@ -32,41 +32,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-/// Figure out which OPL channel and operator(s) to use for a track.
-void getOPLChannel(const TrackInfo& ti, unsigned int *oplChannel,
-	unsigned int *chipIndex, bool *mod, bool *car)
-{
-	*oplChannel = 99;
-	if (ti.channelType == TrackInfo::OPLPercChannel) {
-		*chipIndex = 0;
-		switch (ti.channelIndex) {
-			case 4: *oplChannel = 6; *mod = true;  *car = true;  break; // bass drum (mod+car)
-			case 3: *oplChannel = 7; *mod = false; *car = true;  break; // snare (car)
-			case 2: *oplChannel = 8; *mod = true;  *car = false; break; // tomtom (mod)
-			case 1: *oplChannel = 8; *mod = false; *car = true;  break; // top cymbal (car)
-			case 0: *oplChannel = 7; *mod = true;  *car = false; break; // hi-hat (mod)
-			default:
-				throw error(createString("OPL percussion channel out of range: "
-					<< (int)ti.channelIndex << " is not in 0 <= x <= 4"));
-		}
-	} else { // OPLChannel
-		if (ti.channelIndex < 9) {
-			*oplChannel = ti.channelIndex;
-			*chipIndex = 0;
-		} else if (ti.channelIndex < 18) {
-			*oplChannel = ti.channelIndex - 9;
-			*chipIndex = 1;
-		} else {
-			throw error(createString("OPL channel " << ti.channelIndex
-				<< " is out of range!"));
-		}
-		*mod = true;
-		*car = true;
-	}
-	assert(*oplChannel != 99);
-	return;
-}
-
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
 	ConstMusicPtr music, double fnumConversion, unsigned int flags)
 	:	cb(cb),
@@ -195,7 +160,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	unsigned int oplChannel, chipIndex;
 	bool mod, car;
-	getOPLChannel(ti, &oplChannel, &chipIndex, &mod, &car);
+	this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
+
+	// No free channels
+	if (chipIndex == OPL_INVALID_CHIP) return;
 
 	// If the note is already playing, turn it off first before we update the
 	// instrument parameters.  This makes a clean note and prevents it from
@@ -231,6 +199,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	unsigned int fnum, block;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
+	assert(block <= 7);
 
 	// Write the rest of the (global) instrument settings.
 	if (
@@ -308,22 +277,18 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		);
 	} else {
 		unsigned int oplChannel, chipIndex;
-		if (ti.channelIndex < 9) {
-			oplChannel = ti.channelIndex;
-			chipIndex = 0;
-		} else if (ti.channelIndex < 18) {
-			oplChannel = ti.channelIndex - 9;
-			chipIndex = 1;
-		} else {
-			std::cerr << "OPL channel " << ti.channelIndex << " is out of range!"
-				<< std::endl;
-			return;
-		}
+		bool mod, car;
+		this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
+
+		// No free channels
+		if (chipIndex == OPL_INVALID_CHIP) return;
 
 		// Write 0xB0 w/ keyon bit disabled
 		this->processNextPair(chipIndex, 0xB0 | oplChannel,
 			(this->oplState[chipIndex][0xB0 | oplChannel] & ~OPLBIT_KEYON)
 		);
+
+		this->clearOPLChannel(trackIndex);
 	}
 	return;
 }
@@ -348,7 +313,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 
 	unsigned int oplChannel, chipIndex;
 	bool mod, car;
-	getOPLChannel(ti, &oplChannel, &chipIndex, &mod, &car);
+	this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
+
+	// No free channels
+	if (chipIndex == OPL_INVALID_CHIP) return;
 
 	this->cachedDelay += delay;
 
@@ -515,5 +483,89 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 	this->processNextPair(chipIndex, BASE_SUST_RLSE | op, (o->sustainRate << 4) | (o->releaseRate & 0x0F));
 	this->processNextPair(chipIndex, BASE_WAVE      | op,  o->waveSelect & 7);
 
+	return;
+}
+
+void EventConverter_OPL::getOPLChannel(const TrackInfo& ti,
+	unsigned int trackIndex, unsigned int *oplChannel, unsigned int *chipIndex,
+	bool *mod, bool *car)
+{
+	*oplChannel = 99;
+	if (ti.channelType == TrackInfo::OPLPercChannel) {
+		*chipIndex = 0;
+		switch (ti.channelIndex) {
+			case 4: *oplChannel = 6; *mod = true;  *car = true;  break; // bass drum (mod+car)
+			case 3: *oplChannel = 7; *mod = false; *car = true;  break; // snare (car)
+			case 2: *oplChannel = 8; *mod = true;  *car = false; break; // tomtom (mod)
+			case 1: *oplChannel = 8; *mod = false; *car = true;  break; // top cymbal (car)
+			case 0: *oplChannel = 7; *mod = true;  *car = false; break; // hi-hat (mod)
+			default:
+				throw error(createString("OPL percussion channel out of range: "
+					<< (int)ti.channelIndex << " is not in 0 <= x <= 4"));
+		}
+	} else if (ti.channelType == TrackInfo::OPLChannel) {
+		if (ti.channelIndex < 9) {
+			*oplChannel = ti.channelIndex;
+			*chipIndex = 0;
+		} else if (ti.channelIndex < 18) {
+			*oplChannel = ti.channelIndex - 9;
+			*chipIndex = 1;
+		} else {
+			throw error(createString("OPL channel " << ti.channelIndex
+				<< " is out of range!"));
+		}
+		*mod = true;
+		*car = true;
+	} else if (ti.channelType == TrackInfo::MIDIChannel) {
+		*mod = true;
+		*car = true;
+		int rawChannel = -1;
+		MIDIChannelMap::iterator i = this->midiChannelMap.find(trackIndex);
+		if (i != this->midiChannelMap.end()) {
+			// Reuse a previous mapping
+			rawChannel = i->second;
+		} else {
+			// Create a new mapping
+			bool channelInUse[OPL_MAX_CHANNELS];
+			for (unsigned int j = 0; j < OPL_MAX_CHANNELS; j++) channelInUse[j] = false;
+			for (MIDIChannelMap::const_iterator
+				j = this->midiChannelMap.begin(); j != this->midiChannelMap.end(); j++
+			) {
+				assert(j->second < (signed int)OPL_MAX_CHANNELS);
+				if (j->second >= 0) channelInUse[j->second] = true;
+			}
+			for (unsigned int j = 0; j < OPL_MAX_CHANNELS; j++) {
+				if (!channelInUse[j]) {
+					// This is the channel to use
+					rawChannel = j;
+					this->midiChannelMap[trackIndex] = rawChannel;
+					break;
+				}
+			}
+			// This might set the map to -1 if there aren't enough free channels
+			if (rawChannel == -1) std::cout << "OPL: All 18 channels are in use for MIDI, dropping a note.\n";
+		}
+		if (rawChannel < 0) {
+			*chipIndex = OPL_INVALID_CHIP;
+			*oplChannel = 0;
+		} else if (rawChannel >= 9) {
+			*chipIndex = 1;
+			*oplChannel = rawChannel - 9;
+		} else {
+			*chipIndex = 0;
+			*oplChannel = rawChannel;
+		}
+	}
+	// Should never get this far
+	assert(*oplChannel != 99);
+	return;
+}
+
+void EventConverter_OPL::clearOPLChannel(unsigned int trackIndex)
+{
+	MIDIChannelMap::iterator i = this->midiChannelMap.find(trackIndex);
+	if (i != this->midiChannelMap.end()) {
+		this->midiChannelMap.erase(i);
+	}
 	return;
 }
