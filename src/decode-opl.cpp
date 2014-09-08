@@ -587,7 +587,7 @@ void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
 			const TrackEvent& te = *i;
 			if (te.delay != 0) break; // no more events at this time
 			EffectEvent *pbev = dynamic_cast<EffectEvent *>(i->event.get());
-			if (pbev && (pbev->type == EffectEvent::Pitchbend)) {
+			if (pbev && (pbev->type == EffectEvent::PitchbendNote)) {
 				// There is an existing pitchbend event at the same time, so edit
 				// that one.
 				pbev->data = freq;
@@ -604,7 +604,7 @@ void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
 		*lastDelay = 0;
 		EffectEvent *ev = new EffectEvent();
 		te.event.reset(ev);
-		ev->type = EffectEvent::Pitchbend;
+		ev->type = EffectEvent::PitchbendNote;
 		ev->data = freq;
 		track->push_back(te);
 	}

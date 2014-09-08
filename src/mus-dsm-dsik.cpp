@@ -638,7 +638,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case EffectEvent::Pitchbend:
+		case EffectEvent::PitchbendNote:
 			//if (this->flags & IntegerNotesOnly) return;
 			std::cout << "DSM: TODO - implement pitch bends\n";
 			break;

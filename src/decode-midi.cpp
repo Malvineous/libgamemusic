@@ -37,6 +37,16 @@ const unsigned int MIDI_DEFAULT_PATCH = 0;
 /// Number of MIDI channels.
 const unsigned int MIDI_CHANNEL_COUNT = 16;
 
+/// Convert a MIDI pitchbend value into a number of semitones, possibly negative
+/**
+ * @param bend
+ *   MIDI bend amount.  8192 is middle, 0 is -2 semitones, 16384 is +2 semitones
+ */
+inline double midiBendToSemitone(unsigned int bend)
+{
+	return (bend - 8192.0) / 4096.0;
+}
+
 /// MusicReader class that understands MIDI data.
 class MIDIDecoder
 {
@@ -296,7 +306,7 @@ MusicPtr MIDIDecoder::decode()
 							ev->milliHertz = PERC_FREQ;
 							ev->instrument = this->percMap[note];
 						} else {
-							ev->milliHertz = midiToFreq(note);
+							ev->milliHertz = midiToFreq(note + midiBendToSemitone(this->currentPitchbend[midiChannel]));
 							ev->instrument = this->currentInstrument[midiChannel];
 						}
 						if (ev->instrument >= music->patches->size()) {
@@ -360,10 +370,9 @@ MusicPtr MIDIDecoder::decode()
 					uint8_t msb;
 					this->input >> u8(msb);
 					// Only lower seven bits are used in each byte
-					// 8192 is middle, 0 is -2 semitones, 16384 is +2 semitones
-					int16_t value = -8192 + (((msb & 0x7F) << 7) | (evdata & 0x7F));
+					uint16_t bend = ((msb & 0x7F) << 7) | (evdata & 0x7F);
 
-					if (value != this->currentPitchbend[midiChannel]) {
+					if (bend != this->currentPitchbend[midiChannel]) {
 						// If there are any active notes on this channel, generate pitchbend
 						// events for them.
 						for (unsigned int i = 0; i < MIDI_NOTES; i++) {
@@ -374,8 +383,8 @@ MusicPtr MIDIDecoder::decode()
 								this->lastDelay[track] = 0;
 								EffectEvent *ev = new EffectEvent();
 								te.event.reset(ev);
-								ev->type = EffectEvent::Pitchbend;
-								ev->data = midiToFreq(i + (double)value / 4096.0);
+								ev->type = EffectEvent::PitchbendNote;
+								ev->data = midiToFreq(i + midiBendToSemitone(bend));
 								pattern->at(track)->push_back(te);
 
 								/// @todo Include pitchbend events in future mapped channels
@@ -384,7 +393,7 @@ MusicPtr MIDIDecoder::decode()
 								break;
 							}
 						}
-						this->currentPitchbend[midiChannel] = value;
+						this->currentPitchbend[midiChannel] = bend;
 					}
 					break;
 				}

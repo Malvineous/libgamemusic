@@ -155,7 +155,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 	BOOST_REQUIRE_MESSAGE(pevTyped, createString(
 		"Pitchbend event was wrongly interpreted as " << te.event->getContent()));
 
-	BOOST_REQUIRE_EQUAL(pevTyped->type, gm::EffectEvent::Pitchbend);
+	BOOST_REQUIRE_EQUAL(pevTyped->type, gm::EffectEvent::PitchbendNote);
 	BOOST_REQUIRE_CLOSE(pevTyped->data / 1000.0, 433.700, 0.01);
 }
 
@@ -179,7 +179,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 		te.delay = 10;
 		gm::EffectEvent *ev = new gm::EffectEvent();
 		te.event.reset(ev);
-		ev->type = gm::EffectEvent::Pitchbend;
+		ev->type = gm::EffectEvent::PitchbendNote;
 		ev->data = 433700;
 		this->track1->push_back(te);
 	}

@@ -241,7 +241,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	if (!activeSample) return; // no note to affect
 
 	switch (ev->type) {
-		case EffectEvent::Pitchbend:
+		case EffectEvent::PitchbendNote:
 			activeSample->sampleRate =
 				activeSample->patch->sampleRate * ev->data / FREQ_MIDDLE_C;
 			break;

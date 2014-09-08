@@ -321,7 +321,9 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 	this->cachedDelay += delay;
 
 	switch (ev->type) {
-		case EffectEvent::Pitchbend: {
+		case EffectEvent::PitchbendNote: {
+			// Just bend the whole channel because there will only be one note
+			// playing anyway, and the bend will be reset on the next note.
 			const unsigned int& milliHertz = ev->data;
 			unsigned int fnum, block;
 			milliHertzToFnum(milliHertz, &fnum, &block, this->fnumConversion);

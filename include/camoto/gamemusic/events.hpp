@@ -138,8 +138,8 @@ struct DLL_EXPORT NoteOffEvent: virtual public Event
 struct DLL_EXPORT EffectEvent: virtual public Event
 {
 	enum EffectType {
-		Pitchbend, ///< Change note freq: data=new freq in milliHertz
-		Volume,    ///< Change note volume: 0=silent, 255=loud
+		PitchbendNote, ///< Change note freq: data=new freq in milliHertz
+		Volume,        ///< Change note volume: 0=silent, 255=loud
 	};
 
 	/// Type of effect.

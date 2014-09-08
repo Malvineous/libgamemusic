@@ -401,7 +401,7 @@ off klm
 						lastDelay[channel] = 0;
 						EffectEvent *ev = new EffectEvent();
 						te.event.reset(ev);
-						ev->type = EffectEvent::Pitchbend;
+						ev->type = EffectEvent::PitchbendNote;
 						ev->data = freqMap[channel];
 						pattern->at(channel)->push_back(te);
 					} else {

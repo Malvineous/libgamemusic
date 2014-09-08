@@ -230,12 +230,15 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		(trackInfo.channelType != TrackInfo::MIDIChannel)
 	) return;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
+	assert(midiChannel < MIDI_CHANNELS);
 	this->cachedDelay += delay;
 
 	switch (ev->type) {
-		case EffectEvent::Pitchbend: {
+		case EffectEvent::PitchbendNote: {
 			if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
 
+			// We have to bend the whole channel because of MIDI limitations.  We
+			// remember the bend though, so that it will be reset on the next note.
 			uint8_t note;
 			int16_t bend;
 			freqToMIDI(ev->data, &note, &bend, this->activeNote[trackIndex]);

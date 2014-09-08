@@ -975,7 +975,7 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case EffectEvent::Pitchbend:
+		case EffectEvent::PitchbendNote:
 			//if (this->flags & IntegerNotesOnly) return;
 			std::cout << "S3M: TODO - implement pitch bends\n";
 			break;
