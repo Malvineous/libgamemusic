@@ -82,6 +82,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		virtual void midiSetTempo(uint32_t delay, const Tempo& tempo);
 		virtual void endOfTrack();
 		virtual void endOfPattern();
+		virtual void endOfSong(uint32_t delay);
 
 	protected:
 		stream::output_sptr output;        ///< Target stream for SMF MIDI data
@@ -287,5 +288,10 @@ void MIDIEncoder::endOfTrack()
 void MIDIEncoder::endOfPattern()
 {
 	//if (this->cbEndOfPattern) this->cbEndOfPattern();
+	return;
+}
+
+void MIDIEncoder::endOfSong(uint32_t delay)
+{
 	return;
 }

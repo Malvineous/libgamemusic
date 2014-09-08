@@ -204,6 +204,9 @@ class MIDIEventCallback
 
 		/// End of a pattern has been reached.
 		virtual void endOfPattern() = 0;
+
+		/// End of song, with optional final delay.
+		virtual void endOfSong(uint32_t delay) = 0;
 };
 
 /// Convert MIDI note number into milliHertz.
