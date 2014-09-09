@@ -219,6 +219,15 @@ class MIDIEventCallback
  */
 unsigned long DLL_EXPORT midiToFreq(double midi);
 
+/// Convert milliHertz into a fractional MIDI note number.
+/**
+ * @param milliHertz
+ *   Frequency value to convert (440000 == 440Hz == A4)
+ *
+ * @return Fractional MIDI note number, e.g. 60.5
+ */
+double DLL_EXPORT freqToMIDI(unsigned long milliHertz);
+
 /// Convert milliHertz into MIDI note number and pitchbend value.
 /**
  * @param milliHertz
@@ -237,6 +246,18 @@ unsigned long DLL_EXPORT midiToFreq(double midi);
  */
 void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *bend,
 	uint8_t activeNote);
+
+/// Convert a MIDI pitchbend (0..16383) into semitones (-2..+1.9999)
+inline double midiPitchbendToSemitones(unsigned int bend)
+{
+	return (bend - 8192) / 4096.0;
+}
+
+/// Convert a fractional semitone (-2..+2) into a MIDI pitchbend (0..16383)
+inline double midiSemitonesToPitchbend(double semitones)
+{
+	return std::max(0, std::min(16383, (int)(8192 + (semitones * 4096.0))));
+}
 
 /// EventHandler class that can produce MIDI events.
 /**

@@ -36,6 +36,11 @@ unsigned long camoto::gamemusic::midiToFreq(double midi)
 	return 440000 * pow(2, (midi - 69.0) / 12.0);
 }
 
+double camoto::gamemusic::freqToMIDI(unsigned long milliHertz)
+{
+	return 12.0 * log2((double)milliHertz / 440000.0) + 69.0;
+}
+
 void camoto::gamemusic::freqToMIDI(unsigned long milliHertz, uint8_t *note,
 	int16_t *bend, uint8_t curNote)
 {
@@ -44,19 +49,19 @@ void camoto::gamemusic::freqToMIDI(unsigned long milliHertz, uint8_t *note,
 	// below human hearing anyway.)
 	if (milliHertz <= 8175) {
 		*note = 0;
-		*bend = 0;
+		*bend = 8192;
 		return;
 	}
-	double val = 12.0 * log2((double)milliHertz / 440000.0) + 69.0;
+	double val = freqToMIDI(milliHertz);
 	// round to three decimal places
 	val = round(val * 1000.0) / 1000.0;
 	if (curNote == 0xFF) *note = round(val);
 	else *note = curNote;
-	*bend = (val - *note) * 4096;
+	*bend = 8192 + (val - *note) * 4096;
 
 	// If the pitchbend is out of range, just clamp it
-	if (*bend < -8192) *bend = -8192;
-	if (*bend > 8191) *bend = 8191;
+	if (*bend < 0) *bend = 0;
+	if (*bend > 16383) *bend = 16383;
 
 	if (*note > 0x7F) {
 		std::cout << "Error: Frequency " << (double)milliHertz / 1000 << " is too "
@@ -86,10 +91,12 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 {
 	memset(this->currentPatch, 0xFF, sizeof(this->currentPatch));
 	memset(this->currentInternalPatch, 0xFF, sizeof(this->currentInternalPatch));
-	memset(this->currentPitchbend, 0, sizeof(this->currentPitchbend));
 	memset(this->activeNote, ACTIVE_NOTE_NONE, sizeof(this->activeNote));
 	memset(this->lastEvent, 0xFF, sizeof(this->lastEvent));
 	memset(this->channelMap, 0xFF, sizeof(this->channelMap));
+	for (unsigned int c = 0; c < MIDI_CHANNELS; c++) {
+		this->currentPitchbend[c] = 8192;
+	}
 }
 
 EventConverter_MIDI::~EventConverter_MIDI()
@@ -172,14 +179,6 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	uint8_t note;
 	int16_t bend;
 	freqToMIDI(ev->milliHertz, &note, &bend, 0xFF);
-	if (!(this->midiFlags & MIDIFlags::IntegerNotesOnly)) {
-		if (bend != this->currentPitchbend[midiChannel]) {
-			bend += 8192;
-			this->cb->midiPitchbend(this->cachedDelay, midiChannel, bend);
-			this->cachedDelay = 0;
-			this->currentPitchbend[midiChannel] = bend;
-		}
-	}
 
 	// Use a default velocity if none was specified, otherwise squish it into
 	// a 7-bit value.
@@ -193,6 +192,16 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		this->cachedDelay = 0;
 		// No need to do this as it will just be changed below
 		// this->activeNote[trackIndex] = ACTIVE_NOTE_NONE;
+	}
+
+	// If the pitch isn't on a note boundary, issue a bend first (or reset the
+	// bend if there's one active on the channel)
+	if (!(this->midiFlags & MIDIFlags::IntegerNotesOnly)) {
+		if (bend != this->currentPitchbend[midiChannel]) {
+			this->cb->midiPitchbend(this->cachedDelay, midiChannel, bend);
+			this->cachedDelay = 0;
+			this->currentPitchbend[midiChannel] = bend;
+		}
 	}
 
 	this->cb->midiNoteOn(this->cachedDelay, midiChannel, note, velocity);
@@ -236,6 +245,9 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	switch (ev->type) {
 		case EffectEvent::PitchbendNote: {
 			if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
+			// If there's no note playing, don't do a pitchbend because it'll get done
+			// when the next note-on happens.
+			if (this->activeNote[trackIndex] == ACTIVE_NOTE_NONE) return;
 
 			// We have to bend the whole channel because of MIDI limitations.  We
 			// remember the bend though, so that it will be reset on the next note.
@@ -245,7 +257,6 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 			/// @todo Handle pitch bending further than one note or if 'note' comes out
 			/// differently to the currently playing note
 			if (bend != this->currentPitchbend[midiChannel]) {
-				bend += 8192;
 				this->cb->midiPitchbend(this->cachedDelay, midiChannel, bend);
 				this->cachedDelay = 0;
 				this->currentPitchbend[midiChannel] = bend;

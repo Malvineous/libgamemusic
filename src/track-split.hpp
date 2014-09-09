@@ -42,6 +42,10 @@ struct DLL_EXPORT SpecificNoteOffEvent: virtual public NoteOffEvent
 /// in the track.
 struct DLL_EXPORT PolyphonicEffectEvent: virtual public EffectEvent
 {
+	enum PolyphonicEffectType {
+		PitchbendChannel, ///< Change note freq of all current notes: data=0..8192..16384 for -2..0..+2 semitones
+	};
+
 	virtual std::string getContent() const;
 
 	virtual void processEvent(unsigned long delay, unsigned int trackIndex,

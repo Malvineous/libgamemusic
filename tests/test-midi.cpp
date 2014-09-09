@@ -126,15 +126,15 @@ BOOST_AUTO_TEST_CASE(freqToNote)
 	BOOST_CHECK_EQUAL(note, n); \
 	BOOST_CHECK_EQUAL(bend, b);
 
-	check_freq(    8175,   0, 0);
-	check_freq(    8661,   1, -8);
-	check_freq(  110000,  45, 0);
-	check_freq(  220000,  57, 0);
-	check_freq(  440000,  69, 0);
-	check_freq( 1760000,  93, 0);
-	check_freq( 7040000, 117, 0);
-	check_freq( 9956063, 123, 0);
-	check_freq(12543853, 127, 0);
+	check_freq(    8175,   0, 0 +8192);
+	check_freq(    8661,   1, -9 +8192);
+	check_freq(  110000,  45, 0 +8192);
+	check_freq(  220000,  57, 0 +8192);
+	check_freq(  440000,  69, 0 +8192);
+	check_freq( 1760000,  93, 0 +8192);
+	check_freq( 7040000, 117, 0 +8192);
+	check_freq( 9956063, 123, 0 +8192);
+	check_freq(12543853, 127, 0 +8192);
 
 }
 

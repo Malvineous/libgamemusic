@@ -764,7 +764,6 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	if (bend != this->currentPitchbend[midiChannel]) {
 		uint32_t delay = ev->absTime - this->lastTick;
 		this->writeMIDINumber(delay);
-		bend += 8192;
 		uint8_t msb = (bend >> 7) & 0x7F;
 		uint8_t lsb = bend & 0x7F;
 		this->writeCommand(0xE0 | midiChannel);
