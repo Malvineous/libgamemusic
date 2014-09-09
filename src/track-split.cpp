@@ -19,6 +19,7 @@
  */
 
 #include <sstream>
+#include <camoto/gamemusic/eventconverter-midi.hpp> // freqToMIDI etc.
 #include "track-split.hpp"
 
 using namespace camoto::gamemusic;
@@ -77,6 +78,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 			bool movedNotes = false; // did we move any notes to the overflow track?
 			unsigned long curNoteFreq = 0;
 			unsigned long delayMain = 0, delayOverflow = 0;
+			double curBend = 0; // current pitchbend in semitones
 			for (Track::iterator
 				ev = (*pt)->begin(); ev != (*pt)->end(); ev++
 			) {
@@ -97,6 +99,15 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 						curNoteFreq = evNoteOn->milliHertz;
 						te.delay = delayMain;
 						delayMain = 0;
+
+						if (curBend != 0) {
+							// Convert the milliHertz value for this note back to a semitone
+							// number, add the pitchbend (in semitones), then convert back
+							// to a frequency.
+							double targetNote = curBend + freqToMIDI(evNoteOn->milliHertz);
+							evNoteOn->milliHertz = midiToFreq(targetNote);
+						}
+
 						main->push_back(te);
 					}
 					continue;
@@ -122,12 +133,37 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 					}
 					continue;
 				}
+				PolyphonicEffectEvent *evPolyEffect =
+					dynamic_cast<PolyphonicEffectEvent *>(te.event.get());
+				if (evPolyEffect && (evPolyEffect->type == (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel)) {
+					curBend = midiPitchbendToSemitones(evPolyEffect->data);
+
+					// Create a normal pitchbend if there is a note currently playing
+					if (curNoteFreq) {
+						TrackEvent teCopy;
+						teCopy.delay = delayMain;
+						delayMain = 0;
+						EffectEvent *evEffect = new EffectEvent();
+						teCopy.event.reset(evEffect);
+						evEffect->type = EffectEvent::PitchbendNote;
+						double targetNote = curBend + freqToMIDI(curNoteFreq);
+						evEffect->data = midiToFreq(targetNote);
+						main->push_back(teCopy);
+					}
+
+					// Move the polyphonic event onto the overflow channel in case there
+					// are other notes playing.  (If not, no harm done).
+					te.delay = delayOverflow;
+					delayOverflow = 0;
+					overflow->push_back(te);
+					continue;
+				}
 
 				// Any other event is just left on the main channel
 				te.delay = delayMain;
 				delayMain = 0;
 				main->push_back(te);
-			}
+			} // for (each event on the track)
 
 			// Remove the track we have just processed, and replace it with the main
 			// one we've just generated.
