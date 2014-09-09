@@ -68,6 +68,11 @@ unsigned long MusicType_CDFM::getCaps() const
 MusicType::Certainty MusicType_CDFM::isInstance(stream::input_sptr input) const
 {
 	stream::len fileSize = input->size();
+
+	// Too short
+	// TESTED BY: mus_cdfm_zone66_isinstance_c04
+	if (fileSize < 1*6+4+256) return MusicType::DefinitelyNo;
+
 	input->seekg(0, stream::start);
 
 	uint8_t speed, orderCount, patternCount, numDigInst, numOPLInst, loopDest;
