@@ -60,6 +60,9 @@ unsigned long MusicType_MUS_Vinyl::getCaps() const
 MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input_sptr psMusic) const
 {
 	stream::len lenFile = psMusic->size();
+	// File too short
+	// TESTED BY: mus_mus_vinyl_isinstance_c02
+	if (lenFile < 0x2A + 4) return MusicType::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_mus_vinyl_isinstance_c01
