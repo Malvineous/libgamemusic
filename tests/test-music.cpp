@@ -260,12 +260,14 @@ void test_music::test_write()
 {
 	BOOST_TEST_MESSAGE("Write music file");
 
-	MusicPtr music(new Music());
-	/*
-	assert(music->patches);
+	// Read in the standard format
+	MusicPtr music(this->pType->read(this->base, this->suppData));
+
+	// Write it out again
 	this->base.reset(new stream::string());
 	this->pType->write(this->base, this->suppData, music, this->writeFlags);
-	*/
+
+	// Make sure it matches what we read
 	BOOST_REQUIRE(this->is_content_equal(this->standard()));
 }
 

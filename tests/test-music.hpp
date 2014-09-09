@@ -60,7 +60,7 @@ class test_music: public test_main
 		void test_read();
 		/// Write a completely normal file.
 		void test_write();
-	void test_new_isinstance();
+		void test_new_isinstance();
 		/// Write a normal file but check the metadata length limits are enforced.
 		void test_metadata_desc();
 		void test_metadata_palfile();
