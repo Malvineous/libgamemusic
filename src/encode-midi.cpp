@@ -175,7 +175,7 @@ void MIDIEncoder::writeMIDINumber(uint32_t value)
 	// Write the three most-significant bytes as 7-bit bytes, with the most
 	// significant bit set.
 	uint8_t next;
-	if (value & (0x7F << 28)) { next = 0x80 | (value >> 28); this->output << u8(next); }
+	if (value & (0x7F << 21)) { next = 0x80 | (value >> 21); this->output << u8(next); }
 	if (value & (0x7F << 14)) { next = 0x80 | (value >> 14); this->output << u8(next); }
 	if (value & (0x7F <<  7)) { next = 0x80 | (value >>  7); this->output << u8(next); }
 
