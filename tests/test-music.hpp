@@ -166,6 +166,15 @@ class test_music: public test_main
 		/// File type code for this format.
 		std::string type;
 
+		/// Any formats here identify us as an instance of that type, and it
+		/// cannot be avoided.
+		/**
+		 * If "otherformat" is listed here then we will not pass our initialstate
+		 * to otherformat's isInstance function.  This is kind of backwards but is
+		 * is the way the test functions are designed.
+		 */
+		std::vector<std::string> skipInstDetect;
+
 		/// Flags to pass to MusicType::write().
 		unsigned int writeFlags;
 
