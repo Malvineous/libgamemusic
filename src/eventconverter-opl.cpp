@@ -62,6 +62,16 @@ void EventConverter_OPL::setBankMIDI(PatchBankPtr bankMIDI)
 void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
 {
 	this->EventHandler::handleAllEvents(eventOrder, this->music);
+
+	// Write out any trailing delay
+	OPLEvent oplev;
+	oplev.reg = 0;
+	oplev.val = 0;
+	oplev.chipIndex = 0;
+	oplev.delay = this->cachedDelay;
+	oplev.delayOnly = true;
+	this->cachedDelay = 0;
+	this->cb->writeNextPair(&oplev);
 }
 
 void EventConverter_OPL::endOfTrack(unsigned long delay)
@@ -79,6 +89,17 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	assert(ev->tempo.usPerTick > 0);
+	this->cachedDelay += delay;
+	if (this->cachedDelay) {
+		OPLEvent oplev;
+		oplev.reg = 0;
+		oplev.val = 0;
+		oplev.chipIndex = 0;
+		oplev.delay = this->cachedDelay;
+		oplev.delayOnly = true;
+		this->cachedDelay = 0;
+		this->cb->writeNextPair(&oplev);
+	}
 	this->cb->tempoChange(ev->tempo);
 	return;
 }
@@ -441,6 +462,7 @@ void EventConverter_OPL::processNextPair(uint8_t chipIndex, uint8_t reg,
 	oplev.val = val;
 	oplev.chipIndex = chipIndex;
 	oplev.delay = this->cachedDelay;
+	oplev.delayOnly = false;
 	this->cachedDelay = 0;
 
 	this->cb->writeNextPair(&oplev);

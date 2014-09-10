@@ -67,6 +67,24 @@ struct OPLEvent {
 	 * then delay at the new speed.
 	 */
 	uint32_t tempo;
+
+	/// If true, write this delay but ignore the registers.
+	/**
+	 * This value is ignored when reading OPL data.
+	 *
+	 * If DelayIsPreData, then write the delay in this event, but ignore the
+	 * registers and do not write those (or write dummy ones.)
+	 * If DelayIsPostData, then write the registers and the trailing delay
+	 * as per normal.
+	 *
+	 * This is set when a delay needs to be written at the old tempo value, just
+	 * before a change to a new tempo.  It is also used at the end of the file if
+	 * there is a trailing delay.
+	 *
+	 * Generally this is only set when a delay should be written immediately, and
+	 * not cached for writing later.
+	 */
+	bool delayOnly;
 };
 
 const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value

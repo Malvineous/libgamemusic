@@ -124,9 +124,9 @@ void OPLEncoder::encode()
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}
-	if (this->delayType == DelayIsPostData) {
-		// Flush out the last event
-		this->delayedEvent.delay = 0; // cut off any EOF silence
+	if ((this->delayType == DelayIsPostData) || this->delayedEvent.delay) {
+		// Flush out the last event/delay
+		this->delayedEvent.delayOnly = true;
 		this->cb->writeNextPair(&this->delayedEvent);
 	}
 	return;

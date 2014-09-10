@@ -58,6 +58,7 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 		{
 			if (this->lenData == 0) return false;
 			oplEvent->delay = 0;
+			oplEvent->delayOnly = false;
 
 			if (this->first) {
 				// First call, set tempo
@@ -72,7 +73,16 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 			try {
 				uint8_t code;
 nextCode:
-				if (this->lenData == 0) return false;
+				if (this->lenData == 0) {
+					if (oplEvent->delay) {
+						oplEvent->reg = 0;
+						oplEvent->val = 0;
+						oplEvent->chipIndex = 0;
+						oplEvent->delayOnly = true;
+						return true; // empty event w/ final delay
+					}
+					return false;
+				}
 				this->input >> u8(code);
 				this->lenData--;
 				switch (code) {
@@ -108,6 +118,14 @@ nextCode:
 						break;
 				}
 			} catch (const stream::incomplete_read&) {
+				this->lenData = 0;
+				if (oplEvent->delay) {
+					oplEvent->reg = 0;
+					oplEvent->val = 0;
+					oplEvent->chipIndex = 0;
+					oplEvent->delayOnly = true;
+					return true; // empty event w/ final delay
+				}
 				return false;
 			}
 			oplEvent->chipIndex = this->chipIndex;
@@ -160,6 +178,8 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 				this->msSongLength += delay;
 				break; // delay would == 0
 			}
+
+			if (oplEvent->delayOnly) return;
 
 			if (oplEvent->chipIndex != this->lastChipIndex) {
 				assert(oplEvent->chipIndex < 2);

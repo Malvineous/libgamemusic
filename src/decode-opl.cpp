@@ -475,6 +475,20 @@ MusicPtr OPLDecoder::decode()
 
 	} // while (all events)
 
+	// Put dummy events if necessary to preserve trailing delays
+	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+		if (this->lastDelay[t] && pattern->at(t)->size()) {
+			TrackEvent te;
+			te.delay = this->lastDelay[t];
+			this->lastDelay[t] = 0;
+			ConfigurationEvent *ev = new ConfigurationEvent();
+			te.event.reset(ev);
+			ev->configType = ConfigurationEvent::None;
+			ev->value = 0;
+			pattern->at(t)->push_back(te);
+		}
+	}
+
 	music->patterns.push_back(pattern);
 	music->patternOrder.push_back(0);
 	music->ticksPerTrack = totalDelay;
