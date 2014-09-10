@@ -590,7 +590,7 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 	}
 	unsigned long tempo = music->initialTempo.module_tempo();
 	if (tempo > 255) {
-		throw stream::error(createString("Tempo is too fast for S3M file!  "
+		throw format_limitation(createString("Tempo is too fast for S3M file!  "
 			"Calculated value is " << tempo << " but max permitted value is 255."));
 	}
 	output
@@ -616,7 +616,7 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 	// Map all the tracks to S3M channels
 	// libgamemusic track -> S3M channel -> S3M target (OPL, Left PCM 1, etc.)
 	if (music->trackInfo.size() > S3M_CHANNEL_COUNT) {
-		throw stream::error("Too many channels!  S3M has a maximum of "
+		throw format_limitation("Too many channels!  S3M has a maximum of "
 			TOSTRING(S3M_CHANNEL_COUNT) " channels.");
 	}
 	for (TrackInfoVector::const_iterator
@@ -1020,7 +1020,7 @@ void EventConverter_S3M::writeDelay(unsigned long delay)
 	assert(delay < 1048576*1024); // safety catch
 
 	if (this->curRow + delay > 64) {
-		throw stream::error(createString("S3M: Tried to write pattern with more "
+		throw format_limitation(createString("S3M: Tried to write pattern with more "
 			"than 64 rows (next row is " << this->curRow + delay << ")."));
 	}
 
