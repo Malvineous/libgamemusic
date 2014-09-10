@@ -254,6 +254,10 @@ unsigned long MusicType_DRO_v1::getCaps() const
 
 MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr input) const
 {
+	// Too short
+	// TESTED BY: mus_dro_dosbox_v1_isinstance_c03
+	if (input->size() < 12) return DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c01
 	char sig[8];
@@ -268,6 +272,7 @@ MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr input) cons
 	if ((verMajor != 0) || (verMinor != 1)) return DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c00
+	// TESTED BY: mus_dro_dosbox_v1_isinstance_c04
 	return DefinitelyYes;
 }
 
