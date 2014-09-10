@@ -80,13 +80,13 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 	;
 	if (sampleOffset >= fileSize) {
 		// Sample data past EOF
-		// TESTED BY: mus_cdfm_zone66_isinstance_c01
+		// TESTED BY: mus_cdfm_zone66_gus_isinstance_c01
 		return MusicType::DefinitelyNo;
 	}
 
 	if (loopDest >= orderCount) {
 		// Loop target is past end of song
-		// TESTED BY: mus_cdfm_zone66_isinstance_c02
+		// TESTED BY: mus_cdfm_zone66_gus_isinstance_c02
 		return MusicType::DefinitelyNo;
 	}
 
@@ -95,7 +95,7 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 	for (int i = 0; i < orderCount; i++) {
 		if (patternOrder[i] >= patternCount) {
 			// Sequence specifies invalid pattern
-			// TESTED BY: mus_cdfm_zone66_isinstance_c03
+			// TESTED BY: mus_cdfm_zone66_gus_isinstance_c03
 			return MusicType::DefinitelyNo;
 		}
 	}
@@ -113,12 +113,12 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input_sptr input) co
 		input >> u32le(patternOffset);
 		if (patternStart + patternOffset >= fileSize) {
 			// Pattern data offset is past EOF
-			// TESTED BY: mus_cdfm_zone66_isinstance_c04
+			// TESTED BY: mus_cdfm_zone66_gus_isinstance_c04
 			return MusicType::DefinitelyNo;
 		}
 	}
 
-	// TESTED BY: mus_cdfm_zone66_isinstance_c00
+	// TESTED BY: mus_cdfm_zone66_gus_isinstance_c00
 	return MusicType::DefinitelyYes;
 }
 
