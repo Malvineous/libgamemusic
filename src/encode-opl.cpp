@@ -134,6 +134,7 @@ void OPLEncoder::encode()
 
 void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 {
+	assert(oplEvent->chipIndex < 2);
 	// TODO: Cache all the events with no delay then optimise them before
 	// writing them out (once a delay is encountered.)  This should allow multiple
 	// 0xBD register writes to be combined into one, for situations where multiple
