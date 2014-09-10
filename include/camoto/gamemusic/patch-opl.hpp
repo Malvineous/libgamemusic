@@ -145,14 +145,14 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 
 	if ((
 		(!OPL_IS_RHYTHM_MODULATOR_ONLY(a.rhythm))
-		|| (!OPL_IS_RHYTHM_MODULATOR_ONLY(a.rhythm))
+		|| (!OPL_IS_RHYTHM_MODULATOR_ONLY(b.rhythm))
 	) && (
 		!(a.c == b.c)
 	)) return false;  // carrier used and didn't match
 
 	if ((
 		(!OPL_IS_RHYTHM_CARRIER_ONLY(a.rhythm))
-		|| (!OPL_IS_RHYTHM_CARRIER_ONLY(a.rhythm))
+		|| (!OPL_IS_RHYTHM_CARRIER_ONLY(b.rhythm))
 	) && (
 		!(a.m == b.m)
 	)) return false;  // modulator used and didn't match
