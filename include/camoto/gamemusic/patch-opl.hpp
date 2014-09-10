@@ -79,11 +79,11 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	/// Default constructor sets everything to zero/defaults.
 	OPLPatch();
 
-	/// Carrier settings.
-	OPLOperator c;
-
-	/// Modulator settings.
+	/// Modulator settings (operator 0).
 	OPLOperator m;
+
+	/// Carrier settings (operator 1).
+	OPLOperator c;
 
 	/// The feedback modulation factor for the channel.  0-7 inclusive.
 	uint8_t feedback;
