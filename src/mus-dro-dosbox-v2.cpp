@@ -75,8 +75,8 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
 			if (this->lenData == 0) return false;
-
 			oplEvent->delay = 0;
+			oplEvent->delayOnly = false;
 
 			if (this->first) {
 				// First call, set tempo
@@ -112,6 +112,13 @@ nextCode:
 				oplEvent->reg = this->codemap[code & 0x7F];
 				oplEvent->val = arg;
 			} catch (const stream::incomplete_read&) {
+				if (oplEvent->delay) {
+					oplEvent->reg = 0;
+					oplEvent->val = 0;
+					oplEvent->chipIndex = 0;
+					oplEvent->delayOnly = true;
+					return true; // empty event w/ final delay
+				}
 				return false;
 			}
 
@@ -151,30 +158,6 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			// Remember the delay for next time in case we get a register we can't write
 			this->cachedDelay += oplEvent->delay;
 
-			assert(oplEvent->chipIndex < 2);
-			if (!(
-				(oplEvent->reg == 0x01) ||
-				(oplEvent->reg == 0x04) ||
-				(oplEvent->reg == 0x05) ||
-				(oplEvent->reg == 0x08) ||
-				(oplEvent->reg == 0xbd) ||
-				((oplEvent->reg >= 0x20) && (oplEvent->reg <= 0x35)) ||
-				((oplEvent->reg >= 0x40) && (oplEvent->reg <= 0x55)) ||
-				((oplEvent->reg >= 0x60) && (oplEvent->reg <= 0x75)) ||
-				((oplEvent->reg >= 0x80) && (oplEvent->reg <= 0x95)) ||
-				((oplEvent->reg >= 0xe0) && (oplEvent->reg <= 0xf5)) ||
-				((oplEvent->reg >= 0xa0) && (oplEvent->reg <= 0xa8)) ||
-				((oplEvent->reg >= 0xb0) && (oplEvent->reg <= 0xb8)) ||
-				((oplEvent->reg >= 0xc0) && (oplEvent->reg <= 0xc8))
-			)) {
-				// We have to skip any invalid registers, otherwise there may not be
-				// enough space in the codemap table to fit the valid registers.
-				std::cerr << "WARNING: Unused OPL register 0x" << std::hex
-					<< (unsigned int)oplEvent->reg
-					<< " cannot be written to a DROv2 file." << std::endl;
-				return;
-			}
-
 			// Convert ticks into a DRO delay value (which is actually milliseconds)
 			unsigned long delay = this->cachedDelay * this->usPerTick / DRO_CLOCK;
 			this->cachedDelay = 0;
@@ -201,6 +184,32 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 				;
 				this->numPairs++;
 				break; // delay would == 0
+			}
+
+			if (oplEvent->delayOnly) return;
+
+			assert(oplEvent->chipIndex < 2);
+			if (!(
+				(oplEvent->reg == 0x01) ||
+				(oplEvent->reg == 0x04) ||
+				(oplEvent->reg == 0x05) ||
+				(oplEvent->reg == 0x08) ||
+				(oplEvent->reg == 0xbd) ||
+				((oplEvent->reg >= 0x20) && (oplEvent->reg <= 0x35)) ||
+				((oplEvent->reg >= 0x40) && (oplEvent->reg <= 0x55)) ||
+				((oplEvent->reg >= 0x60) && (oplEvent->reg <= 0x75)) ||
+				((oplEvent->reg >= 0x80) && (oplEvent->reg <= 0x95)) ||
+				((oplEvent->reg >= 0xe0) && (oplEvent->reg <= 0xf5)) ||
+				((oplEvent->reg >= 0xa0) && (oplEvent->reg <= 0xa8)) ||
+				((oplEvent->reg >= 0xb0) && (oplEvent->reg <= 0xb8)) ||
+				((oplEvent->reg >= 0xc0) && (oplEvent->reg <= 0xc8))
+			)) {
+				// We have to skip any invalid registers, otherwise there may not be
+				// enough space in the codemap table to fit the valid registers.
+				std::cerr << "WARNING: Unused OPL register 0x" << std::hex
+					<< (unsigned int)oplEvent->reg
+					<< " cannot be written to a DROv2 file." << std::endl;
+				return;
 			}
 
 			uint8_t code;
@@ -307,6 +316,10 @@ unsigned long MusicType_DRO_v2::getCaps() const
 
 MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) const
 {
+	// Too short
+	// TESTED BY: mus_dro_dosbox_v2_isinstance_c03
+	if (psMusic->size() < 12) return DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c01
 	char sig[8];
@@ -321,6 +334,7 @@ MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) co
 	if ((verMajor != 2) || (verMinor != 0)) return DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c00
+	// TESTED BY: mus_dro_dosbox_v2_isinstance_c04
 	return DefinitelyYes;
 }
 
