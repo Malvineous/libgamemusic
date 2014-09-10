@@ -255,18 +255,10 @@ MusicPtr OPLDecoder::decode()
 				continue;
 			}
 
-			if ((OPL_IS_RHYTHM_ON) && (oplev.chipIndex == 0) && (oplChannel > 6)) {
-				// Rhythm mode instrument (except bass drum)
-				if (oplChannel == 7) {
-/// @todo: Confirm this is the right instrument here
-					noteon = this->oplState[0][0xBD] & 1; // 1 == hihat
-					track = 9 + 0;
-				} else { // oplChannel == 8
-					assert(oplChannel == 8);
-/// @todo: Confirm this is the right instrument here
-					noteon = this->oplState[0][0xBD] & 4; // 4 == tom-tom
-					track = 9 + 2;
-				}
+			if ((OPL_IS_RHYTHM_ON) && (oplev.chipIndex == 0) && (oplChannel > 5)) {
+				// Rhythm mode instrument
+				noteon = false;
+				track = -1;
 			} else {
 				// Normal channel (or rhythm mode bass drum)
 				track = oplChannel + OPL_CHANNEL_COUNT * oplev.chipIndex;
@@ -359,7 +351,7 @@ MusicPtr OPLDecoder::decode()
 							}
 
 							track = 9 + rhythm;
-							noteon = this->oplState[0][0xBD] & (1 << rhythm);
+							noteon = this->oplState[0][0xBD] & keyonBit;
 
 							if (oplev.val & keyonBit) {
 								this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],

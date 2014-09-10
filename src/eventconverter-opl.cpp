@@ -223,50 +223,31 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	assert(block <= 7);
 
 	// Write the rest of the (global) instrument settings.
-	if (
-		(
-			(ti.channelType == TrackInfo::OPLPercChannel)
-			&& !OPL_IS_RHYTHM_CARRIER_ONLY(ti.channelIndex)
-		)
-		|| (ti.channelType == TrackInfo::OPLChannel)
-	) {
+	if (ti.channelType == TrackInfo::OPLChannel) {
+		// This register is only used on melodic channels.  It is ignored on
+		// percussive channels, so don't bother setting it.
 		this->processNextPair(chipIndex, BASE_FEED_CONN | oplChannel,
 			(this->modeOPL3 ? 0x30 /* L+R OPL3 panning */ : 0 /* regs aren't on OPL2 */)
 			| ((inst->feedback & 7) << 1)
 			| (inst->connection ? 1 : 0));
 	}
 
+	// Write lower eight bits of note freq
+	this->processNextPair(chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
+
+	// Write 0xB0 w/ keyon bit
+	this->processNextPair(chipIndex, 0xB0 | oplChannel,
+		(ti.channelType == TrackInfo::OPLChannel ? OPLBIT_KEYON : 0) // keyon enabled
+		| (block << 2) // and the octave
+		| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
+	);
+
 	if (ti.channelType == TrackInfo::OPLPercChannel) {
-		// Only set the freq if it's not a hihat or snare, as these instruments
-		// apparently can't have their frequency set.
-		//if (!OPL_IS_RHYTHM_CARRIER_ONLY(ti.channelIndex)) {
-			// Write lower eight bits of note freq
-			this->processNextPair(chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
-
-			this->processNextPair(chipIndex, 0xB0 | oplChannel,
-				//OPLBIT_KEYON  // different keyon for rhythm instruments
-				(block << 2) // and the octave
-				| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
-			);
-		//}
-
 		// Write keyon for correct instrument
 		int keyBit = 1 << ti.channelIndex;
 		this->processNextPair(chipIndex, 0xBD,
 			0x20 |  // enable percussion mode
 			this->oplState[chipIndex][0xBD] | keyBit
-		);
-
-	} else { // normal instrument
-
-		// Write lower eight bits of note freq
-		this->processNextPair(chipIndex, 0xA0 | oplChannel, fnum & 0xFF);
-
-		// Write 0xB0 w/ keyon bit
-		this->processNextPair(chipIndex, 0xB0 | oplChannel,
-			OPLBIT_KEYON  // keyon enabled
-			| (block << 2) // and the octave
-			| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 		);
 	}
 	return;
@@ -364,15 +345,9 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 		}
 		case EffectEvent::Volume:
 			// ev->data is new velocity/volume value
-			// Write modulator settings
-			if (mod) {
-				//this->writeOpSettings(chipIndex, oplChannel, 0, inst, ev->data);
-//std::cerr << "TODO: Set volume for mod instrument\n";
-			}
-			// Write carrier settings
+			// Write carrier settings (modulator output level does not control volume)
 			if (car) {
 				const unsigned int& volume = ev->data;
-				//this->writeOpSettings(chipIndex, oplChannel, 1, inst, ev->data);
 				unsigned int op = OPLOFFSET_CAR(oplChannel);
 				unsigned int outputLevel = 0x3F - 0x3F * log((float)volume) / log(256.0);
 
@@ -482,7 +457,8 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 		op = OPLOFFSET_MOD(oplChannel);
 		o = &(i->m);
 		outputLevel = o->outputLevel;
-		// @todo: If this is a mod only perc inst, should we set velocity here?
+		// Note that modulator-only percussive instruments cannot have their volume
+		// set, so we don't need to handle that here
 	} else {
 		op = OPLOFFSET_CAR(oplChannel);
 		o = &(i->c);
@@ -506,7 +482,6 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 	this->processNextPair(chipIndex, BASE_ATCK_DCAY | op, (o->attackRate << 4) | (o->decayRate & 0x0F));
 	this->processNextPair(chipIndex, BASE_SUST_RLSE | op, (o->sustainRate << 4) | (o->releaseRate & 0x0F));
 	this->processNextPair(chipIndex, BASE_WAVE      | op,  o->waveSelect & 7);
-
 	return;
 }
 
