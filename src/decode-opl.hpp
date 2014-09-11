@@ -2,7 +2,7 @@
  * @file   decode-opl.hpp
  * @brief  Function to convert raw OPL data into a Music instance.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -35,11 +35,13 @@ class OPLReaderCallback {
 		/**
 		 * @param oplEvent
 		 *   When returning true, this structure is populated with the next reg/val
-		 *   pair and associated data.  To supply delay events or tempo changes that
-		 *   have no associated data bytes, set both the register and value to 0.
+		 *   pair and associated data.  See OPLEvent for details.
 		 *
-		 * @return true if oplEvent or tempo is valid or false to signify the end of
-		 *   the song.
+		 * @return true if oplEvent is valid, or false to ignore the reg/val/tempo
+		 *   attributes and signify the end of the file has been reached.  Note
+		 *   that oplEvent.delay is always processed regardless of the return
+		 *   value, so setting this field and returning false will permit a trailing
+		 *   delay on the song to be preserved.
 		 */
 		virtual bool readNextPair(OPLEvent *oplEvent) = 0;
 };

@@ -467,8 +467,12 @@ MusicPtr OPLDecoder::decode()
 
 	} // while (all events)
 
+	// oplev.delay still has a final trailing delay
+	totalDelay += oplev.delay;
+
 	// Put dummy events if necessary to preserve trailing delays
 	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+		this->lastDelay[t] += oplev.delay;
 		if (this->lastDelay[t] && pattern->at(t)->size()) {
 			TrackEvent te;
 			te.delay = this->lastDelay[t];

@@ -74,9 +74,9 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
-			if (this->lenData == 0) return false;
 			oplEvent->delay = 0;
 			oplEvent->delayOnly = false;
+			if (this->lenData == 0) return false;
 
 			if (this->first) {
 				// First call, set tempo
@@ -112,13 +112,8 @@ nextCode:
 				oplEvent->reg = this->codemap[code & 0x7F];
 				oplEvent->val = arg;
 			} catch (const stream::incomplete_read&) {
-				if (oplEvent->delay) {
-					oplEvent->reg = 0;
-					oplEvent->val = 0;
-					oplEvent->chipIndex = 0;
-					oplEvent->delayOnly = true;
-					return true; // empty event w/ final delay
-				}
+				oplEvent->delayOnly = true;
+				// oplEvent->delay is populated with any final delay
 				return false;
 			}
 
