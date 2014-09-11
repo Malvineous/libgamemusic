@@ -45,7 +45,7 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 			if (this->first) {
 				// First call, set tempo
 				this->first = false;
-				oplEvent->tempo = HERTZ_TO_uS(this->speed);
+				oplEvent->usPerTick = HERTZ_TO_uS(this->speed);
 				oplEvent->delay = 0;
 				oplEvent->reg = 0;
 				oplEvent->val = 0;

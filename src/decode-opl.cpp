@@ -163,12 +163,12 @@ MusicPtr OPLDecoder::decode()
 	// Initialise all OPL registers to zero
 	memset(oplState, 0, sizeof(oplState));
 	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) this->lastDelay[t] = 0;
-	unsigned long lastTempo = 0;
+	double lastTempo = 0;
 
 	unsigned long totalDelay = 0;
 
 	OPLEvent oplev;
-	oplev.tempo = 0;
+	oplev.usPerTick = 0;
 	bool opl3 = false;
 	while (this->cb->readNextPair(&oplev)) {
 		assert(oplev.chipIndex < 2);
@@ -180,10 +180,10 @@ MusicPtr OPLDecoder::decode()
 			}
 		}
 
-		if ((oplev.tempo) && (oplev.tempo != lastTempo)) {
+		if ((oplev.usPerTick) && (oplev.usPerTick != lastTempo)) {
 			if ((!initialTempoSet) && (totalDelay == 0)) {
-				music->initialTempo.usPerTick = oplev.tempo;
-				music->initialTempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.tempo) / 2;
+				music->initialTempo.usPerTick = oplev.usPerTick;
+				music->initialTempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.usPerTick) / 2;
 				initialTempoSet = true;
 			} else {
 				TrackEvent te;
@@ -191,10 +191,10 @@ MusicPtr OPLDecoder::decode()
 				this->lastDelay[0] = 0;
 				TempoEvent *ev = new TempoEvent();
 				te.event.reset(ev);
-				ev->tempo.usPerTick = oplev.tempo;
-				ev->tempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.tempo) / 2;
+				ev->tempo.usPerTick = oplev.usPerTick;
+				ev->tempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.usPerTick) / 2;
 				pattern->at(0)->push_back(te);
-				lastTempo = oplev.tempo;
+				lastTempo = oplev.usPerTick;
 			}
 		}
 

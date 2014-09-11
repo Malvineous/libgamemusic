@@ -50,7 +50,7 @@ class OPLReaderCallback_RAW: virtual public OPLReaderCallback
 			if (this->first) {
 				// First call, set tempo
 				this->first = false;
-				oplEvent->tempo = RAWCLOCK_TO_uS(this->lastClock);
+				oplEvent->usPerTick = RAWCLOCK_TO_uS(this->lastClock);
 				oplEvent->reg = 0;
 				oplEvent->val = 0;
 				oplEvent->chipIndex = 0;
@@ -70,7 +70,7 @@ nextCode:
 								uint16_t clock;
 								this->input >> u16le(clock);
 								if (clock == 0) clock = 0xffff;
-								oplEvent->tempo = RAWCLOCK_TO_uS(clock);
+								oplEvent->usPerTick = RAWCLOCK_TO_uS(clock);
 								oplEvent->reg = 0;
 								oplEvent->val = 0;
 								break;

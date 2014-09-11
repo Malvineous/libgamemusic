@@ -42,7 +42,8 @@ enum OPLWriteFlags {
 };
 
 /// Information about a single OPL reg/val pair.
-struct OPLEvent {
+struct OPLEvent
+{
 	/// Number of ticks to delay before the data bytes are actioned.
 	uint32_t delay;
 
@@ -65,8 +66,10 @@ struct OPLEvent {
 	 * DelayIsPreData will delay at the old tempo before adjusting to the new
 	 * tempo, while DelayIsPostData will immediately adjust to the new tempo
 	 * then delay at the new speed.
+	 *
+	 * A value of 0 specifies no tempo change.
 	 */
-	uint32_t tempo;
+	double usPerTick;
 
 	/// If true, write this delay but ignore the registers.
 	/**

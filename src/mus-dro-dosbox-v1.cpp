@@ -63,7 +63,7 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 			if (this->first) {
 				// First call, set tempo
 				this->first = false;
-				oplEvent->tempo = DRO_CLOCK;
+				oplEvent->usPerTick = DRO_CLOCK;
 				oplEvent->reg = 0;
 				oplEvent->val = 0;
 				oplEvent->chipIndex = 0;
