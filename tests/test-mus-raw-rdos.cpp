@@ -2,7 +2,7 @@
  * @file   test-mus-raw-rdos.cpp
  * @brief  Test code for Rdos raw Adlib capture files.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,129 +18,123 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define INITIAL_TEMPO 1785
-#define INSTRUMENT_TYPE  0 // OPL
+#include "test-music.hpp"
 
-#define testdata_noteonoff \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x20\x7f\x40\xed\x60\xcb\x80\x06\xe0" \
-	"\xa7\x23\x1f\x43\x65\x63\x43\x83\x02\xe3\x34\xc0" \
-	"\x44\xa0" \
-	"\x32\xb0" \
-	"\x10\x00" \
-	"\x12\xb0" \
-	"\xff\xff"
+class test_raw_rdos: public test_music
+{
+	public:
+		test_raw_rdos()
+		{
+			this->type = "raw-rdos";
+			this->numInstruments = 6;
+			this->indexInstrumentOPL = 0;
+			this->indexInstrumentMIDI = -1;
+			this->indexInstrumentPCM = -1;
+		}
 
-#define HAS_OPL_RHYTHM_INSTRUMENTS
+		void addTests()
+		{
+			this->test_music::addTests();
 
-#define testdata_rhythm_hihat \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x31" \
-	"\x7f\x51" \
-	"\xed\x71" \
-	"\xcb\x91" \
-	"\x06\xf1" \
-	\
-	"\x39\xc7" \
-	\
-	"\x44\xa7" \
-	"\x12\xb7" \
-	\
-	"\x21\xbd" "\x10\x00" \
-	"\x20\xbd" \
-	"\xff\xff"
+			// c00: Normal
+			this->isInstance(MusicType::DefinitelyYes, this->standard());
 
-#define testdata_rhythm_cymbal \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x35" \
-	"\x7f\x55" \
-	"\xed\x75" \
-	"\xcb\x95" \
-	"\x06\xf5" \
-	\
-	"\x44\xa8" \
-	"\x12\xb8" \
-	\
-	"\x22\xbd" "\x10\x00" \
-	"\x20\xbd" \
-	"\xff\xff"
+			// c01: Wrong signature
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"RAWADATO" "\x50\x08"
+			));
 
-#define testdata_rhythm_tom \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x32" \
-	"\x7f\x52" \
-	"\xed\x72" \
-	"\xcb\x92" \
-	"\x06\xf2" \
-	\
-	"\x39\xc8" \
-	\
-	"\x44\xa8" \
-	"\x12\xb8" \
-	\
-	"\x24\xbd" "\x10\x00" \
-	"\x20\xbd" \
-	"\xff\xff"
+			// c02: Too short
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"RAWADATA"
+			));
 
-#define testdata_rhythm_snare \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x34" \
-	"\x7f\x54" \
-	"\xed\x74" \
-	"\xcb\x94" \
-	"\x06\xf4" \
-	\
-	"\x44\xa7" \
-	"\x12\xb7" \
-	\
-	"\x28\xbd" "\x10\x00" \
-	"\x20\xbd" \
-	"\xff\xff"
+			// c03: Short but valid file
+			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+				"RAWADATA" "\x50\x08"
+			));
+		}
 
-#define testdata_rhythm_bassdrum \
-	"RAWADATA" "\x50\x08" \
-	"\x00\x02\x50\x08" \
-	"\xae\x30" \
-	"\x7f\x50" \
-	"\xed\x70" \
-	"\xcb\x90" \
-	"\x06\xf0" \
-	\
-	"\xae\x33" \
-	"\x7f\x53" \
-	"\xed\x73" \
-	"\xcb\x93" \
-	"\x06\xf3" \
-	\
-	"\x39\xc6" \
-	\
-	"\x44\xa6" \
-	"\x12\xb6" \
-	\
-	"\x30\xbd" "\x10\x00" \
-	"\x20\xbd" \
-	"\xff\xff"
+		virtual std::string standard()
+		{
+			return STRING_WITH_NULLS(
+				"RAWADATA" "\x50\x08"
+				"\x00\x02\x50\x08"
+				// Note data
+				"\x08\x00" // leading delay
+				"\xae\x20\x7f\x40\xed\x60\xcb\x80\x06\xe0"
+				"\xa7\x23\x1f\x43\x65\x63\x43\x83\x02\xe3\x04\xc0"
+				"\x44\xa0"
+				"\x32\xb0"
+				"\x10\x00"
+				"\x12\xb0"
+				// Rhythm hi-hat
+				"\xae\x31"
+				"\x7f\x51"
+				"\xdd\x71"
+				"\xcb\x91"
+				"\x06\xf1"
+				"\x44\xa7"
+				"\x12\xb7"
+				"\x21\xbd" "\x10\x00"
+				"\x20\xbd" "\x04\x00"
+				// Rhythm top-cymbal
+				"\xae\x35"
+				"\x7f\x55"
+				"\xcd\x75"
+				"\xcb\x95"
+				"\x06\xf5"
+				"\x44\xa8"
+				"\x12\xb8"
+				"\x22\xbd" "\x10\x00"
+				"\x20\xbd" "\x04\x00"
+				// Rhythm tom-tom
+				"\xae\x32"
+				"\x7f\x52"
+				"\xbd\x72"
+				"\xcb\x92"
+				"\x06\xf2"
+				"\x45\xa8"
+				"\x13\xb8"
+				"\x24\xbd" "\x10\x00"
+				"\x20\xbd" "\x04\x00"
+				// Rhythm snare
+				"\xae\x34"
+				"\x7f\x54"
+				"\xad\x74"
+				"\xcb\x94"
+				"\x06\xf4"
+				"\x45\xa7"
+				"\x13\xb7"
+				"\x28\xbd" "\x10\x00"
+				"\x20\xbd" "\x04\x00"
+				// Rhythm bass-drum
+				"\xae\x30"
+				"\x7f\x50"
+				"\x9d\x70"
+				"\xcb\x90"
+				"\x06\xf0"
+				"\xae\x33"
+				"\x7f\x53"
+				"\x8d\x73"
+				"\xcb\x93"
+				"\x06\xf3"
+				"\x44\xa6"
+				"\x12\xb6"
+				"\x30\xbd" "\x10\x00"
+				"\x20\xbd" "\x04\x00" // trailing delay
+/*
+				// Enable OPL3
+				"\x00\x02" "\x01\x05"
+				"\xe3\x34"
+				"\x32\xb0"
+				"\x10\x00"
+				"\x12\xb0"
+				"\x04\x00" // trailing delay
+*/
+				"\xff\xff"
+			);
+		}
+};
 
-#define MUSIC_CLASS fmt_mus_raw_rdos
-#define MUSIC_TYPE  "raw-rdos"
-#include "test-musictype-read.hpp"
-#include "test-musictype-write.hpp"
-
-// Test some invalid formats to make sure they're not identified as valid
-// files.  Note that they can still be opened though (by 'force'), this
-// only checks whether they look like valid files or not.
-
-// The "c00" test has already been performed in test-musicreader.hpp to ensure
-// the initial state is correctly identified as a valid file.
-
-// Wrong signature
-ISINSTANCE_TEST(c01,
-	"RAWADATO"
-	,
-	MusicType::DefinitelyNo
-);
+IMPLEMENT_TESTS(raw_rdos);

@@ -85,12 +85,18 @@ nextCode:
 						break;
 					}
 					case 0xFF:
-						if (oplEvent->val == 0xFF) return false; // EOF
+						if (oplEvent->val == 0xFF) {
+							oplEvent->delayOnly = true;
+							// oplEvent->delay is populated with any final delay
+							return false; // EOF
+						}
 						break;
 					default: // normal reg
 						break;
 				}
 			} catch (const stream::incomplete_read&) {
+				oplEvent->delayOnly = true;
+				// oplEvent->delay is populated with any final delay
 				return false;
 			}
 
@@ -131,6 +137,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 				;
 				delay -= d;
 			}
+			if (oplEvent->delayOnly) return;
 
 			// Switch OPL chips if necessary
 			if (oplEvent->chipIndex != this->lastChipIndex) {
@@ -213,18 +220,19 @@ unsigned long MusicType_RAW::getCaps() const
 
 MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
 {
+	// Too short
+	// TESTED BY: mus_raw_rdos_isinstance_c02
+	if (input->size() < 10) return DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_raw_rdos_isinstance_c01
-	try {
-		char sig[8];
-		input->seekg(0, stream::start);
-		input->read(sig, 8);
-		if (strncmp(sig, "RAWADATA", 8) != 0) return DefinitelyNo;
-	} catch (const stream::error&) {
-		return DefinitelyNo; // EOF
-	}
+	char sig[8];
+	input->seekg(0, stream::start);
+	input->read(sig, 8);
+	if (strncmp(sig, "RAWADATA", 8) != 0) return DefinitelyNo;
 
 	// TESTED BY: mus_raw_rdos_isinstance_c00
+	// TESTED BY: mus_raw_rdos_isinstance_c03
 	return DefinitelyYes;
 }
 
