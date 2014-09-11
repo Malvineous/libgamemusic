@@ -27,7 +27,7 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define uS_TO_RAWCLOCK(x) ((x) * 1.192180)
+#define uS_TO_RAWCLOCK(x) (round((x) * 1.192180))
 #define RAWCLOCK_TO_uS(x) ((x) / 1.192180)
 
 /// Decode data in a .raw file to provide register/value pairs.
@@ -254,11 +254,10 @@ MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
 void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
-	// Make sure the stream is large enough to write into
-	//output->truncate(10);
-
-	// Write out the file header with default speed (0xFFFF is 18.2Hz)
-	output->write("RAWADATA\xFF\xFF", 10);
+	output
+		<< nullPadded("RAWADATA", 8)
+		<< u16le(uS_TO_RAWCLOCK(music->initialTempo.usPerTick))
+	;
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_RAW cb(output);
@@ -272,12 +271,6 @@ void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 
 	// Set final filesize to this
 	output->truncate_here();
-
-	// Go back and write the initial clock speed
-	if (cb.firstClock != 0xFFFF) {
-		output->seekp(8, stream::start);
-		output << u16le(cb.firstClock);
-	}
 
 	return;
 }
