@@ -499,15 +499,20 @@ void EventConverter_OPL::getOPLChannel(const TrackInfo& ti,
 					<< (int)ti.channelIndex << " is not in 0 <= x <= 4"));
 		}
 	} else if (ti.channelType == TrackInfo::OPLChannel) {
+		if ((ti.channelIndex == 0) && (this->flags & OPLWriteFlags::ReserveFirstChan)) {
+			throw format_limitation("OPL channel 0 cannot be used in this format.  "
+				"Please select a different channel.");
+		}
 		if (ti.channelIndex < 9) {
 			*oplChannel = ti.channelIndex;
 			*chipIndex = 0;
-		} else if (ti.channelIndex < 18) {
+		} else if ((ti.channelIndex < 18) && !(this->flags & OPLWriteFlags::OPL2Only)) {
 			*oplChannel = ti.channelIndex - 9;
 			*chipIndex = 1;
 		} else {
 			throw error(createString("OPL channel " << ti.channelIndex
-				<< " is out of range!"));
+				<< " is out of range!  This format only supports up to and including "
+				"channel " << ((this->flags & OPLWriteFlags::OPL2Only) ? 8 : 17)));
 		}
 		*mod = true;
 		*car = true;
