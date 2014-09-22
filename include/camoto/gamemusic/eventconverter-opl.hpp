@@ -36,10 +36,22 @@ enum DelayType {
 };
 
 /// Flags that control the conversion to OPL data.
-enum OPLWriteFlags {
-	Default          = 0x00,  ///< No special treatment
-	IntegerNotesOnly = 0x01,  ///< Disable pitchbends
-	ReserveFirstChan = 0x02,  ///< Don't use the first channel (reserve it for e.g. Adlib SFX in a game)
+struct OPLWriteFlags
+{
+	/// Data type that can hold these values
+	typedef unsigned int type;
+
+	/// No special treatment
+	static const type Default          = 0x00;
+
+	/// Disable pitchbends
+	static const type IntegerNotesOnly = 0x01;
+
+	/// Don't use the first channel (reserve it for e.g. Adlib SFX in a game)
+	static const type ReserveFirstChan = 0x02;
+
+	/// Set: OPL2 chip only, unset: supports OPL3/dual OPL2
+	static const type OPL2Only         = 0x04;
 };
 
 /// Information about a single OPL reg/val pair.
@@ -171,7 +183,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
 		EventConverter_OPL(OPLWriterCallback *cb, ConstMusicPtr music,
-			double fnumConversion, unsigned int flags);
+			double fnumConversion, OPLWriteFlags::type flags);
 
 		/// Destructor.
 		virtual ~EventConverter_OPL();
@@ -207,7 +219,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		OPLWriterCallback *cb;      ///< Callback to handle the generated OPL data
 		ConstMusicPtr music;        ///< Song to convert
 		double fnumConversion;      ///< Conversion value to use in Hz -> fnum calc
-		unsigned int flags;         ///< One or more OPLWriteFlags
+		OPLWriteFlags::type flags;  ///< One or more OPLWriteFlags
 		PatchBankPtr bankMIDI;      ///< Optional patch bank for MIDI notes
 
 		unsigned long cachedDelay;  ///< Delay to add on to next reg write

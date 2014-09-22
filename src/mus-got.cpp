@@ -203,6 +203,9 @@ void MusicType_GOT::write(stream::output_sptr output, SuppData& suppData,
 {
 	output << u16le(1);
 
+	// Force this format to OPL2 as that's all we can write
+	flags |= OPLWriteFlags::OPL2Only;
+
 	// Call the generic OPL writer.
 	OPLWriterCallback_GOT cb(output);
 	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);

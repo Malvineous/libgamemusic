@@ -119,11 +119,11 @@ void Playback::setSong(ConstMusicPtr music)
 
 	this->opl.reset();
 	this->oplConverter.reset(new EventConverter_OPL(&this->oplHandler, this->music,
-		OPL_FNUM_DEFAULT, Default));
+		OPL_FNUM_DEFAULT, OPLWriteFlags::Default));
 
 	this->oplMIDI.reset();
 	this->oplConvMIDI.reset(new EventConverter_OPL(&this->oplHandlerMIDI, this->music,
-		OPL_FNUM_DEFAULT, Default));
+		OPL_FNUM_DEFAULT, OPLWriteFlags::Default));
 	this->oplConvMIDI->setBankMIDI(this->bankMIDI);
 
 	this->pcm.reset(&this->music->trackInfo, this->music->patches);

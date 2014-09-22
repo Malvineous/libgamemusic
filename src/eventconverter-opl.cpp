@@ -33,7 +33,7 @@ using namespace camoto;
 using namespace camoto::gamemusic;
 
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
-	ConstMusicPtr music, double fnumConversion, unsigned int flags)
+	ConstMusicPtr music, double fnumConversion, OPLWriteFlags::type flags)
 	:	cb(cb),
 		music(music),
 		fnumConversion(fnumConversion),
