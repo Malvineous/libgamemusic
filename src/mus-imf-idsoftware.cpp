@@ -92,7 +92,7 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 			unsigned long delay;
 			if (oplEvent->valid & OPLEvent::Delay) {
 				delay = oplEvent->delay
-					* oplEvent->tempo.usPerTick / (HERTZ_TO_uS(this->speed));
+					* oplEvent->tempo.usPerTick / HERTZ_TO_uS(this->speed);
 
 				// Write out super long delays as dummy events to an unused port.
 				while (delay > 0xFFFF) {
@@ -154,7 +154,7 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 	stream::pos len = input->size();
 
 	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c01
-	if (len < 2) return DefinitelyNo; // too short
+	if (len < 4) return DefinitelyNo; // too short
 
 	// Read the first two bytes as the data length size and make sure they
 	// don't point past the end of the file.
@@ -174,14 +174,15 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 	} else { // type-1 format
 		// TESTED BY: mus_imf_idsoftware_type1_isinstance_c04
 		if (this->imfType != 1) return DefinitelyNo;
-
-		// Make sure files with incomplete data sections aren't picked up
-		// TESTED BY: mus_imf_idsoftware_type1_isinstance_c06
-		if (dataLen % 4) return DefinitelyNo;
 	}
 
+	// Make sure files with incomplete data sections aren't picked up
+	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c06
+	if (dataLen % 4) return DefinitelyNo;
+
 	// TODO: Parse file and check for invalid register writes.
-	uint16_t delay; uint8_t reg, val;
+	uint16_t delay;
+	uint8_t reg, val;
 	while (dataLen > 3) {
 		// When dataLen < 4, TESTED BY: mus_imf_idsoftware_type1_isinstance_c06
 
@@ -219,6 +220,7 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 	}
 
 	// TESTED BY: mus_imf_idsoftware_isinstance_c00
+	// TESTED BY: mus_imf_idsoftware_isinstance_c05
 	return DefinitelyYes;
 }
 

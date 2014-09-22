@@ -2,7 +2,7 @@
  * @file   test-mus-imf-idsoftware-type1.cpp
  * @brief  Test code for type-1 id Software IMF files.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,95 +18,98 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "test-mus-imf-idsoftware-common.hpp"
+#include "test-music.hpp"
 
-#define testdata_noteonoff \
-	"\x3c\x00" \
-	imf_commonheader \
-	imf_setinstrument \
-	imf_noteonoff
+class test_imf_idsoftware_type1: public test_music
+{
+	public:
+		test_imf_idsoftware_type1()
+		{
+			this->type = "imf-idsoftware-type1";
+			this->numInstruments = 1;
+			this->indexInstrumentOPL = 0;
+			this->indexInstrumentMIDI = -1;
+			this->indexInstrumentPCM = -1;
+			this->skipInstDetect.push_back("wlf-idsoftware-type1");
+		}
 
-#define HAS_OPL_RHYTHM_INSTRUMENTS
+		void addTests()
+		{
+			this->test_music::addTests();
 
-#define testdata_rhythm_hihat \
-	"\x2c\x00" \
-	imf_rhythm_hihat
+			// c00: Normal
+			this->isInstance(MusicType::DefinitelyYes, this->standard());
 
-#define testdata_rhythm_cymbal \
-	"\x28\x00" \
-	imf_rhythm_cymbal
+			// c01: Too short
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x00"
+			));
 
-#define testdata_rhythm_tom \
-	"\x2c\x00" \
-	imf_rhythm_tom
+			// c02: Invalid register
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x08\x00"
+				"\x00\x00\x00\x00"
+				"\xF9\x00\x00\x00"
+			));
 
-#define testdata_rhythm_snare \
-	"\x28\x00" \
-	imf_rhythm_snare
+			// c03: Delay too large
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x08\x00"
+				"\x00\x00\x00\x00"
+				"\xBD\x20\x00\xF0"
+			));
 
-#define testdata_rhythm_bassdrum \
-	"\x40\x00" \
-	imf_rhythm_bassdrum
+			// c04: Type-1 file with wrong length
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x00\x01"
+				"\x00\x00\x00\x00"
+				"\x12\x34\x56\x78"
+			));
 
-#define MUSIC_CLASS fmt_mus_imf_idsoftware_type1
-#define MUSIC_TYPE  "imf-idsoftware-type1"
-#include "test-musictype-read.hpp"
-#include "test-musictype-write.hpp"
+			// c05: Short but valid file
+			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+				"\x04\x00"
+				"\x00\x00\x00\x00"
+			));
 
-// Test some invalid formats to make sure they're not identified as valid
-// files.  Note that they can still be opened though (by 'force'), this
-// only checks whether they look like valid files or not.
+			// c06: Truncated file
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x00\x00\x00\x00"
+				"\xBD\x20\x00"
+			));
 
-// The "c00" test has already been performed in test-musicreader.hpp to ensure
-// the initial state is correctly identified as a valid file.
+			// c07: Make sure weird short files don't get picked up
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x01\x00"
+				"\x00"
+			));
+		}
 
-// Too short
-ISINSTANCE_TEST(c01,
-	"\x00"
-	,
-	MusicType::DefinitelyNo
-);
+		virtual std::string standard()
+		{
+			return STRING_WITH_NULLS(
+				"\x40\x00"
 
-// Invalid register
-ISINSTANCE_TEST(c02,
-	"\x08\x00"
-	"\x00\x00\x00\x00"
-	"\xF9\x00\x00\x00"
-	,
-	MusicType::DefinitelyNo
-);
+				"\x00\x00" "\x00\x00"
+				"\x00\x00" "\x20\x00" // leading delay
+				// Set instrument
+				"\x21\xae" "\x00\x00"
+				"\x41\x7f" "\x00\x00"
+				"\x61\xed" "\x00\x00"
+				"\x81\xcb" "\x00\x00"
+				"\xe1\x06" "\x00\x00"
+				"\x24\xa7" "\x00\x00"
+				"\x44\x1f" "\x00\x00"
+				"\x64\x65" "\x00\x00"
+				"\x84\x43" "\x00\x00"
+				"\xe4\x02" "\x00\x00"
+				"\xc1\x04" "\x00\x00"
+				// Note on/off
+				"\xa1\x44" "\x00\x00"
+				"\xb1\x32" "\x10\x00"
+				"\xb1\x12" "\x30\x00" // trailing delay
+			);
+		}
+};
 
-// Delay too large
-ISINSTANCE_TEST(c03,
-	"\x08\x00"
-	"\x00\x00\x00\x00"
-	"\xBD\x20\x00\xF0"
-	,
-	MusicType::DefinitelyNo
-);
-
-// Type-1 file with zero length
-ISINSTANCE_TEST(c04,
-	"\x00\x00"
-	"\x00\x00\x00\x00"
-	"\x12\x34\x56\x78"
-	,
-	MusicType::DefinitelyNo
-);
-
-// Type-1 file with wrong length
-ISINSTANCE_TEST(c05,
-	"\x00\x01"
-	"\x00\x00\x00\x00"
-	"\x12\x34\x56\x78"
-	,
-	MusicType::DefinitelyNo
-);
-
-// Make sure weird short files don't get picked up
-ISINSTANCE_TEST(c06,
-	"\x01\x00"
-	"\x00"
-	,
-	MusicType::DefinitelyNo
-);
+IMPLEMENT_TESTS(imf_idsoftware_type1);
