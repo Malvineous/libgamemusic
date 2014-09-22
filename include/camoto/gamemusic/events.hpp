@@ -122,6 +122,7 @@ struct DLL_EXPORT NoteOnEvent: virtual public Event
 	/// Velocity: 0=silent, 255=loud, -1=default/unknown
 	int velocity;
 };
+static const int DefaultVelocity = -1;
 
 
 /// All notes on this channel are now silenced.

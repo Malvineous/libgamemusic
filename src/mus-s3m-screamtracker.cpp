@@ -509,7 +509,7 @@ C-4 note
 							if (volume == 64) ev->velocity = 255;
 							else ev->velocity = (volume << 2) | (volume >> 4);
 						} else { // missing or =255
-							ev->velocity = -1; // instrument default
+							ev->velocity = DefaultVelocity; // instrument default
 						}
 						track->push_back(te);
 						lastRow[channel] = row;

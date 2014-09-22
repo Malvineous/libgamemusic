@@ -561,7 +561,7 @@ void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 
 	// Ignore velocity for modulator-only rhythm instruments
 	if (OPL_IS_RHYTHM_MODULATOR_ONLY(rhythm)) {
-		ev->velocity = OPL_DEFVOL_PERC;
+		ev->velocity = DefaultVelocity;
 	} else {
 		unsigned int curVol = 0x3F &
 			this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)];

@@ -463,7 +463,7 @@ void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
 		op = OPLOFFSET_CAR(oplChannel);
 		o = &(i->c);
 		outputLevel = o->outputLevel;
-		if (velocity != -1) {
+		if (velocity != DefaultVelocity) {
 			// Not using default velocity
 			outputLevel = 63 - lin_velocity_to_log_volume(velocity, 63);
 			// Note the CMF reader sets the velocity to -1 to skip this
