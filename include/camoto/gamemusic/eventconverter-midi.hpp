@@ -250,7 +250,7 @@ void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *ben
 /// Convert a MIDI pitchbend (0..16383) into semitones (-2..+1.9999)
 inline double midiPitchbendToSemitones(unsigned int bend)
 {
-	return (bend - 8192) / 4096.0;
+	return ((signed int)bend - 8192) / 4096.0;
 }
 
 /// Convert a fractional semitone (-2..+2) into a MIDI pitchbend (0..16383)
