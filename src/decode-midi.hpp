@@ -2,7 +2,7 @@
  * @file   decode-midi.hpp
  * @brief  Format decoder for Standard MIDI Format (SMF) MIDI data.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,13 +48,10 @@ namespace gamemusic {
  *   One or more flags.  Use MIDIFlags::Default unless the MIDI
  *   data is unusual in some way.
  *
- * @param ticksPerQuarterNote
- *   Number of ticks in a quarter-note.  Default is 192
- *   (MIDI_DEF_TICKS_PER_QUARTER_NOTE).  This controls how many notes appear
- *   in each notation bar, among other things.
- *
- * @param usPerQuarterNote
- *   Number of microseconds in a quarter-note.  Defaults to 500,000.
+ * @param initialTempo
+ *   Initial tempo of the song.  The number of ticks in a quarter note is
+ *   particularly important for a MIDI file to get the beat/bar arrangement
+ *   correct.
  */
 MusicPtr midiDecode(stream::input_sptr input, unsigned int flags,
 	const Tempo& initialTempo);
