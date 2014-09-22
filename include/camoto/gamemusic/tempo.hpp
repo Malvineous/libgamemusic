@@ -217,6 +217,22 @@ struct Tempo
 	}
 };
 
+inline bool operator== (const Tempo& a, const Tempo& b)
+{
+	return
+		(a.beatsPerBar == b.beatsPerBar)
+		&& (a.beatLength == b.beatLength)
+		&& (a.ticksPerBeat == b.ticksPerBeat)
+		&& (a.usPerTick == b.usPerTick)
+		&& (a.framesPerTick == b.framesPerTick)
+	;
+}
+
+inline bool operator!= (const Tempo& a, const Tempo& b)
+{
+	return !(a == b);
+}
+
 } // namespace gamemusic
 } // namespace camoto
 
