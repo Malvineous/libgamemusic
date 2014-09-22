@@ -269,6 +269,9 @@ void MusicType_IMF_Common::write(stream::output_sptr output, SuppData& suppData,
 	// IMF files need the first channel free, as games use this for Adlib SFX.
 	flags |= OPLWriteFlags::ReserveFirstChan;
 
+	// Force this format to OPL2 as that's all we can write
+	flags |= OPLWriteFlags::OPL2Only;
+
 	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
 
 	if (this->imfType == 1) {
