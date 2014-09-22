@@ -93,11 +93,17 @@ struct OPLEvent
 const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value
 const float OPL_FNUM_ROUND = 50000.0;    ///< Alternate value used occasionally
 
+/// Number of OPL chips/register sets
+const unsigned int OPL_NUM_CHIPS = 2;
+
 /// Value returned by getOPLChannel() if there aren't enough channels available
-const unsigned int OPL_INVALID_CHIP = 2;
+const unsigned int OPL_INVALID_CHIP = OPL_NUM_CHIPS;
 
 /// Maximum number of OPL channels that will ever be used
 const unsigned int OPL_MAX_CHANNELS = 18;
+
+/// Maximum number of tracks (melodic + percussive mode)
+const unsigned int OPL_TRACK_COUNT = 9 * OPL_NUM_CHIPS + 5;
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
 class DLL_EXPORT OPLWriterCallback: virtual public TempoCallback

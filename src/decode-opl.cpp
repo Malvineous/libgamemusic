@@ -28,16 +28,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-/// A default value to use since most OPL songs don't have a field for this.
-const unsigned int OPL_DEF_TICKS_PER_QUARTER_NOTE = 192;
-
-const unsigned int NUM_CHIPS = 2;
-
-const unsigned int OPL_CHANNEL_COUNT = 9 * NUM_CHIPS + 5;
-
-/// Default volume for modulator-only percussive instruments
-const unsigned int OPL_DEFVOL_PERC = 255;
-
 class OPLDecoder
 {
 	public:
@@ -74,8 +64,8 @@ class OPLDecoder
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 
-		unsigned long lastDelay[OPL_CHANNEL_COUNT];   ///< Delay ticks accrued since last event
-		uint8_t oplState[NUM_CHIPS][256];  ///< Current register values
+		unsigned long lastDelay[OPL_TRACK_COUNT];   ///< Delay ticks accrued since last event
+		uint8_t oplState[OPL_NUM_CHIPS][256];  ///< Current register values
 		PatchBankPtr patches;      ///< Patch storage
 
 		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel);
@@ -138,7 +128,7 @@ MusicPtr OPLDecoder::decode()
 	music->loopDest = -1; // no loop
 	bool initialTempoSet = false;
 
-	for (unsigned int c = 0; c < OPL_CHANNEL_COUNT; c++) {
+	for (unsigned int c = 0; c < OPL_TRACK_COUNT; c++) {
 		TrackInfo t;
 		if (c < 9) {
 			t.channelType = TrackInfo::OPLChannel;
@@ -155,14 +145,14 @@ MusicPtr OPLDecoder::decode()
 	}
 
 	PatternPtr pattern(new Pattern());
-	for (unsigned int track = 0; track < OPL_CHANNEL_COUNT; track++) {
+	for (unsigned int track = 0; track < OPL_TRACK_COUNT; track++) {
 		TrackPtr t(new Track());
 		pattern->push_back(t);
 	}
 
 	// Initialise all OPL registers to zero
 	memset(oplState, 0, sizeof(oplState));
-	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) this->lastDelay[t] = 0;
+	for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) this->lastDelay[t] = 0;
 	double lastTempo = 0;
 
 	unsigned long totalDelay = 0;
@@ -175,7 +165,7 @@ MusicPtr OPLDecoder::decode()
 		totalDelay += oplev.delay;
 
 		if (this->delayType == DelayIsPreData) {
-			for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+			for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 				this->lastDelay[t] += oplev.delay;
 			}
 		}
@@ -231,7 +221,7 @@ MusicPtr OPLDecoder::decode()
 			}
 			if (rhythm == 99) {
 				unsigned int oplChannel = OPL2_OFF2CHANNEL(oplOpIndex); /// @todo: This only works for OPL2
-				track = oplChannel + OPL_CHANNEL_COUNT * oplev.chipIndex;
+				track = oplChannel + OPL_TRACK_COUNT * oplev.chipIndex;
 				noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
 			} else {
 				track = 9 + rhythm;
@@ -246,7 +236,7 @@ MusicPtr OPLDecoder::decode()
 					<< "\n";
 
 				if (this->delayType == DelayIsPostData) {
-					for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+					for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 						this->lastDelay[t] += oplev.delay;
 					}
 				}
@@ -261,7 +251,7 @@ MusicPtr OPLDecoder::decode()
 				track = -1;
 			} else {
 				// Normal channel (or rhythm mode bass drum)
-				track = oplChannel + OPL_CHANNEL_COUNT * oplev.chipIndex;
+				track = oplChannel + OPL_TRACK_COUNT * oplev.chipIndex;
 				noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
 			}
 		}
@@ -457,7 +447,7 @@ MusicPtr OPLDecoder::decode()
 		// Will have to combine with previous patch change event if there has been no delay.
 
 		if (this->delayType == DelayIsPostData) {
-			for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+			for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 				this->lastDelay[t] += oplev.delay;
 			}
 		}
@@ -471,7 +461,7 @@ MusicPtr OPLDecoder::decode()
 	totalDelay += oplev.delay;
 
 	// Put dummy events if necessary to preserve trailing delays
-	for (unsigned int t = 0; t < OPL_CHANNEL_COUNT; t++) {
+	for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 		this->lastDelay[t] += oplev.delay;
 		if (this->lastDelay[t] && pattern->at(t)->size()) {
 			TrackEvent te;
