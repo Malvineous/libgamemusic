@@ -380,13 +380,11 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 
 	// Add dummy events for any final delays
 	unsigned int trackCount = MUS_CHANNEL_COUNT;
-	for (unsigned int track = 0; track < trackCount; track++) {
+	for (int track = trackCount - 1; track >= 0; track--) {
 		if (lastDelay[track] == totalDelay) {
 			// This track is unused
 			music->trackInfo.erase(music->trackInfo.begin() + track);
-			music->patterns.at(0)->at(track);
-			track--;
-			trackCount--;
+			music->patterns.at(0)->erase(music->patterns.at(0)->begin() + track);
 		} else if (lastDelay[track]) {
 			// This track has a trailing delay
 			TrackEvent te;
