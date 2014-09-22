@@ -26,6 +26,114 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+void listEvents(MusicPtr music)
+{
+	std::cout << "--- Song dump begin ---\nloop_return=";
+	if (music->loopDest == -1) std::cout << "none\n";
+	else std::cout << "order:" << music->loopDest << "\n";
+	unsigned int j = 0;
+	for (std::vector<TrackInfo>::const_iterator
+		i = music->trackInfo.begin(); i != music->trackInfo.end(); i++, j++
+	) {
+		std::cout << "track" << j << "=";
+		switch (i->channelType) {
+			case TrackInfo::UnusedChannel:
+				std::cout << "unused";
+				break;
+			case TrackInfo::AnyChannel:
+				std::cout << "any";
+				break;
+			case TrackInfo::OPLChannel:
+				std::cout << "opl-" << i->channelIndex;
+				break;
+			case TrackInfo::OPLPercChannel:
+				std::cout << "oplperc-";
+				switch (i->channelIndex) {
+					case 4: std::cout << "bassdrum"; break;
+					case 3: std::cout << "snare"; break;
+					case 2: std::cout << "tomtom"; break;
+					case 1: std::cout << "topcymbal"; break;
+					case 0: std::cout << "hihat"; break;
+					default:
+						std::cout << "error [channelIndex " << i->channelIndex
+							<< " out of range!]";
+						break;
+				}
+				break;
+			case TrackInfo::MIDIChannel:
+				std::cout << "midi-" << i->channelIndex;
+				break;
+			case TrackInfo::PCMChannel:
+				std::cout << "pcm-" << i->channelIndex;
+				break;
+		}
+		std::cout << "\n";
+	}
+
+	j = 0;
+	for (PatchBank::const_iterator
+		i = music->patches->begin(); i != music->patches->end(); i++, j++
+	) {
+		std::cout << "inst" << j << "=";
+		OPLPatchPtr oplNext = boost::dynamic_pointer_cast<OPLPatch>(*i);
+		if (oplNext) {
+			std::cout << "opl:" << oplNext;
+		} else {
+			MIDIPatchPtr midiNext = boost::dynamic_pointer_cast<MIDIPatch>(*i);
+			if (midiNext) {
+				std::cout << "midi";
+				if (midiNext->percussion) {
+					std::cout << "perc:" << (int)midiNext->midiPatch;
+				} else {
+					std::cout << ":" << (int)midiNext->midiPatch;
+				}
+			} else {
+				PCMPatchPtr pcmNext = boost::dynamic_pointer_cast<PCMPatch>(*i);
+				if (pcmNext) {
+					std::cout << "pcm:" << pcmNext->sampleRate << "/"
+						<< (int)pcmNext->bitDepth << "/" << (int)pcmNext->numChannels << " "
+						<< (pcmNext->loopEnd ? '+' : '-') << "Loop ";
+					if (pcmNext->lenData < 1024) std::cout << pcmNext->lenData << "B ";
+					else if (pcmNext->lenData < 1024*1024) std::cout << pcmNext->lenData / 1024 << "kB ";
+					else std::cout << pcmNext->lenData / 1048576 << "MB ";
+				} else {
+					std::cout << "empty"; // empty patch
+				}
+			}
+		}
+		if (!(*i)->name.empty()) {
+			std::cout << ",\"" << (*i)->name << '"';
+		}
+		std::cout << "\n";
+	}
+
+	std::cout << "num_patterns=" << music->patterns.size() << "\n";
+
+	unsigned int totalEvents = 0;
+	unsigned int patternIndex = 0;
+	for (std::vector<PatternPtr>::const_iterator
+		pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
+	) {
+		unsigned int trackIndex = 0;
+		for (Pattern::const_iterator
+			pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
+		) {
+			unsigned int eventIndex = 0;
+			for (Track::const_iterator
+				ev = (*pt)->begin(); ev != (*pt)->end(); ev++, eventIndex++, totalEvents++
+			) {
+				std::cout << "pattern=" << patternIndex << ";track="
+					<< trackIndex << ";index=" << eventIndex << ";";
+				std::cout << "delay=" << ev->delay << ";"
+					<< ev->event->getContent() << "\n";
+			}
+		}
+	}
+	std::cout << "total_events=" << totalEvents << "\n--- Song dump complete ---"
+		<< std::endl;
+	return;
+}
+
 /// Check whether a supp item is present and if so that the content is correct.
 #define CHECK_SUPP_ITEM(item, check_func, msg) \
 	if (this->suppResult[camoto::SuppItem::item]) { \
@@ -46,6 +154,7 @@ test_music::test_music()
 	this->indexInstrumentOPL = -2;
 	this->indexInstrumentMIDI = -2;
 	this->indexInstrumentPCM = -2;
+	this->dumpEvents = false;
 
 	this->hasMetadata[Metadata::Description] = false;
 	this->hasMetadata[Metadata::PaletteFilename] = false;
@@ -258,6 +367,8 @@ void test_music::test_read()
 	BOOST_TEST_MESSAGE("Read music file");
 
 	MusicPtr music(this->pType->read(this->base, this->suppData));
+
+	if (this->dumpEvents) listEvents(music);
 
 	BOOST_REQUIRE_EQUAL(music->patches->size(), this->numInstruments);
 }

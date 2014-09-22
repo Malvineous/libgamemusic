@@ -32,6 +32,9 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+/// Print a list of all the events in the song to stdout.
+void listEvents(MusicPtr music);
+
 /// Exception thrown if test_musicmetadata::metadata_*() is called for
 /// unsupported fields.
 class test_metadata_not_supported {};
@@ -210,6 +213,9 @@ class test_music: public test_main
 		 * test designer that they forgot to set this to a valid value.
 		 */
 		int indexInstrumentPCM;
+
+		/// If true, list music events in read() test on stdout.  Defaults to false.
+		bool dumpEvents;
 
 		/// Does this format support metadata?
 		std::map<camoto::Metadata::MetadataType, bool> hasMetadata;
