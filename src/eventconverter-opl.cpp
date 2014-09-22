@@ -223,7 +223,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	assert(block <= 7);
 
 	// Write the rest of the (global) instrument settings.
-	if (ti.channelType == TrackInfo::OPLChannel) {
+	if (ti.channelType != TrackInfo::OPLPercChannel) {
 		// This register is only used on melodic channels.  It is ignored on
 		// percussive channels, so don't bother setting it.
 		this->processNextPair(chipIndex, BASE_FEED_CONN | oplChannel,
@@ -237,7 +237,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	// Write 0xB0 w/ keyon bit
 	this->processNextPair(chipIndex, 0xB0 | oplChannel,
-		(ti.channelType == TrackInfo::OPLChannel ? OPLBIT_KEYON : 0) // keyon enabled
+		(ti.channelType != TrackInfo::OPLPercChannel ? OPLBIT_KEYON : 0) // keyon enabled
 		| (block << 2) // and the octave
 		| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 	);
