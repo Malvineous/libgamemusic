@@ -67,11 +67,20 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 	) {
 		PatternPtr& pattern = *pp;
 
+		if (patternIndex > 0) {
+			throw format_limitation("splitPolyphonicTracks() can't yet work with multipattern data");
+			// TODO: If this ever comes up, the way trackInfo is handled will need to
+			// be changed so it doesn't get duplicated for every single pattern,
+			// ending up with dozens more instances than we are supposed to have.
+			// Maybe instead, run through each track one by one, across all patterns?
+		}
+
 		// For each track
 		unsigned long trackIndex = 0;
 		for (Pattern::iterator
 			pt = pattern->begin(); pt != pattern->end(); trackIndex++
 		) {
+			assert(pattern->size() == music->trackInfo.size());
 
 			TrackPtr main(new Track);
 			TrackPtr overflow(new Track);
@@ -176,6 +185,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 				pt = pattern->insert(pt + 1, overflow);
 
 				// Duplicate the TrackInfo structure too
+				assert(trackIndex < music->trackInfo.size());
 				music->trackInfo.insert(music->trackInfo.begin() + trackIndex + 1,
 					music->trackInfo[trackIndex]);
 			} else {
