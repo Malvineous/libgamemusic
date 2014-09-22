@@ -268,4 +268,23 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 	);
 }
 
+BOOST_AUTO_TEST_CASE(midi_pitchbend_convert)
+{
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend(-2.0), 0);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend(-1.0), 4096);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend(-0.5), 6144);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend( 0  ), 8192);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend( 0.5), 10240);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend( 1.0), 12288);
+	BOOST_CHECK_EQUAL(gm::midiSemitonesToPitchbend( 2.0), 16383);
+
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(0),    -2.0);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(4096), -1.0);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(6144), -0.5);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(8192),  0);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(10240), 0.5);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(12288), 1.0);
+	BOOST_CHECK_EQUAL(gm::midiPitchbendToSemitones(16384), 2.0); // 16383 should be just under 2.0
+}
+
 BOOST_AUTO_TEST_SUITE_END()
