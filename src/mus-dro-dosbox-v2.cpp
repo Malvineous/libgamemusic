@@ -296,6 +296,7 @@ unsigned long MusicType_DRO_v2::getCaps() const
 	return
 		InstOPL
 		| HasEvents
+		| HardwareOPL3
 	;
 }
 

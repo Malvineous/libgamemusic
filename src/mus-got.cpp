@@ -150,6 +150,7 @@ unsigned long MusicType_GOT::getCaps() const
 	return
 		InstOPL
 		| HasEvents
+		| HardwareOPL2
 	;
 }
 

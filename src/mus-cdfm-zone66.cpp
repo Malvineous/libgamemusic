@@ -106,6 +106,7 @@ unsigned long MusicType_CDFM::getCaps() const
 		| HasEvents
 		| HasPatterns
 		| HasLoopDest
+		| HardwareOPL2
 	;
 }
 

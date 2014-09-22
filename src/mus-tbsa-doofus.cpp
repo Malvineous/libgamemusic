@@ -67,6 +67,7 @@ unsigned long MusicType_TBSA::getCaps() const
 		| InstOPL
 		| HasEvents
 		| HasPatterns
+		| HardwareOPL2
 	;
 }
 

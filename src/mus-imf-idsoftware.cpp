@@ -145,6 +145,7 @@ unsigned long MusicType_IMF_Common::getCaps() const
 	return
 		InstOPL
 		| HasEvents
+		| HardwareOPL2
 	;
 }
 

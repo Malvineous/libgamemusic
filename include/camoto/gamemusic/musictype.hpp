@@ -80,6 +80,10 @@ class MusicType
 			HasPatterns   = 0x0080,
 
 			HasLoopDest   = 0x0100, ///< Can the loop destination be set?
+
+			HardwareOPL_Bitmask   = 0x0200, ///< Bitmask to check for OPL2 or OPL3
+			HardwareOPL2  = 0x0200, ///< OPL2 only - max 9 channels or 6 + 5 perc
+			HardwareOPL3  = 0x0600, ///< OPL2 or OPL3 - max 18 channels or 15 + 5 perc
 		};
 
 		/// Get a short code to identify this file format, e.g. "imf-idsoftware"
