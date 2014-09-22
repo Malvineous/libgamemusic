@@ -74,7 +74,10 @@ class OPLEncoder: virtual private OPLWriterCallback
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 		unsigned int flags;        ///< One or more OPLWriteFlags
-		unsigned long cachedDelay; ///< Number of ticks following previous event
+		Tempo lastTempo;           ///< Last tempo supplied
+		uint8_t lastChipIndex;     ///< Last chip index used (only valid if lastReg != 0)
+		uint8_t lastReg;           ///< Last OPL register written to
+		uint8_t lastVal;           ///< Last value written to register (only valid if lastReg != 0)
 };
 
 
@@ -93,7 +96,8 @@ OPLEncoder::OPLEncoder(OPLWriterCallback *cb, ConstMusicPtr music,
 		delayType(delayType),
 		fnumConversion(fnumConversion),
 		flags(flags),
-		cachedDelay(0)
+		lastTempo(music->initialTempo),
+		lastReg(0)
 {
 }
 
@@ -113,12 +117,14 @@ void OPLEncoder::encode()
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}
-	if ((this->delayType == DelayIsPostData) || this->cachedDelay) {
-		// Flush out the last event/delay
+	if ((this->delayType == DelayIsPostData) && this->lastReg) {
+		// Flush out the last event
 		OPLEvent out;
-		out.valid = OPLEvent::Delay;
-		out.delay = this->cachedDelay;
-		this->cachedDelay = 0;
+		out.valid = OPLEvent::Regs;
+		out.chipIndex = this->lastChipIndex;
+		out.reg = this->lastReg;
+		out.val = this->lastVal;
+		out.tempo = this->lastTempo;
 		this->cb->writeNextPair(&out);
 	}
 	return;
@@ -132,35 +138,43 @@ void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 
 	OPLEvent out;
 	out.valid = 0;
+
 	if (oplEvent->valid & OPLEvent::Tempo) {
 		out.valid |= OPLEvent::Tempo;
-		out.tempo = oplEvent->tempo;
+		this->lastTempo = oplEvent->tempo;
 	}
-	if (oplEvent->valid & OPLEvent::Regs) {
-		assert(oplEvent->chipIndex < 2);
+	out.tempo = this->lastTempo;
 
-		out.valid |= OPLEvent::Regs;
-		out.chipIndex = oplEvent->chipIndex;
-		out.reg = oplEvent->reg;
-		out.val = oplEvent->val;
+	if (oplEvent->valid & OPLEvent::Delay) {
+		out.valid |= OPLEvent::Delay;
+		out.delay = oplEvent->delay;
 	}
+
 	if (this->delayType == DelayIsPreData) {
-		if (oplEvent->valid & OPLEvent::Delay) {
-			out.valid |= OPLEvent::Delay;
-			out.delay = oplEvent->delay;
+		if (oplEvent->valid & OPLEvent::Regs) {
+			assert(oplEvent->chipIndex < 2);
+
+			out.valid |= OPLEvent::Regs;
+			out.chipIndex = oplEvent->chipIndex;
+			out.reg = oplEvent->reg;
+			out.val = oplEvent->val;
 		}
-	} else {
-		// Delay is post-data
-		if (this->cachedDelay != 0) {
-			out.valid |= OPLEvent::Delay;
-			out.delay = this->cachedDelay;
+
+	} else { // DelayIsPostData
+		if (this->lastReg) {
+			out.valid |= OPLEvent::Regs;
+			out.chipIndex = this->lastChipIndex;
+			out.reg = this->lastReg;
+			out.val = this->lastVal;
+			this->lastReg = 0;
 		}
-		if (oplEvent->valid & OPLEvent::Delay) {
-			this->cachedDelay = oplEvent->delay;
-		} else {
-			this->cachedDelay = 0;
+		if (oplEvent->valid & OPLEvent::Regs) {
+			this->lastChipIndex = oplEvent->chipIndex;
+			this->lastReg = oplEvent->reg;
+			this->lastVal = oplEvent->val;
 		}
 	}
+
 	if (out.valid) {
 		this->cb->writeNextPair(&out);
 	}
