@@ -73,9 +73,6 @@ class Playback: virtual public SynthPCMCallback
 			public:
 				OPLHandler(Playback *playback, bool midi);
 
-				// TempoCallback
-				virtual void tempoChange(const Tempo& tempo);
-
 				// OPLWriterCallback
 				virtual void writeNextPair(const OPLEvent *oplEvent);
 

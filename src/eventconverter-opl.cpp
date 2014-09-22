@@ -65,11 +65,8 @@ void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
 
 	// Write out any trailing delay
 	OPLEvent oplev;
-	oplev.reg = 0;
-	oplev.val = 0;
-	oplev.chipIndex = 0;
+	oplev.valid = OPLEvent::Delay;
 	oplev.delay = this->cachedDelay;
-	oplev.delayOnly = true;
 	this->cachedDelay = 0;
 	this->cb->writeNextPair(&oplev);
 }
@@ -90,17 +87,16 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 {
 	assert(ev->tempo.usPerTick > 0);
 	this->cachedDelay += delay;
+	OPLEvent oplev;
+	oplev.valid = 0;
 	if (this->cachedDelay) {
-		OPLEvent oplev;
-		oplev.reg = 0;
-		oplev.val = 0;
-		oplev.chipIndex = 0;
+		oplev.valid |= OPLEvent::Delay;
 		oplev.delay = this->cachedDelay;
-		oplev.delayOnly = true;
 		this->cachedDelay = 0;
-		this->cb->writeNextPair(&oplev);
 	}
-	this->cb->tempoChange(ev->tempo);
+	oplev.valid |= OPLEvent::Tempo;
+	oplev.tempo = ev->tempo;
+	this->cb->writeNextPair(&oplev);
 	return;
 }
 
@@ -433,11 +429,11 @@ void EventConverter_OPL::processNextPair(uint8_t chipIndex, uint8_t reg,
 	if (this->oplSet[chipIndex][reg] && (this->oplState[chipIndex][reg] == val)) return;
 
 	OPLEvent oplev;
+	oplev.valid = OPLEvent::Delay | OPLEvent::Regs;
 	oplev.reg = reg;
 	oplev.val = val;
 	oplev.chipIndex = chipIndex;
 	oplev.delay = this->cachedDelay;
-	oplev.delayOnly = false;
 	this->cachedDelay = 0;
 
 	this->cb->writeNextPair(&oplev);

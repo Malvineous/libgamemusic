@@ -36,6 +36,10 @@ class OPLReaderCallback {
 		 * @param oplEvent
 		 *   When returning true, this structure is populated with the next reg/val
 		 *   pair and associated data.  See OPLEvent for details.
+		 *   When this function is called, oplEvent->valid is always set to 0,
+		 *   and oplEvent->tempo always points to the current song tempo, so it can
+		 *   be modified to change part of the tempo (but of course the change won't
+		 *   take effect unless oplEvent->valid includes OPLEvent::Tempo on return.)
 		 *
 		 * @return true if oplEvent is valid, or false to ignore the reg/val/tempo
 		 *   attributes and signify the end of the file has been reached.  Note
@@ -48,6 +52,9 @@ class OPLReaderCallback {
 
 /// Convert caller-supplied OPL data into a Music instance.
 /**
+ * @param cb
+ *   Callback class used to read the actual OPL data bytes from the file.
+ *
  * @param delayType
  *   Where the delay is actioned - before its associated data pair is sent
  *   to the OPL chip, or after.
@@ -56,11 +63,11 @@ class OPLReaderCallback {
  *   Conversion constant to use when converting OPL frequency numbers into
  *   Hertz.  Can be one of OPL_FNUM_* or a raw value.
  *
- * @param cb
- *   Callback class used to read the actual OPL data bytes from the file.
+ * @param initialTempo
+ *   Initial tempo of the song.
  */
 MusicPtr oplDecode(OPLReaderCallback *cb, DelayType delayType,
-	double fnumConversion);
+	double fnumConversion, const Tempo& initialTempo);
 
 } // namespace gamemusic
 } // namespace camoto

@@ -42,46 +42,36 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_IMF(stream::input_sptr input, unsigned int speed, unsigned int lenData)
+		OPLReaderCallback_IMF(stream::input_sptr input, unsigned int lenData)
 			:	input(input),
-				first(true),
-				speed(speed),
 				lenData(lenData)
 		{
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
+			assert(oplEvent->valid == 0);
 			if (this->lenData == 0) return false;
-			if (this->first) {
-				// First call, set tempo
-				this->first = false;
-				oplEvent->usPerTick = HERTZ_TO_uS(this->speed);
-				oplEvent->delay = 0;
-				oplEvent->reg = 0;
-				oplEvent->val = 0;
-				oplEvent->chipIndex = 0;
-				return true; // empty event w/ initial tempo
-			}
 
 			try {
-				oplEvent->chipIndex = 0; // IMF only supports one OPL2
 				this->input
 					>> u8(oplEvent->reg)
 					>> u8(oplEvent->val)
 					>> u16le(oplEvent->delay)
 				;
-				if (this->lenData != IMF_LEN_UNUSED) this->lenData -= 4;
 			} catch (const stream::incomplete_read&) {
+				this->lenData = 0;
 				return false;
 			}
+
+			if (this->lenData != IMF_LEN_UNUSED) this->lenData -= 4;
+			oplEvent->chipIndex = 0; // Only one OPL2 supported
+			oplEvent->valid |= OPLEvent::Delay | OPLEvent::Regs;
 			return true;
 		}
 
 	protected:
 		stream::input_sptr input;   ///< Input file
-		bool first;                 ///< Is this the first time readNextPair() has been called?
-		unsigned int speed;         ///< IMF clock rate
 		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
 };
 
@@ -92,50 +82,55 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 	public:
 		OPLWriterCallback_IMF(stream::output_sptr output, unsigned int speed)
 			:	output(output),
-				speed(speed),
-				usPerTick(HERTZ_TO_uS(speed)) // default to speed ticks per second
+				speed(speed)
 		{
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
 		{
 			// Convert ticks into an IMF delay
-			unsigned long delay = oplEvent->delay * this->usPerTick / (HERTZ_TO_uS(this->speed));
-			// Write out super long delays as dummy events to an unused port.
-			while (delay > 0xFFFF) {
+			unsigned long delay;
+			if (oplEvent->valid & OPLEvent::Delay) {
+				delay = oplEvent->delay
+					* oplEvent->tempo.usPerTick / (HERTZ_TO_uS(this->speed));
+
+				// Write out super long delays as dummy events to an unused port.
+				while (delay > 0xFFFF) {
+					this->output
+						<< u8(0x00)
+						<< u8(0x00)
+						<< u16le(0xFFFF)
+					;
+					delay -= 0xFFFF;
+				}
+			} else {
+				delay = 0;
+			}
+
+			if (oplEvent->valid & OPLEvent::Regs) {
+				// If this assertion fails, the caller sent OPL3 instructions despite
+				// OPLWriteFlags::OPL2Only being supplied in the call to oplEncode().
+				assert(oplEvent->chipIndex == 0);
+
 				this->output
-					<< u8(0x00)
-					<< u8(0x00)
-					<< u16le(0xFFFF)
+					<< u8(oplEvent->reg)
+					<< u8(oplEvent->val)
+					<< u16le(delay)
 				;
-				delay -= 0xFFFF;
+			} else if (delay) {
+				// There is a delay but no regs (e.g. trailing delay)
+				this->output
+					<< u8(0)
+					<< u8(0)
+					<< u16le(delay)
+				;
 			}
-
-			/// @todo Put this as a format capability
-			if (oplEvent->chipIndex != 0) {
-				throw stream::error("IMF files are single-OPL2 only");
-			}
-			assert(oplEvent->chipIndex == 0);  // make sure the format capabilities are being honoured
-
-			this->output
-				<< u8(oplEvent->reg)
-				<< u8(oplEvent->val)
-				<< u16le(delay)
-			;
-			return;
-		}
-
-		virtual void tempoChange(const Tempo& tempo)
-		{
-			assert(tempo.usPerTick != 0);
-			this->usPerTick = tempo.usPerTick;
 			return;
 		}
 
 	protected:
 		stream::output_sptr output; ///< Output file
 		unsigned int speed;         ///< IMF clock rate
-		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
 };
 
 
@@ -239,8 +234,12 @@ MusicPtr MusicType_IMF_Common::read(stream::input_sptr input, SuppData& suppData
 		lenData = IMF_LEN_UNUSED; // read until EOF
 	}
 
-	OPLReaderCallback_IMF cb(input, this->speed, lenData);
-	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT);
+	Tempo initialTempo;
+	initialTempo.hertz(this->speed);
+	initialTempo.ticksPerBeat = this->speed / 4; // still wrong, but the defaults are wildly inaccurate
+
+	OPLReaderCallback_IMF cb(input, lenData);
+	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, initialTempo);
 
 	if (this->imfType == 1) {
 		// See if there are any tags present

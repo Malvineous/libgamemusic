@@ -26,35 +26,23 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+#define GOT_DEFAULT_TEMPO 120 ///< Default tempo, in Hertz
 #define HERTZ_TO_uS(x) (1000000 / (x))
 
 /// Decode data in an .imf file to provide register/value pairs.
 class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_GOT(stream::input_sptr input, unsigned int speed)
-			:	input(input),
-				first(true),
-				speed(speed)
+		OPLReaderCallback_GOT(stream::input_sptr input)
+			:	input(input)
 		{
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
-			if (this->lenData == 0) return false;
-			if (this->first) {
-				// First call, set tempo
-				this->first = false;
-				oplEvent->usPerTick = HERTZ_TO_uS(this->speed);
-				oplEvent->delay = 0;
-				oplEvent->reg = 0;
-				oplEvent->val = 0;
-				oplEvent->chipIndex = 0;
-				return true; // empty event w/ initial tempo
-			}
+			assert(oplEvent->valid == 0);
 
 			try {
-				oplEvent->chipIndex = 0; // IMF only supports one OPL2
 				uint8_t delay;
 				this->input
 					>> u8(delay)
@@ -62,21 +50,25 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 					>> u8(oplEvent->val)
 				;
 				oplEvent->delay = delay;
-				if ((oplEvent->delay == 0) && (oplEvent->reg == 0) && (oplEvent->val == 0)) {
-					// End of song
-					return false;
-				}
 			} catch (const stream::incomplete_read&) {
 				return false;
 			}
+
+			if (
+				(oplEvent->delay == 0)
+				&& (oplEvent->reg == 0)
+				&& (oplEvent->val == 0)
+			) {
+				// End of song
+				return false;
+			}
+			oplEvent->chipIndex = 0; // This format only supports one OPL2
+			oplEvent->valid |= OPLEvent::Delay | OPLEvent::Regs;
 			return true;
 		}
 
 	protected:
 		stream::input_sptr input;   ///< Input file
-		bool first;                 ///< Is this the first time readNextPair() has been called?
-		unsigned int speed;         ///< IMF clock rate
-		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
 };
 
 
@@ -84,17 +76,21 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 {
 	public:
-		OPLWriterCallback_GOT(stream::output_sptr output, unsigned int speed)
-			:	output(output),
-				speed(speed),
-				usPerTick(HERTZ_TO_uS(speed)) // default to speed ticks per second
+		OPLWriterCallback_GOT(stream::output_sptr output)
+			:	output(output)
 		{
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
 		{
 			// Convert ticks into an IMF delay
-			unsigned long delay = oplEvent->delay * this->usPerTick / (HERTZ_TO_uS(this->speed));
+			unsigned long delay;
+			if (oplEvent->valid & OPLEvent::Delay) {
+				delay = oplEvent->delay
+					* oplEvent->tempo.usPerTick / HERTZ_TO_uS(GOT_DEFAULT_TEMPO);
+			} else {
+				delay = 0;
+			}
 			// Write out super long delays as dummy events to an unused port.
 			while (delay > 0xFF) {
 				this->output
@@ -105,24 +101,24 @@ class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 				delay -= 0xFF;
 			}
 
-			/// @todo Put this as a format capability
-			if (oplEvent->chipIndex != 0) {
-				throw stream::error("God of Thunder music files are single-OPL2 only");
+			if (oplEvent->valid & OPLEvent::Regs) {
+				// If this assertion fails, the caller sent OPL3 instructions despite
+				// OPLWriteFlags::OPL2Only being supplied in the call to oplEncode().
+				assert(oplEvent->chipIndex == 0);
+
+				this->output
+					<< u8(delay)
+					<< u8(oplEvent->reg)
+					<< u8(oplEvent->val)
+				;
+			} else if (delay) {
+				// There is a delay but no regs (e.g. trailing delay)
+				this->output
+					<< u8(delay)
+					<< u8(0)
+					<< u8(0)
+				;
 			}
-			assert(oplEvent->chipIndex == 0);  // make sure the format capabilities are being honoured
-
-			this->output
-				<< u8(delay)
-				<< u8(oplEvent->reg)
-				<< u8(oplEvent->val)
-			;
-			return;
-		}
-
-		virtual void tempoChange(const Tempo& tempo)
-		{
-			assert(tempo.usPerTick != 0);
-			this->usPerTick = tempo.usPerTick;
 			return;
 		}
 
@@ -193,8 +189,11 @@ MusicPtr MusicType_GOT::read(stream::input_sptr input, SuppData& suppData) const
 	// isInstance() was just called.
 	input->seekg(2, stream::start);
 
-	OPLReaderCallback_GOT cb(input, 120);
-	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT);
+	Tempo initialTempo;
+	initialTempo.hertz(GOT_DEFAULT_TEMPO);
+
+	OPLReaderCallback_GOT cb(input);
+	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, initialTempo);
 
 	return music;
 }
@@ -205,7 +204,7 @@ void MusicType_GOT::write(stream::output_sptr output, SuppData& suppData,
 	output << u16le(1);
 
 	// Call the generic OPL writer.
-	OPLWriterCallback_GOT cb(output, 120);
+	OPLWriterCallback_GOT cb(output);
 	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
 
 	// Zero event (3 bytes) plus final 0x00

@@ -59,7 +59,6 @@ class test_raw_rdos: public test_music
 		{
 			return STRING_WITH_NULLS(
 				"RAWADATA" "\x50\x08"
-				"\x00\x02\x50\x08"
 				// Note data
 				"\x08\x00" // leading delay
 				"\xae\x20\x7f\x40\xed\x60\xcb\x80\x06\xe0"

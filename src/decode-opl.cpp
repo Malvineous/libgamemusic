@@ -33,6 +33,9 @@ class OPLDecoder
 	public:
 		/// Set decoding parameters.
 		/**
+		 * @param cb
+		 *   Callback class used to read the actual OPL data bytes from the file.
+		 *
 		 * @param delayType
 		 *   Where the delay is actioned - before its associated data pair is sent
 		 *   to the OPL chip, or after.
@@ -41,10 +44,11 @@ class OPLDecoder
 		 *   Conversion constant to use when converting OPL frequency numbers into
 		 *   Hertz.  Can be one of OPL_FNUM_* or a raw value.
 		 *
-		 * @param cb
-		 *   Callback class used to read the actual OPL data bytes from the file.
+		 * @param initialTempo
+		 *   Initial tempo of the song.
 		 */
-		OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumConversion);
+		OPLDecoder(OPLReaderCallback *cb, DelayType delayType,
+			double fnumConversion, const Tempo& initialTempo);
 
 		~OPLDecoder();
 
@@ -63,6 +67,7 @@ class OPLDecoder
 		OPLReaderCallback *cb;     ///< Callback to use to get more OPL data
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
+		Tempo initialTempo;        ///< Initial tempo to set
 
 		unsigned long lastDelay[OPL_TRACK_COUNT];   ///< Delay ticks accrued since last event
 		uint8_t oplState[OPL_NUM_CHIPS][256];  ///< Current register values
@@ -92,18 +97,20 @@ class OPLDecoder
 };
 
 
-MusicPtr camoto::gamemusic::oplDecode(OPLReaderCallback *cb, DelayType delayType,
-	double fnumConversion)
+MusicPtr camoto::gamemusic::oplDecode(OPLReaderCallback *cb,
+	DelayType delayType, double fnumConversion, const Tempo& initialTempo)
 {
-	OPLDecoder decoder(cb, delayType, fnumConversion);
+	OPLDecoder decoder(cb, delayType, fnumConversion, initialTempo);
 	return decoder.decode();
 }
 
 
-OPLDecoder::OPLDecoder(OPLReaderCallback *cb, DelayType delayType, double fnumConversion)
+OPLDecoder::OPLDecoder(OPLReaderCallback *cb, DelayType delayType,
+	double fnumConversion, const Tempo& initialTempo)
 	:	cb(cb),
 		delayType(delayType),
 		fnumConversion(fnumConversion),
+		initialTempo(initialTempo),
 		patches(new PatchBank())
 {
 }
@@ -120,13 +127,8 @@ MusicPtr OPLDecoder::decode()
 	// the same, except of course the Music ones are generic, but our ones are
 	// typed as OPL instruments.
 
-	music->initialTempo.beatsPerBar = 4;
-	music->initialTempo.beatLength = 4;
-	music->initialTempo.ticksPerBeat = Tempo::US_PER_SEC / 2;
-	music->initialTempo.ticksPerQuarterNote(OPL_DEF_TICKS_PER_QUARTER_NOTE);
-	music->initialTempo.usPerTick = Tempo::US_PER_SEC;
+	music->initialTempo = this->initialTempo;
 	music->loopDest = -1; // no loop
-	bool initialTempoSet = false;
 
 	for (unsigned int c = 0; c < OPL_TRACK_COUNT; c++) {
 		TrackInfo t;
@@ -153,14 +155,26 @@ MusicPtr OPLDecoder::decode()
 	// Initialise all OPL registers to zero
 	memset(oplState, 0, sizeof(oplState));
 	for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) this->lastDelay[t] = 0;
-	double lastTempo = 0;
 
 	unsigned long totalDelay = 0;
 
+	Tempo lastTempo = this->initialTempo;
 	OPLEvent oplev;
-	oplev.usPerTick = 0;
+	oplev.tempo = lastTempo;
 	bool opl3 = false;
-	while (this->cb->readNextPair(&oplev)) {
+	for (;;) {
+		oplev.valid = 0;
+		if (!this->cb->readNextPair(&oplev)) {
+			// No more events
+			if (oplev.valid & OPLEvent::Delay) {
+				// oplev.delay still has a final trailing delay
+				totalDelay += oplev.delay;
+				for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
+					this->lastDelay[t] += oplev.delay;
+				}
+			}
+			break;
+		}
 		assert(oplev.chipIndex < 2);
 		totalDelay += oplev.delay;
 
@@ -170,22 +184,15 @@ MusicPtr OPLDecoder::decode()
 			}
 		}
 
-		if ((oplev.usPerTick) && (oplev.usPerTick != lastTempo)) {
-			if ((!initialTempoSet) && (totalDelay == 0)) {
-				music->initialTempo.usPerTick = oplev.usPerTick;
-				music->initialTempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.usPerTick) / 2;
-				initialTempoSet = true;
-			} else {
-				TrackEvent te;
-				te.delay = this->lastDelay[0];
-				this->lastDelay[0] = 0;
-				TempoEvent *ev = new TempoEvent();
-				te.event.reset(ev);
-				ev->tempo.usPerTick = oplev.usPerTick;
-				ev->tempo.ticksPerBeat = (Tempo::US_PER_SEC / oplev.usPerTick) / 2;
-				pattern->at(0)->push_back(te);
-				lastTempo = oplev.usPerTick;
-			}
+		if ((oplev.valid & OPLEvent::Tempo) && (oplev.tempo != lastTempo)) {
+			TrackEvent te;
+			te.delay = this->lastDelay[0];
+			this->lastDelay[0] = 0;
+			TempoEvent *ev = new TempoEvent();
+			te.event.reset(ev);
+			ev->tempo = oplev.tempo;
+			pattern->at(0)->push_back(te);
+			lastTempo = oplev.tempo;
 		}
 
 		// Update the current state with the new value
@@ -457,12 +464,8 @@ MusicPtr OPLDecoder::decode()
 
 	} // while (all events)
 
-	// oplev.delay still has a final trailing delay
-	totalDelay += oplev.delay;
-
 	// Put dummy events if necessary to preserve trailing delays
 	for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
-		this->lastDelay[t] += oplev.delay;
 		if (this->lastDelay[t] && pattern->at(t)->size()) {
 			TrackEvent te;
 			te.delay = this->lastDelay[t];

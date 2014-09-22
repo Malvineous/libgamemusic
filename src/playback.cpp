@@ -59,18 +59,14 @@ Playback::OPLHandler::OPLHandler(Playback *playback, bool midi)
 
 void Playback::OPLHandler::writeNextPair(const OPLEvent *oplEvent)
 {
-	// Ignore the delay and write it immediately
-	if (this->midi) {
-		this->playback->oplMIDI.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
-	} else {
-		this->playback->opl.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
+	if (oplEvent->valid & OPLEvent::Regs) {
+		// Ignore the delay and write it immediately
+		SynthOPL& o = this->midi ? this->playback->oplMIDI : this->playback->opl;
+		o.write(oplEvent->chipIndex, oplEvent->reg, oplEvent->val);
 	}
-	return;
-}
-
-void Playback::OPLHandler::tempoChange(const Tempo& tempo)
-{
-	this->playback->tempoChange(tempo);
+	if (oplEvent->valid & OPLEvent::Tempo) {
+		this->playback->tempoChange(oplEvent->tempo);
+	}
 	return;
 }
 

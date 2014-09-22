@@ -36,32 +36,24 @@ class OPLReaderCallback_RAW: virtual public OPLReaderCallback
 	public:
 		OPLReaderCallback_RAW(stream::input_sptr input)
 			:	input(input),
-				first(true),
 				chipIndex(0)
 		{
-			this->input->seekg(8, stream::start);
-			this->input >> u16le(this->lastClock);
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
+			assert(oplEvent->valid == 0);
 			oplEvent->delay = 0;
-
-			if (this->first) {
-				// First call, set tempo
-				this->first = false;
-				oplEvent->usPerTick = RAWCLOCK_TO_uS(this->lastClock);
-				oplEvent->reg = 0;
-				oplEvent->val = 0;
-				oplEvent->chipIndex = 0;
-				return true; // empty event w/ initial tempo
-			}
 
 			try {
 nextCode:
-				this->input >> u8(oplEvent->val) >> u8(oplEvent->reg);
+				this->input
+					>> u8(oplEvent->val)
+					>> u8(oplEvent->reg)
+				;
 				switch (oplEvent->reg) {
 					case 0x00: // short delay
+						oplEvent->valid |= OPLEvent::Delay;
 						oplEvent->delay += oplEvent->val;
 						goto nextCode;
 					case 0x02: { // control
@@ -70,9 +62,8 @@ nextCode:
 								uint16_t clock;
 								this->input >> u16le(clock);
 								if (clock == 0) clock = 0xffff;
-								oplEvent->usPerTick = RAWCLOCK_TO_uS(clock);
-								oplEvent->reg = 0;
-								oplEvent->val = 0;
+								oplEvent->valid |= OPLEvent::Tempo;
+								oplEvent->tempo.usPerTick = RAWCLOCK_TO_uS(clock);
 								break;
 							}
 							case 0x01:
@@ -85,30 +76,27 @@ nextCode:
 						break;
 					}
 					case 0xFF:
-						if (oplEvent->val == 0xFF) {
-							oplEvent->delayOnly = true;
+						if (oplEvent->val == 0xFF) { // EOF
 							// oplEvent->delay is populated with any final delay
-							return false; // EOF
+							return false;
 						}
 						break;
 					default: // normal reg
+						oplEvent->valid |= OPLEvent::Regs;
+						oplEvent->chipIndex = this->chipIndex;
 						break;
 				}
 			} catch (const stream::incomplete_read&) {
-				oplEvent->delayOnly = true;
 				// oplEvent->delay is populated with any final delay
 				return false;
 			}
 
-			oplEvent->chipIndex = this->chipIndex;
 			return true;
 		}
 
 	protected:
 		stream::input_sptr input;   ///< Input file
-		bool first;                 ///< Is this the first time readNextPair() has been called?
 		unsigned int chipIndex;     ///< Index of the currently selected OPL chip
-		unsigned long lastClock;    ///< Last tempo change actioned (to avoid dupes)
 };
 
 
@@ -118,79 +106,64 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 	public:
 		OPLWriterCallback_RAW(stream::output_sptr output)
 			:	output(output),
-				first(true),
-				lastChipIndex(0),
-				lastTempo(0),
-				firstClock(0xFFFF)
+				lastChipIndex(0)
 		{
 		}
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
 		{
-			// Write out the delay in one or more lots of 255 or less.
-			unsigned long delay = oplEvent->delay;
-			while (delay > 0) {
-				uint8_t d = (delay > 255) ? 255 : delay;
-				this->output
-					<< u8(d) // delay value
-					<< u8(0) // delay command
-				;
-				delay -= d;
-			}
-			if (oplEvent->delayOnly) return;
-
-			// Switch OPL chips if necessary
-			if (oplEvent->chipIndex != this->lastChipIndex) {
-				assert(oplEvent->chipIndex < 2);
-				this->output
-					<< u8(0x01 + oplEvent->chipIndex) // 0x01 = chip 0, 0x02 = chip 1
-					<< u8(0x02) // control command
-				;
-				this->lastChipIndex = oplEvent->chipIndex;
-			}
-
-			// Write out the reg/data if it's not one of the control structures.  If it
-			// is we have to drop the pair as there's no way of escaping these values.
-			if ((oplEvent->reg != 0x00) || (oplEvent->reg != 0x02)) {
-				this->output
-					<< u8(oplEvent->val)
-					<< u8(oplEvent->reg)
-				;
-			} else {
-				std::cout << "Warning: Rdos RAW cannot store writes to OPL register "
-					<< oplEvent->reg << " so this value has been lost." << std::endl;
-			}
-
-			this->first = false;
-			return;
-		}
-
-		virtual void tempoChange(const Tempo& tempo)
-		{
-			// Write a tempo change if the tempo has indeed changed
-			if (tempo.usPerTick != this->lastTempo) {
-				uint16_t clock = uS_TO_RAWCLOCK(tempo.usPerTick);
+			if (oplEvent->valid & OPLEvent::Tempo) {
+				uint16_t clock = uS_TO_RAWCLOCK(oplEvent->tempo.usPerTick);
 				this->output
 					<< u8(0x00) // clock change
 					<< u8(0x02) // control data
 					<< u16le(clock)
 				;
-				this->lastTempo = tempo.usPerTick;
+			}
 
-				// Remember it, so we can go back later and write it into the header
-				if (this->first) this->firstClock = clock;
+			if (oplEvent->valid & OPLEvent::Delay) {
+				// Write out the delay in one or more lots of 255 or less.
+				unsigned long delay = oplEvent->delay;
+				while (delay > 0) {
+					uint8_t d = (delay > 255) ? 255 : delay;
+					this->output
+						<< u8(d) // delay value
+						<< u8(0) // delay command
+					;
+					delay -= d;
+				}
+			}
+
+			if (oplEvent->valid & OPLEvent::Regs) {
+				// Switch OPL chips if necessary
+				if (oplEvent->chipIndex != this->lastChipIndex) {
+					assert(oplEvent->chipIndex < 2);
+					this->output
+						<< u8(0x01 + oplEvent->chipIndex) // 0x01 = chip 0, 0x02 = chip 1
+						<< u8(0x02) // control command
+					;
+					this->lastChipIndex = oplEvent->chipIndex;
+				}
+
+				// Write out the reg/data if it's not one of the control structures.  If
+				// it is we have to drop the pair as there's no way of escaping these
+				// values.
+				if ((oplEvent->reg != 0x00) || (oplEvent->reg != 0x02)) {
+					this->output
+						<< u8(oplEvent->val)
+						<< u8(oplEvent->reg)
+					;
+				} else {
+					std::cout << "Warning: Rdos RAW cannot store writes to OPL register "
+						<< oplEvent->reg << " so this value has been lost." << std::endl;
+				}
 			}
 			return;
 		}
 
 	protected:
 		stream::output_sptr output; ///< Output file
-		bool first;                 ///< Is this the first time readNextPair() has been called?
 		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
-		unsigned long lastTempo;    ///< Last tempo change actioned (to avoid dupes)
-
-	public:
-		uint16_t firstClock;        ///< Initial song tempo
 };
 
 std::string MusicType_RAW::getCode() const
@@ -238,12 +211,15 @@ MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
 
 MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
 {
-	// Make sure we're at the start, as we'll often be near the end if
-	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	input->seekg(8, stream::start);
+	uint16_t clock;
+	input >> u16le(clock);
+	if (clock == 0) clock = 0xffff;
+	Tempo initialTempo;
+	initialTempo.usPerTick = RAWCLOCK_TO_uS(clock);
 
 	OPLReaderCallback_RAW cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT);
+	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
 
 	// See if there are any tags present
 	readMalvMetadata(input, music->metadata);

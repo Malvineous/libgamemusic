@@ -45,7 +45,6 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 	public:
 		OPLReaderCallback_DRO_v1(stream::input_sptr input)
 			:	input(input),
-				first(true),
 				chipIndex(0)
 		{
 			this->input->seekg(16, stream::start);
@@ -56,28 +55,15 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
 		{
-			oplEvent->delay = 0;
-			oplEvent->delayOnly = false;
-			if (this->lenData == 0) return false;
+			assert(oplEvent->valid == 0);
 
-			if (this->first) {
-				// First call, set tempo
-				this->first = false;
-				oplEvent->usPerTick = DRO_CLOCK;
-				oplEvent->reg = 0;
-				oplEvent->val = 0;
-				oplEvent->chipIndex = 0;
-				return true; // empty event w/ initial tempo
-			}
+			if (this->lenData == 0) return false;
+			oplEvent->delay = 0;
 
 			try {
 				uint8_t code;
 nextCode:
-				if (this->lenData == 0) {
-					oplEvent->delayOnly = true;
-					// oplEvent->delay is populated with any final delay
-					return false;
-				}
+				if (this->lenData == 0) return false;
 				this->input >> u8(code);
 				this->lenData--;
 				switch (code) {
@@ -85,12 +71,14 @@ nextCode:
 						this->input >> u8(code);
 						this->lenData--;
 						oplEvent->delay += code + 1;
+						oplEvent->valid |= OPLEvent::Delay;
 						goto nextCode;
 					case 0x01: { // long delay
 						uint16_t amt;
 						this->input >> u16le(amt);
 						this->lenData--;
 						oplEvent->delay += amt + 1;
+						oplEvent->valid |= OPLEvent::Delay;
 						goto nextCode;
 					}
 					case 0x02:
@@ -105,25 +93,25 @@ nextCode:
 							>> u8(oplEvent->val)
 						;
 						this->lenData -= 2;
+						oplEvent->valid |= OPLEvent::Regs;
 						break;
 					default: // normal reg
+						oplEvent->chipIndex = this->chipIndex;
 						oplEvent->reg = code;
 						this->input >> u8(oplEvent->val);
 						this->lenData--;
+						oplEvent->valid |= OPLEvent::Regs;
 						break;
 				}
 			} catch (const stream::incomplete_read&) {
-				oplEvent->delayOnly = true;
-				// oplEvent->delay is populated with any final delay
 				return false;
 			}
-			oplEvent->chipIndex = this->chipIndex;
+
 			return true;
 		}
 
 	protected:
 		stream::input_sptr input;   ///< Input file
-		bool first;                 ///< Is this the first time readNextPair() has been called?
 		unsigned int chipIndex;     ///< Index of the currently selected OPL chip
 		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
 };
@@ -144,65 +132,65 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 
 		virtual void writeNextPair(const OPLEvent *oplEvent)
 		{
-			// Convert ticks into a DRO delay value (which is actually milliseconds)
-			unsigned long delay = oplEvent->delay * this->usPerTick / DRO_CLOCK;
-			// Write out the delay in one or more lots of 65535, 255 or less.
-			while (delay > 0) {
-				if (delay > 256) {
-					uint16_t ld = (delay > 65536) ? 65535 : delay - 1;
-					// Write out a 'long' delay
+			if (oplEvent->valid & OPLEvent::Delay) {
+				// Convert ticks into a DRO delay value (which is actually milliseconds)
+				unsigned long delay = oplEvent->delay * this->usPerTick / DRO_CLOCK;
+				// Write out the delay in one or more lots of 65535, 255 or less.
+				while (delay > 0) {
+					if (delay > 256) {
+						uint16_t ld = (delay > 65536) ? 65535 : delay - 1;
+						// Write out a 'long' delay
+						this->output
+							<< u8(1)
+							<< u16le(ld)
+						;
+						delay -= ld + 1;
+						this->msSongLength += ld + 1;
+						continue;
+					}
+					assert(delay <= 256);
 					this->output
-						<< u8(1)
-						<< u16le(ld)
+						<< u8(0) // delay command
+						<< u8(delay - 1) // delay value
 					;
-					delay -= ld + 1;
-					this->msSongLength += ld + 1;
-					continue;
-				}
-				assert(delay <= 256);
-				this->output
-					<< u8(0) // delay command
-					<< u8(delay - 1) // delay value
-				;
-				this->msSongLength += delay;
-				break; // delay would == 0
-			}
-
-			if (oplEvent->delayOnly) return;
-
-			if (oplEvent->chipIndex != this->lastChipIndex) {
-				assert(oplEvent->chipIndex < 2);
-				this->output << u8(0x02 + oplEvent->chipIndex);
-				this->lastChipIndex = oplEvent->chipIndex;
-			}
-			if (oplEvent->chipIndex == 1) {
-				if ((oplEvent->reg == 0x05) && (oplEvent->val & 1)) {
-					// Enabled OPL3
-					this->oplType = DRO_OPLTYPE_OPL3;
-				} else if (this->oplType == DRO_OPLTYPE_OPL2) {
-					// Haven't enabled OPL3 yet
-					this->oplType = DRO_OPLTYPE_DUALOPL2;
+					this->msSongLength += delay;
+					break; // delay would == 0
 				}
 			}
-			if (oplEvent->reg < 0x05) {
-				// Need to escape this reg
-				this->output
-					<< u8(4)
-				;
-				// Now the following byte will be treated as a register
-				// regardless of its value.
-			}
-			this->output
-				<< u8(oplEvent->reg)
-				<< u8(oplEvent->val)
-			;
-			return;
-		}
 
-		virtual void tempoChange(const Tempo& tempo)
-		{
-			assert(tempo.usPerTick != 0);
-			this->usPerTick = tempo.usPerTick;
+			if (oplEvent->valid & OPLEvent::Regs) {
+				if (oplEvent->chipIndex != this->lastChipIndex) {
+					assert(oplEvent->chipIndex < 2);
+					this->output << u8(0x02 + oplEvent->chipIndex);
+					this->lastChipIndex = oplEvent->chipIndex;
+				}
+				if (oplEvent->chipIndex == 1) {
+					if ((oplEvent->reg == 0x05) && (oplEvent->val & 1)) {
+						// Enabled OPL3
+						this->oplType = DRO_OPLTYPE_OPL3;
+					} else if (this->oplType == DRO_OPLTYPE_OPL2) {
+						// Haven't enabled OPL3 yet
+						this->oplType = DRO_OPLTYPE_DUALOPL2;
+					}
+				}
+				if (oplEvent->reg < 0x05) {
+					// Need to escape this reg
+					this->output
+						<< u8(4)
+					;
+					// Now the following byte will be treated as a register
+					// regardless of its value.
+				}
+				this->output
+					<< u8(oplEvent->reg)
+					<< u8(oplEvent->val)
+				;
+			}
+
+			if (oplEvent->valid & OPLEvent::Tempo) {
+				assert(oplEvent->tempo.usPerTick != 0);
+				this->usPerTick = oplEvent->tempo.usPerTick;
+			}
 			return;
 		}
 
@@ -271,8 +259,11 @@ MusicPtr MusicType_DRO_v1::read(stream::input_sptr input, SuppData& suppData) co
 	// isInstance() was just called.
 	input->seekg(0, stream::start);
 
+	Tempo initialTempo;
+	initialTempo.usPerTick = DRO_CLOCK;
+
 	OPLReaderCallback_DRO_v1 cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT);
+	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
 
 	// See if there are any tags present
 	readMalvMetadata(input, music->metadata);

@@ -21,6 +21,7 @@
 #ifndef _CAMOTO_GAMEMUSIC_EVENTCONVERTER_OPL_HPP_
 #define _CAMOTO_GAMEMUSIC_EVENTCONVERTER_OPL_HPP_
 
+#include <camoto/gamemusic/tempo.hpp>
 #include <camoto/gamemusic/events.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/stream.hpp>
@@ -44,50 +45,61 @@ enum OPLWriteFlags {
 /// Information about a single OPL reg/val pair.
 struct OPLEvent
 {
-	/// Number of ticks to delay before the data bytes are actioned.
-	uint32_t delay;
+	static const unsigned int Delay = 1; ///< Set if the delay field is valid
+	static const unsigned int Regs  = 2; ///< Set if the reg, val and chipIndex fields are valid
+	static const unsigned int Tempo = 4; ///< Set if the tempo field has been modified
 
-	/// Which OPL chip to use (0 or 1)
+	/// Which fields are valid from the constants above?
+	unsigned int valid;
+
+	/// Number of ticks to delay before the data bytes are actioned.  (Ignored
+	/// unless OPLEvent::Delay is set)
+	unsigned long delay;
+
+	/// Which OPL chip to use (0 or 1, ignored unless OPLEvent::Regs is set)
 	uint8_t chipIndex;
 
-	/// OPL register
+	/// OPL register (ignored unless OPLEvent::Regs is set)
 	uint8_t reg;
 
-	/// Value to write to OPL register
+	/// Value to write to OPL register (ignored unless OPLEvent::Regs is set)
 	uint8_t val;
 
-	/// Set to non-zero to signify a tempo change.
+	/// Current/new song tempo
 	/**
-	 * This value is only used when decoding OPL data.  It is ignored when
-	 * writing OPL data (there is a separate callback function to adjust the
-	 * tempo there.)
+	 * This value is used when reading and writing OPL data.
 	 *
-	 * If a delay is also specified, the order depends on the DelayType in use.
-	 * DelayIsPreData will delay at the old tempo before adjusting to the new
-	 * tempo, while DelayIsPostData will immediately adjust to the new tempo
-	 * then delay at the new speed.
+	 * When reading (decoding) OPL data, set the tempo field (and include the
+	 * OPLEvent::Tempo flag in \ref valid) if there is a change in tempo,
+	 * otherwise ignore this field.
 	 *
-	 * A value of 0 specifies no tempo change.
+	 * When writing (encoding) OPL data, this field will always contain the
+	 * current song tempo and can be used at any time, even when \ref valid does
+	 * not contain the OPLEvent::Tempo flag.  However if the OPLEvent::Tempo flag
+	 * is set, then the tempo has changed and this value is of the new tempo.
+	 *
+	 * The tempo value given always applies to the delay field (if present) in the
+	 * same structure instance.
+	 *
+	 * In other words, if a new tempo is supplied, it is of the highest priority
+	 * and is actioned first, before any delay value should be considered.  Delays
+	 * will always run at the new tempo.
+	 *
+	 * This means that special care must be taken when decoding OPL data where a
+	 * delay and a tempo change can happen in close proximity.  The new tempo
+	 * value may have to be postponed by one event, so that a delay at the old
+	 * tempo can be actioned before the new tempo takes effect for subsequent
+	 * delays.
+	 *
+	 * This allows songs that do not support tempo changes to calculate the
+	 * correct delay based on the given delay and tempo values combined, without
+	 * needing to keep track of the previous tempo value.
+	 *
+	 * This has no effect on the DelayType for the song.  For both DelayIsPreData
+	 * and DelayIsPostData, the given tempo always applies to the delay value in
+	 * the same structure.
 	 */
-	double usPerTick;
-
-	/// If true, write this delay but ignore the registers.
-	/**
-	 * This value is ignored when reading OPL data.
-	 *
-	 * If DelayIsPreData, then write the delay in this event, but ignore the
-	 * registers and do not write those (or write dummy ones.)
-	 * If DelayIsPostData, then write the registers and the trailing delay
-	 * as per normal.
-	 *
-	 * This is set when a delay needs to be written at the old tempo value, just
-	 * before a change to a new tempo.  It is also used at the end of the file if
-	 * there is a trailing delay.
-	 *
-	 * Generally this is only set when a delay should be written immediately, and
-	 * not cached for writing later.
-	 */
-	bool delayOnly;
+	camoto::gamemusic::Tempo tempo;
 };
 
 const float OPL_FNUM_DEFAULT = 49716.0;  ///< Most common conversion value
@@ -106,7 +118,7 @@ const unsigned int OPL_MAX_CHANNELS = 18;
 const unsigned int OPL_TRACK_COUNT = 9 * OPL_NUM_CHIPS + 5;
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
-class DLL_EXPORT OPLWriterCallback: virtual public TempoCallback
+class DLL_EXPORT OPLWriterCallback
 {
 	public:
 		/// Handle the next OPL register/value pair.

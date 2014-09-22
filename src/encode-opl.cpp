@@ -67,7 +67,6 @@ class OPLEncoder: virtual private OPLWriterCallback
 
 		// OPLWriterCallback
 		virtual void writeNextPair(const OPLEvent *oplEvent);
-		virtual void tempoChange(const Tempo& tempo);
 
 	private:
 		OPLWriterCallback *cb;     ///< Callback to use when writing OPL data
@@ -75,11 +74,7 @@ class OPLEncoder: virtual private OPLWriterCallback
 		DelayType delayType;       ///< Location of the delay
 		double fnumConversion;     ///< Conversion value to use in fnum -> Hz calc
 		unsigned int flags;        ///< One or more OPLWriteFlags
-
-		double lastTempo;          ///< Last tempo value (to avoid duplicate events)
-		bool firstPair;            ///< Is the next pair the first we have written?
-		uint8_t oplState[2][256];  ///< Current register values
-		OPLEvent delayedEvent;     ///< Delayed event data
+		unsigned long cachedDelay; ///< Number of ticks following previous event
 };
 
 
@@ -98,13 +93,8 @@ OPLEncoder::OPLEncoder(OPLWriterCallback *cb, ConstMusicPtr music,
 		delayType(delayType),
 		fnumConversion(fnumConversion),
 		flags(flags),
-		lastTempo(0),
-		firstPair(true)
+		cachedDelay(0)
 {
-	// Initialise all OPL registers to zero (this is assumed the initial state
-	// upon playback)
-	memset(this->oplState, 0, sizeof(this->oplState));
-	this->delayedEvent.delay = 0;
 }
 
 OPLEncoder::~OPLEncoder()
@@ -118,68 +108,61 @@ void OPLEncoder::encode()
 		throw format_limitation("This format can only accept OPL patches.");
 	}
 	EventConverter_OPL conv(this, this->music, this->fnumConversion, this->flags);
-	this->tempoChange(this->music->initialTempo);
 	try {
 		conv.handleAllEvents(EventHandler::Order_Row_Track);
 	} catch (const bad_patch& e) {
 		throw format_limitation(std::string("Bad patch type: ") + e.what());
 	}
-	if ((this->delayType == DelayIsPostData) || this->delayedEvent.delay) {
+	if ((this->delayType == DelayIsPostData) || this->cachedDelay) {
 		// Flush out the last event/delay
-		this->delayedEvent.delayOnly = true;
-		this->cb->writeNextPair(&this->delayedEvent);
+		OPLEvent out;
+		out.valid = OPLEvent::Delay;
+		out.delay = this->cachedDelay;
+		this->cachedDelay = 0;
+		this->cb->writeNextPair(&out);
 	}
 	return;
 }
 
 void OPLEncoder::writeNextPair(const OPLEvent *oplEvent)
 {
-	assert(oplEvent->chipIndex < 2);
-	// TODO: Cache all the events with no delay then optimise them before
-	// writing them out (once a delay is encountered.)  This should allow multiple
-	// 0xBD register writes to be combined into one, for situations where multiple
-	// perc instruments play at the same instant.
-	if (this->oplState[oplEvent->chipIndex][oplEvent->reg] != oplEvent->val) {
-		if (this->delayType == DelayIsPreData) {
-			OPLEvent c = *oplEvent;
-			c.delay += this->delayedEvent.delay;
-			this->delayedEvent.delay = 0;
-			this->cb->writeNextPair(&c);
-		} else { // DelayIsPostData
-			// The delay we've cached should happen before the next data bytes are
-			// written.  But this is a DelayIsPostData format, which means the delay
-			// value we pass to nextPair() will happen *after* the data bytes.  So
-			// instead we have to now write the previous set of bytes, with the cached
-			// delay, and then remember the current bytes to write out later!
-			if (!this->firstPair) {
-				this->delayedEvent.delay += oplEvent->delay;
-				this->cb->writeNextPair(&this->delayedEvent);
-				//this->nextPair(this->cachedDelay + delay, chipIndex,
-				//	this->delayedReg, this->delayedVal);
-			} else {
-				// This is the first data pair, so there are no delayed values to write,
-				// we just cache the new values.  We will lose any delay before the
-				// first note starts, but that should be fine...if you want silence
-				// at the start of a song then wait longer before pressing play :-)
-				this->firstPair = false;
-			}
-			this->delayedEvent = *oplEvent;
-			this->delayedEvent.delay = 0; // this will also cut off any initial silence
-		}
-		this->oplState[oplEvent->chipIndex][oplEvent->reg] = oplEvent->val;
-	} else {
-		// Value was already set, don't write redundant data, but remember the
-		// delay so it can be added to the next write.
-		this->delayedEvent.delay += oplEvent->delay;
-	}
-	return;
-}
+	// There's nothing technically wrong with this, but it typically indicates a
+	// bug so we'll fail if it happens to assist with debugging.
+	assert(oplEvent->valid != 0);
 
-void OPLEncoder::tempoChange(const Tempo& tempo)
-{
-	if (tempo.usPerTick != this->lastTempo) {
-		this->cb->tempoChange(tempo);
-		this->lastTempo = tempo.usPerTick;
+	OPLEvent out;
+	out.valid = 0;
+	if (oplEvent->valid & OPLEvent::Tempo) {
+		out.valid |= OPLEvent::Tempo;
+		out.tempo = oplEvent->tempo;
+	}
+	if (oplEvent->valid & OPLEvent::Regs) {
+		assert(oplEvent->chipIndex < 2);
+
+		out.valid |= OPLEvent::Regs;
+		out.chipIndex = oplEvent->chipIndex;
+		out.reg = oplEvent->reg;
+		out.val = oplEvent->val;
+	}
+	if (this->delayType == DelayIsPreData) {
+		if (oplEvent->valid & OPLEvent::Delay) {
+			out.valid |= OPLEvent::Delay;
+			out.delay = oplEvent->delay;
+		}
+	} else {
+		// Delay is post-data
+		if (this->cachedDelay != 0) {
+			out.valid |= OPLEvent::Delay;
+			out.delay = this->cachedDelay;
+		}
+		if (oplEvent->valid & OPLEvent::Delay) {
+			this->cachedDelay = oplEvent->delay;
+		} else {
+			this->cachedDelay = 0;
+		}
+	}
+	if (out.valid) {
+		this->cb->writeNextPair(&out);
 	}
 	return;
 }
