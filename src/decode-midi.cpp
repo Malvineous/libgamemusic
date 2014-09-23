@@ -172,8 +172,10 @@ MIDIDecoder::MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
 	memset(this->lastPatch, 0xFF, sizeof(this->lastPatch));
 	memset(this->percMap, 0xFF, sizeof(this->percMap));
 	memset(this->currentInstrument, 0, sizeof(this->currentInstrument));
-	memset(this->currentPitchbend, 0, sizeof(this->currentPitchbend));
 	memset(this->activeNotes, 0xFF, sizeof(this->activeNotes));
+	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+		this->currentPitchbend[i] = 8192;
+	}
 }
 
 MIDIDecoder::~MIDIDecoder()
