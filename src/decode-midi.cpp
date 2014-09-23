@@ -486,6 +486,20 @@ MusicPtr MIDIDecoder::decode()
 		// reached eof
 	}
 
+	// Put a final delay in the first track to ensure no final delays are lost
+	if (lastDelay[0]) {
+		TrackPtr& t = pattern->at(0);
+		assert(t->size() != 0); // hopefully track 0 will never be empty!
+		TrackEvent te;
+		te.delay = lastDelay[0];
+		lastDelay[0] = 0;
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		te.event.reset(ev);
+		ev->configType = ConfigurationEvent::None;
+		ev->value = 0;
+		t->push_back(te);
+	}
+
 	music->ticksPerTrack = this->totalDelay;
 	return music;
 }

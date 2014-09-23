@@ -262,7 +262,7 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 			"\x00\x45\x00"        // note off
 			"\x00\x45\x7f"        // note on
 			"\x00\x45\x00"        // note off
-			"\x00\xff\x2f\x00"    // eof
+			"\x0a\xff\x2f\x00"    // eof w/ final delay
 		)),
 		"Error generating of running status events"
 	);
