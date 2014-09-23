@@ -274,6 +274,9 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 {
 	this->cachedDelay += delay;
 	switch (ev->configType) {
+		case ConfigurationEvent::None:
+			// cached delay is updated
+			break;
 		case ConfigurationEvent::EnableRhythm:
 			// Controller 0x67 (CMF rhythm)
 			if (this->midiFlags & MIDIFlags::CMFExtensions) {
