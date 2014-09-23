@@ -114,7 +114,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableOPL3;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 1, te);
+		configTrack->insert(configTrack->begin() + 0, te);
 	}
 	{
 		TrackEvent te;
@@ -123,7 +123,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepTremolo;
 		ev->value = 0;
-		configTrack->insert(configTrack->begin() + 2, te);
+		configTrack->insert(configTrack->begin() + 1, te);
 	}
 	{
 		TrackEvent te;
@@ -132,7 +132,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepVibrato;
 		ev->value = 0;
-		configTrack->insert(configTrack->begin() + 3, te);
+		configTrack->insert(configTrack->begin() + 2, te);
 	}
 	{
 		TrackEvent te;
@@ -141,7 +141,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableWaveSel;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 4, te);
+		configTrack->insert(configTrack->begin() + 3, te);
 	}
 
 	uint16_t numInstruments, offInstData;
