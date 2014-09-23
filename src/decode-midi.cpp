@@ -225,6 +225,8 @@ MusicPtr MIDIDecoder::decode()
 				if ((event & 0xF0) == 0xA0) event = 0xD0 | (event & 0x0F);
 			}
 
+			bool deepTremolo = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
+			bool deepVibrato = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
 			uint8_t midiChannel = event & 0x0F;
 			switch (event & 0xF0) {
 				case 0x80: { // Note off (two data bytes)
@@ -334,6 +336,35 @@ MusicPtr MIDIDecoder::decode()
 					// controller index is in evdata
 					this->input >> u8(value);
 					switch (evdata) {
+						case 0x63: {
+							const int& track = this->getAvailableTrack(music, pattern,
+								midiChannel);
+							bool newVibrato = value & 1;
+							bool newTremolo = value & 2;
+							if (newVibrato != deepVibrato) {
+								TrackEvent te;
+								te.delay = this->lastDelay[track];
+								this->lastDelay[track] = 0;
+								ConfigurationEvent *ev = new ConfigurationEvent();
+								te.event.reset(ev);
+								ev->configType = ConfigurationEvent::EnableDeepVibrato;
+								ev->value = newVibrato ? 1 : 0;
+								pattern->at(track)->push_back(te);
+								deepVibrato = newVibrato;
+							}
+							if (newTremolo != deepTremolo) {
+								TrackEvent te;
+								te.delay = this->lastDelay[track];
+								this->lastDelay[track] = 0;
+								ConfigurationEvent *ev = new ConfigurationEvent();
+								te.event.reset(ev);
+								ev->configType = ConfigurationEvent::EnableDeepTremolo;
+								ev->value = newTremolo ? 1 : 0;
+								pattern->at(track)->push_back(te);
+								deepTremolo = newTremolo;
+							}
+							break;
+						}
 						case 0x67: {
 							const int& track = this->getAvailableTrack(music, pattern,
 								midiChannel);
@@ -347,7 +378,6 @@ MusicPtr MIDIDecoder::decode()
 							pattern->at(track)->push_back(te);
 							break;
 						}
-						/// @todo Handle AM/VIB and transpose controllers (and patch change one?)
 						default:
 							std::cout << "Ignoring unknown MIDI controller 0x" << std::hex
 								<< (int)evdata << std::dec << std::endl;
