@@ -158,9 +158,6 @@ void MIDIEncoder::encode(EventHandler::EventOrder eventOrder, bool *channelsUsed
 
 	conv.handleAllEvents(eventOrder);
 
-	// Write an end-of-song event
-	this->output->write("\x00\xFF\x2F\x00", 4);
-
 	if (channelsUsed) {
 		memcpy(channelsUsed, this->channelsUsed, sizeof(this->channelsUsed));
 	}
@@ -293,5 +290,8 @@ void MIDIEncoder::endOfPattern()
 
 void MIDIEncoder::endOfSong(uint32_t delay)
 {
+	this->writeMIDINumber(delay);
+	// Write an end-of-song event
+	this->output->write("\xFF\x2F\x00", 3);
 	return;
 }
