@@ -181,7 +181,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepTremolo;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 1, te);
+		configTrack->insert(configTrack->begin() + 0, te);
 	}
 	{
 		TrackEvent te;
@@ -190,7 +190,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableDeepVibrato;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 2, te);
+		configTrack->insert(configTrack->begin() + 1, te);
 	}
 	{
 		TrackEvent te;
@@ -199,7 +199,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableWaveSel;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 3, te);
+		configTrack->insert(configTrack->begin() + 2, te);
 	}
 
 	// Read the instruments
