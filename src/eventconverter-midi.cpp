@@ -85,8 +85,6 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 		midiFlags(midiFlags),
 		usPerTick(0),
 		cachedDelay(0),
-		deepTremolo(false),
-		deepVibrato(false),
 		updateDeep(false)
 {
 	memset(this->currentPatch, 0xFF, sizeof(this->currentPatch));
@@ -97,6 +95,8 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 	for (unsigned int c = 0; c < MIDI_CHANNELS; c++) {
 		this->currentPitchbend[c] = 8192;
 	}
+	this->deepTremolo = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
+	this->deepVibrato = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
 }
 
 EventConverter_MIDI::~EventConverter_MIDI()
@@ -153,16 +153,15 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		targetPatch = patch->midiPatch;
 	}
 
-	/// @todo If instrument is rhythm use channel 10, with override func so CMF
-	/// can pick other channels based on value
-
-	// Batch these two changes together so they can happen in one event
-	if (this->updateDeep) {
-		// Need to set CMF controller 0x63
-		uint8_t val = (this->deepTremolo ? 1 : 0) | (this->deepVibrato ? 1 : 0);
-		this->cb->midiController(this->cachedDelay, 0, 0x63, val);
-		this->cachedDelay = 0;
-		this->updateDeep = false;
+	if (this->midiFlags & MIDIFlags::CMFExtensions) {
+		// Batch these two changes together so they can happen in one event
+		if (this->updateDeep) {
+			// Need to set CMF controller 0x63
+			uint8_t val = (this->deepTremolo ? 2 : 0) | (this->deepVibrato ? 1 : 0);
+			this->cb->midiController(this->cachedDelay, 0, 0x63, val);
+			this->cachedDelay = 0;
+			this->updateDeep = false;
+		}
 	}
 
 	// If we've got MIDI patches, make sure any percussion instruments end up on
@@ -277,17 +276,25 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	switch (ev->configType) {
 		case ConfigurationEvent::EnableRhythm:
 			// Controller 0x67 (CMF rhythm)
-			this->cb->midiController(this->cachedDelay, 0, 0x67, ev->value);
+			if (this->midiFlags & MIDIFlags::CMFExtensions) {
+				this->cb->midiController(this->cachedDelay, 0, 0x67, ev->value);
+			}
 			this->cachedDelay = 0;
 			break;
-		case ConfigurationEvent::EnableDeepTremolo:
-			this->deepTremolo = ev->value;
-			this->updateDeep = true;
+		case ConfigurationEvent::EnableDeepTremolo: {
+			if (this->deepTremolo != ev->value) {
+				this->deepTremolo = ev->value;
+				this->updateDeep = true;
+			}
 			break;
-		case ConfigurationEvent::EnableDeepVibrato:
-			this->deepVibrato = ev->value;
-			this->updateDeep = true;
+		}
+		case ConfigurationEvent::EnableDeepVibrato: {
+			if (this->deepVibrato != ev->value) {
+				this->deepVibrato = ev->value;
+				this->updateDeep = true;
+			}
 			break;
+		}
 		default:
 			break;
 	}

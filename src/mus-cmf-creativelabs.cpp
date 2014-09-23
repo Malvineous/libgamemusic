@@ -153,7 +153,8 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	Tempo initialTempo;
 	initialTempo.hertz(ticksPerSecond);
 	initialTempo.ticksPerQuarterNote(ticksPerQuarter);
-	MusicPtr music = midiDecode(input, MIDIFlags::UsePatchIndex, initialTempo);
+	MusicPtr music = midiDecode(input, MIDIFlags::UsePatchIndex
+		| MIDIFlags::CMFExtensions, initialTempo);
 
 	for (TrackInfoVector::iterator
 		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
@@ -515,7 +516,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 	// Call the generic OPL writer.
 	bool channelsUsed[MIDI_CHANNELS];
-	unsigned long midiFlags = MIDIFlags::UsePatchIndex;
+	unsigned long midiFlags = MIDIFlags::UsePatchIndex | MIDIFlags::CMFExtensions;
 	if (flags & MusicType::IntegerNotesOnly) {
 		midiFlags |= MIDIFlags::IntegerNotesOnly;
 	}

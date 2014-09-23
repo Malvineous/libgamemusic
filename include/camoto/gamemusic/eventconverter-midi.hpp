@@ -100,6 +100,9 @@ struct MIDIFlags {
 
 		/// Set to embed the tempo as a meta (0xFF) event in the MIDI stream
 		EmbedTempo = 32,
+
+		/// Use extensions for .cmf file format (cmf-creativelabs)
+		CMFExtensions = 64,
 	};
 };
 
