@@ -119,7 +119,7 @@ struct DLL_EXPORT NoteOnEvent: virtual public Event
 	/// Note frequency (440000 == 440Hz)
 	unsigned int milliHertz;
 
-	/// Velocity: 0=silent, 255=loud, -1=default/unknown
+	/// Velocity: 0=silent, 255=loud, DefaultVelocity(-1)=default/unknown
 	int velocity;
 };
 static const int DefaultVelocity = -1;
