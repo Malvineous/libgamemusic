@@ -414,6 +414,28 @@ MusicPtr MIDIDecoder::decode()
 							pattern->at(track)->push_back(te);
 							break;
 						}
+						case 0x68: {
+							TrackEvent te;
+							te.delay = lastDelay[track];
+							lastDelay[track] = 0;
+							PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
+							te.event.reset(ev);
+							ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+							ev->data = midiSemitonesToPitchbend(value / 128.0);
+							pattern->at(track)->push_back(te);
+							break;
+						}
+						case 0x69: {
+							TrackEvent te;
+							te.delay = lastDelay[track];
+							lastDelay[track] = 0;
+							PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
+							te.event.reset(ev);
+							ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+							ev->data = midiSemitonesToPitchbend(-value / 128.0);
+							pattern->at(track)->push_back(te);
+							break;
+						}
 						default:
 							std::cout << "Ignoring unknown MIDI controller 0x" << std::hex
 								<< (int)evdata << std::dec << std::endl;
