@@ -380,8 +380,13 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		case ConfigurationEvent::None:
 			break;
 		case ConfigurationEvent::EnableOPL3:
-			this->processNextPair(1, 0x05, ev->value ? 0x01 : 0x00);
-			this->modeOPL3 = ev->value;
+			if (
+				(this->modeOPL3 && (ev->value == 0)) // on, switching off
+				|| (!this->modeOPL3 && (ev->value == 1)) // off, switching on
+			) {
+				this->processNextPair(1, 0x05, ev->value ? 0x01 : 0x00);
+				this->modeOPL3 = ev->value;
+			}
 			break;
 		case ConfigurationEvent::EnableDeepTremolo: {
 			unsigned int chipIndex = (ev->value >> 1) & 1;
