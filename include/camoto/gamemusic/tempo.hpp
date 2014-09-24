@@ -134,7 +134,7 @@ struct Tempo
 	 */
 	inline void usPerQuarterNote(unsigned int us)
 	{
-		this->usPerTick = us / this->ticksPerQuarterNote();
+		this->usPerTick = (double)us / this->ticksPerQuarterNote();
 		return;
 	}
 
