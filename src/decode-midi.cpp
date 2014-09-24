@@ -192,6 +192,7 @@ MusicPtr MIDIDecoder::decode()
 	music->patterns.push_back(pattern);
 	music->patternOrder.push_back(0);
 
+	std::vector<NoteOnEvent *> eventsOPL7, eventsOPL8;
 	try {
 		bool eof = false;
 		do {
@@ -202,6 +203,34 @@ MusicPtr MIDIDecoder::decode()
 				*i += delay;
 			}
 			this->totalDelay += delay;
+
+			if (this->midiFlags & MIDIFlags::CMFExtensions) {
+				if (delay) {
+					// There is a delay, so update any concurrent OPL events.  Whichever
+					// one is played last has its pitch copied onto the others, as this
+					// is the way it ends up on the OPL chip with SBFMDRV.
+					// We do lose the original note pitch by doing this, but then this is
+					// how the song actually sounds...
+					unsigned int pitch = 0;
+					for (std::vector<NoteOnEvent *>::reverse_iterator
+						i = eventsOPL7.rbegin(); i != eventsOPL7.rend(); i++
+					) {
+						NoteOnEvent*& nev = *i;
+						if (!pitch) pitch = nev->milliHertz;
+						else nev->milliHertz = pitch;
+					}
+					pitch = 0;
+					for (std::vector<NoteOnEvent *>::reverse_iterator
+						i = eventsOPL8.rbegin(); i != eventsOPL8.rend(); i++
+					) {
+						NoteOnEvent*& nev = *i;
+						if (!pitch) pitch = nev->milliHertz;
+						else nev->milliHertz = pitch;
+					}
+					eventsOPL7.clear();
+					eventsOPL8.clear();
+				}
+			}
 
 			uint8_t event, evdata;
 			this->input >> u8(event);
@@ -316,6 +345,15 @@ MusicPtr MIDIDecoder::decode()
 						}
 						this->lastPatch[midiChannel] = ev->instrument;
 
+						if (this->midiFlags & MIDIFlags::CMFExtensions) {
+							// For CMF files, the order of events on these channels is
+							// important as each one affects the other.
+							if ((midiChannel == 12) || (midiChannel == 15)) {
+								eventsOPL7.push_back(ev);
+							} else if ((midiChannel == 13) || (midiChannel == 14)) {
+								eventsOPL8.push_back(ev);
+							}
+						}
 						pattern->at(track)->push_back(te);
 
 						// Record this note as active on the channel
