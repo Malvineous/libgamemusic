@@ -121,6 +121,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 					}
 					continue;
 				}
+
 				SpecificNoteOffEvent *evSpecNoteOff =
 					dynamic_cast<SpecificNoteOffEvent *>(te.event.get());
 				if (evSpecNoteOff) {
@@ -142,6 +143,21 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 					}
 					continue;
 				}
+
+				NoteOffEvent *evNoteOff =
+					dynamic_cast<NoteOffEvent *>(te.event.get());
+				if (evNoteOff) {
+					// This is a channel-wide note off, so take note there is no longer
+					// a note playing.
+					curNoteFreq = 0;
+
+					// Leave on main channel
+					te.delay = delayMain;
+					delayMain = 0;
+					main->push_back(te);
+					continue;
+				}
+
 				PolyphonicEffectEvent *evPolyEffect =
 					dynamic_cast<PolyphonicEffectEvent *>(te.event.get());
 				if (evPolyEffect && (evPolyEffect->type == (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel)) {
