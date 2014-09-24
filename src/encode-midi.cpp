@@ -197,6 +197,8 @@ void MIDIEncoder::writeCommand(uint32_t delay, uint8_t cmd)
 void MIDIEncoder::midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
 {
+	assert(note < 128);
+	assert(velocity < 128);
 	this->channelsUsed[channel] = true;
 	if ((this->lastCommand == (0x90 | channel)) && (velocity == MIDI_DEFAULT_RELEASE_VELOCITY)) {
 		// Since the last event was a note-on, it will be more efficient to
@@ -220,6 +222,8 @@ void MIDIEncoder::midiNoteOff(uint32_t delay, uint8_t channel, uint8_t note,
 void MIDIEncoder::midiNoteOn(uint32_t delay, uint8_t channel, uint8_t note,
 	uint8_t velocity)
 {
+	assert(note < 128);
+	assert(velocity < 128);
 	this->channelsUsed[channel] = true;
 	this->writeCommand(delay, 0x90 | channel);
 	this->output
@@ -252,6 +256,7 @@ void MIDIEncoder::midiController(uint32_t delay, uint8_t channel,
 
 void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 {
+	assert(bend < 16384);
 	this->channelsUsed[channel] = true;
 	uint8_t msb = (bend >> 7) & 0x7F;
 	uint8_t lsb = bend & 0x7F;
