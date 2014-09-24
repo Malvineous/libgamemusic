@@ -98,6 +98,9 @@ unsigned long MusicType_KLM::getCaps() const
 MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 {
 	stream::pos lenFile = input->size();
+	// Too short
+	// TESTED BY: mus_klm_wacky_isinstance_c09
+	if (lenFile < 5) return MusicType::DefinitelyNo;
 
 	uint16_t offMusic;
 	input->seekg(3, stream::start);
@@ -126,11 +129,10 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 		if (instrument[9] & 0xF8) return MusicType::DefinitelyNo;
 
 		// Upper two bits of base register 0xC0 are not used
-		// TESTED BY: mus_klm_wacky_isinstance_c08
 //		if (instrument[10] & 0xC0) return MusicType::DefinitelyNo;
 
 		// If we're here, no invalid bits were set
-		// TESTED BY: mus_klm_wacky_isinstance_c09
+		// TESTED BY: mus_klm_wacky_isinstance_c08
 	}
 
 	// This should always work unless there was an obscure I/O error
@@ -160,7 +162,6 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 					default:
 						// Invalid 0xF0 event type
 						// TESTED BY: mus_klm_wacky_isinstance_c03
-						std::cout << "c\n";
 						return MusicType::DefinitelyNo;
 				}
 				break;
@@ -203,7 +204,6 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 
 	freqMap[12] = 142;
 	freqMap[13] = 142;
-	input->seekg(0, stream::start);
 
 	uint16_t tempo;
 	uint8_t unk1;
@@ -533,7 +533,7 @@ void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 
 	uint16_t musOffset = 5 + music->patches->size() * 11;
 	output
-		<< u16le(0) // tempo placeholder
+		<< u16le(music->initialTempo.hertz())
 		<< u8(1)    // unknown
 		<< u16le(musOffset)
 	;
