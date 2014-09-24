@@ -182,7 +182,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	// Use a default velocity if none was specified, otherwise squish it into
 	// a 7-bit value.
 	uint8_t velocity =
-		(ev->velocity == 0) ? MIDI_DEFAULT_ATTACK_VELOCITY : (ev->velocity >> 1);
+		(ev->velocity == DefaultVelocity) ? MIDI_DEFAULT_ATTACK_VELOCITY : (ev->velocity >> 1);
 
 	// If there's a note already playing, switch it off first
 	if (this->activeNote[trackIndex] != ACTIVE_NOTE_NONE) {

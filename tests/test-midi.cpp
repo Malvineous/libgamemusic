@@ -142,7 +142,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 {
 	BOOST_TEST_MESSAGE("Testing interpretation of pitchbend event");
 
-	this->init_read(STRING_WITH_NULLS("\x00\x90\x45\x7f" "\x00\xe0\x00\x38"));
+	this->init_read(STRING_WITH_NULLS("\x00\x90\x45\x7f" "\x10\xe0\x00\x38"));
 
 	gm::PatternPtr pattern = this->music->patterns[0];
 	gm::TrackPtr track = pattern->at(0);
@@ -172,6 +172,7 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 		te.event.reset(ev);
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
+		ev->velocity = 255;
 		this->track1->push_back(te);
 	}
 	{
@@ -209,6 +210,7 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 		te.event.reset(ev);
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
+		ev->velocity = 255;
 		this->track1->push_back(te);
 	}
 	{
@@ -225,6 +227,7 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 		te.event.reset(ev);
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
+		ev->velocity = 255;
 		this->track2->push_back(te);
 	}
 	{
@@ -241,6 +244,7 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 		te.event.reset(ev);
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
+		ev->velocity = 255;
 		this->track2->push_back(te);
 	}
 	{
