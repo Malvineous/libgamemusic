@@ -275,15 +275,8 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 
 			if ((patternIndex == 0) && (trackIndex == 0)) {
 				// Set standard settings
-				{
-					TrackEvent te;
-					te.delay = 0;
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					te.event.reset(ev);
-					ev->configType = ConfigurationEvent::EnableOPL3;
-					ev->value = 0;
-					t->push_back(te);
-				}
+				// OPL3 is off.  We don't add an EnableOPL3 event with the value set
+				// to zero as that event requires an OPL3 to be present.
 				{
 					TrackEvent te;
 					te.delay = 0;
