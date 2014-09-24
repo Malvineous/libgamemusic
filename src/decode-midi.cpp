@@ -24,6 +24,7 @@
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 #include "decode-midi.hpp"
+#include "track-split.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -80,7 +81,7 @@ class MIDIDecoder
 
 	protected:
 		stream::input_sptr input;         ///< MIDI data to read
-		std::vector<unsigned long> lastDelay; ///< Time of next event on the given track
+		unsigned long lastDelay[MIDI_CHANNEL_COUNT]; ///< Ticks since last event on this channel
 		unsigned long totalDelay;         ///< Running total of all delays
 		std::vector<bool> noteOnTrack;    ///< true if note playing on given track
 		uint8_t lastEvent;                ///< Last event (for MIDI running status)
@@ -89,18 +90,8 @@ class MIDIDecoder
 		unsigned int midiFlags;           ///< Flags supplied in constructor
 		Tempo curTempo;                   ///< Last set song tempo
 
-		/// For each of the output channels, which instrument are we using?
-		/**
-		 * We only remember this so we can attempt to reuse the same channel for the
-		 * same instrument.
-		 */
-		uint8_t lastPatch[MAX_CHANNELS];
-
 		/// For each of the percussion notes, which instrument are we using?
 		uint8_t percMap[MIDI_NOTES];
-
-		/// Length of a quarter note, in microseconds.
-		unsigned long usPerQuarterNote;
 
 		/// Current instrument (not MIDI patch) on each MIDI channel
 		uint8_t currentInstrument[MIDI_CHANNEL_COUNT];
@@ -108,8 +99,8 @@ class MIDIDecoder
 		/// Current pitchbend level on each MIDI channel (-8192 to 8191)
 		int16_t currentPitchbend[MIDI_CHANNEL_COUNT];
 
-		/// Which output channel is being used by the given MIDI note?
-		int activeNotes[MIDI_CHANNEL_COUNT][MIDI_NOTES];
+		/// Is this note being played on this channel?
+		bool activeNotes[MIDI_CHANNEL_COUNT][MIDI_NOTES];
 
 		/// Read a variable-length integer from MIDI data.
 		/**
@@ -134,20 +125,6 @@ class MIDIDecoder
 		 */
 		void setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 			unsigned int midiPatch);
-
-		/// Get the track index for the given MIDI channel.
-		/**
-		 * Will add a new track if all tracks on the given MIDI channel have notes
-		 * currently playing.
-		 *
-		 * @param music
-		 *   Music instance being populated.
-		 *
-		 * @param midiChannel
-		 *   MIDI channel (0..15, 9=perc) to look for.
-		 */
-		unsigned int getAvailableTrack(MusicPtr& music, PatternPtr& pattern,
-			unsigned int midiChannel);
 };
 
 MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr input,
@@ -166,10 +143,9 @@ MIDIDecoder::MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
 		midiFlags(midiFlags),
 		curTempo(initialTempo)
 {
-	memset(this->lastPatch, 0xFF, sizeof(this->lastPatch));
 	memset(this->percMap, 0xFF, sizeof(this->percMap));
 	memset(this->currentInstrument, 0, sizeof(this->currentInstrument));
-	memset(this->activeNotes, 0xFF, sizeof(this->activeNotes));
+	memset(this->activeNotes, 0, sizeof(this->activeNotes));
 	for (unsigned int i = 0; i < MIDI_CHANNEL_COUNT; i++) {
 		this->currentPitchbend[i] = 8192;
 	}
@@ -189,15 +165,24 @@ MusicPtr MIDIDecoder::decode()
 	music->patterns.push_back(pattern);
 	music->patternOrder.push_back(0);
 
+	for (unsigned int c = 0; c < MIDI_CHANNEL_COUNT; c++) {
+		TrackInfo t;
+		t.channelType = TrackInfo::MIDIChannel;
+		t.channelIndex = c;
+		music->trackInfo.push_back(t);
+
+		TrackPtr track(new Track());
+		pattern->push_back(track);
+		lastDelay[c] = 0;
+	}
+
 	std::vector<NoteOnEvent *> eventsOPL7, eventsOPL8;
 	try {
 		bool eof = false;
 		do {
 			uint32_t delay = this->readMIDINumber();
-			for (std::vector<unsigned long>::iterator
-				i = this->lastDelay.begin(); i != this->lastDelay.end(); i++
-			) {
-				*i += delay;
+			for (unsigned int c = 0; c < MIDI_CHANNEL_COUNT; c++) {
+				lastDelay[c] += delay;
 			}
 			this->totalDelay += delay;
 
@@ -253,7 +238,8 @@ MusicPtr MIDIDecoder::decode()
 
 			bool deepTremolo = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
 			bool deepVibrato = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
-			uint8_t midiChannel = event & 0x0F;
+			unsigned int midiChannel = event & 0x0F;
+			unsigned int& track = midiChannel;
 			switch (event & 0xF0) {
 				case 0x80: { // Note off (two data bytes)
 					if (evdata >= MIDI_NOTES) {
@@ -265,24 +251,32 @@ MusicPtr MIDIDecoder::decode()
 					uint8_t velocity;
 					this->input >> u8(velocity);
 
-					// Only generate a note-off event if the note was actually on
-					int& track = this->activeNotes[midiChannel][note];
-					if (track >= 0) {
-						TrackEvent te;
-						te.delay = this->lastDelay[track];
-						this->lastDelay[track] = 0;
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+
+					if (
+						(this->midiFlags & MIDIFlags::CMFExtensions)
+						&& (midiChannel >= 12)
+					) {
+						// OPL percussive instruments may have had their pitched changed
+						// (if two notes sharing an OPL channel were played at the same
+						// moment), so instead of tracking that, just turn all the notes
+						// on the channel off.  Technically this might turn other notes
+						// off too soon, but the OPL can only play one note at a time on
+						// these channels anyway.
 						NoteOffEvent *ev = new NoteOffEvent();
 						te.event.reset(ev);
-						pattern->at(track)->push_back(te);
-
-						// Record this note as inactive on the channel
-						this->noteOnTrack[track] = false;
-						track = -1; // ref to this->activeNotes
 					} else {
-						std::cout << "decode-midi: Got note-off for note that wasn't "
-							"playing (channel " << (int)midiChannel << " note " << (int)note
-							<< ")\n";
+						SpecificNoteOffEvent *ev = new SpecificNoteOffEvent();
+						te.event.reset(ev);
+						ev->milliHertz = midiToFreq(note);
 					}
+					pattern->at(track)->push_back(te);
+
+					// Record this note as inactive on the channel
+					this->activeNotes[midiChannel][note] = false;
+
 					break;
 				}
 				case 0x90: { // Note on (two data bytes)
@@ -295,24 +289,37 @@ MusicPtr MIDIDecoder::decode()
 					uint8_t velocity;
 					this->input >> u8(velocity);
 
-					if (velocity == 0) { // note off
-						// Only generate a note-off event if the note was actually on
-						int& track = this->activeNotes[midiChannel][note];
-						if (track >= 0) {
-							TrackEvent te;
-							te.delay = this->lastDelay[track];
-							this->lastDelay[track] = 0;
+					if ((velocity == 0) || (this->activeNotes[midiChannel][note])) { // note off
+						// Only generate a note-off event if the note was actually on, or
+						// if it was on and is being played again without a noteoff
+						TrackEvent te;
+						te.delay = this->lastDelay[track];
+						this->lastDelay[track] = 0;
+
+						if (
+							(this->midiFlags & MIDIFlags::CMFExtensions)
+							&& (midiChannel >= 12)
+						) {
+							// OPL percussive instruments may have had their pitched changed
+							// (if two notes sharing an OPL channel were played at the same
+							// moment), so instead of tracking that, just turn all the notes
+							// on the channel off.  Technically this might turn other notes
+							// off too soon, but the OPL can only play one note at a time on
+							// these channels anyway.
 							NoteOffEvent *ev = new NoteOffEvent();
 							te.event.reset(ev);
-							pattern->at(track)->push_back(te);
-
-							// Record this note as inactive on the channel
-							this->noteOnTrack[track] = false;
-							track = -1; // ref to this->activeNotes
+						} else {
+							SpecificNoteOffEvent *ev = new SpecificNoteOffEvent();
+							te.event.reset(ev);
+							ev->milliHertz = midiToFreq(note);
 						}
-					} else {
-						const int& track = this->getAvailableTrack(music, pattern, midiChannel);
+						pattern->at(track)->push_back(te);
 
+						// Record this note as inactive on the channel
+						this->activeNotes[midiChannel][note] = false;
+					}
+
+					if (velocity != 0) {
 						TrackEvent te;
 						te.delay = this->lastDelay[track];
 						this->lastDelay[track] = 0;
@@ -340,7 +347,6 @@ MusicPtr MIDIDecoder::decode()
 							// so use a default instrument
 							this->setInstrument(music->patches, midiChannel, MIDI_DEFAULT_PATCH);
 						}
-						this->lastPatch[midiChannel] = ev->instrument;
 
 						if (this->midiFlags & MIDIFlags::CMFExtensions) {
 							// For CMF files, the order of events on these channels is
@@ -354,8 +360,7 @@ MusicPtr MIDIDecoder::decode()
 						pattern->at(track)->push_back(te);
 
 						// Record this note as active on the channel
-						this->activeNotes[midiChannel][note] = track;
-						this->noteOnTrack[track] = true;
+						this->activeNotes[midiChannel][note] = true;
 					}
 					break;
 				}
@@ -372,8 +377,6 @@ MusicPtr MIDIDecoder::decode()
 					this->input >> u8(value);
 					switch (evdata) {
 						case 0x63: {
-							const int& track = this->getAvailableTrack(music, pattern,
-								midiChannel);
 							bool newVibrato = value & 1;
 							bool newTremolo = value & 2;
 							if (newVibrato != deepVibrato) {
@@ -401,8 +404,6 @@ MusicPtr MIDIDecoder::decode()
 							break;
 						}
 						case 0x67: {
-							const int& track = this->getAvailableTrack(music, pattern,
-								midiChannel);
 							TrackEvent te;
 							te.delay = this->lastDelay[track];
 							this->lastDelay[track] = 0;
@@ -433,31 +434,16 @@ MusicPtr MIDIDecoder::decode()
 					uint8_t msb;
 					this->input >> u8(msb);
 					// Only lower seven bits are used in each byte
-					uint16_t bend = ((msb & 0x7F) << 7) | (evdata & 0x7F);
+					unsigned int bend = ((msb & 0x7F) << 7) | (evdata & 0x7F);
 
-					if (bend != this->currentPitchbend[midiChannel]) {
-						// If there are any active notes on this channel, generate pitchbend
-						// events for them.
-						for (unsigned int i = 0; i < MIDI_NOTES; i++) {
-							const int& track = this->activeNotes[midiChannel][i];
-							if (track >= 0) {
-								TrackEvent te;
-								te.delay = this->lastDelay[track];
-								this->lastDelay[track] = 0;
-								EffectEvent *ev = new EffectEvent();
-								te.event.reset(ev);
-								ev->type = EffectEvent::PitchbendNote;
-								ev->data = midiToFreq(i + midiBendToSemitone(bend));
-								pattern->at(track)->push_back(te);
-
-								/// @todo Include pitchbend events in future mapped channels
-
-								/// @todo Handle MIDI events to set pitchbend range
-								break;
-							}
-						}
-						this->currentPitchbend[midiChannel] = bend;
-					}
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+					PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
+					te.event.reset(ev);
+					ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+					ev->data = bend;
+					pattern->at(track)->push_back(te);
 					break;
 				}
 				case 0xF0: // System message (arbitrary data bytes)
@@ -551,21 +537,29 @@ MusicPtr MIDIDecoder::decode()
 		// reached eof
 	}
 
-	// Put a final delay in the first track to ensure no final delays are lost
-	if (lastDelay[0]) {
-		TrackPtr& t = pattern->at(0);
-		assert(t->size() != 0); // hopefully track 0 will never be empty!
-		TrackEvent te;
-		te.delay = lastDelay[0];
-		lastDelay[0] = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::None;
-		ev->value = 0;
-		t->push_back(te);
+	// Add dummy events for any final delays
+	unsigned int trackCount = MIDI_CHANNEL_COUNT;
+	for (int track = trackCount - 1; track >= 0; track--) {
+		if (lastDelay[track] == totalDelay) {
+			// This track is unused
+			music->trackInfo.erase(music->trackInfo.begin() + track);
+			music->patterns.at(0)->erase(music->patterns.at(0)->begin() + track);
+		} else if (lastDelay[track]) {
+			// This track has a trailing delay
+			TrackEvent te;
+			te.delay = lastDelay[track];
+			lastDelay[track] = 0;
+			ConfigurationEvent *ev = new ConfigurationEvent();
+			te.event.reset(ev);
+			ev->configType = ConfigurationEvent::None;
+			ev->value = 0;
+			pattern->at(track)->push_back(te);
+		}
 	}
 
 	music->ticksPerTrack = this->totalDelay;
+
+	splitPolyphonicTracks(music);
 	return music;
 }
 
@@ -609,33 +603,4 @@ void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 		patches->push_back(newPatch);
 	}
 	return;
-}
-
-unsigned int MIDIDecoder::getAvailableTrack(MusicPtr& music,
-	PatternPtr& pattern, unsigned int midiChannel)
-{
-	unsigned int t = 0;
-	for (TrackInfoVector::const_iterator
-		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++, t++
-	) {
-		assert(ti->channelType == TrackInfo::MIDIChannel);
-		if (ti->channelIndex != midiChannel) continue;
-		if (!this->noteOnTrack[t]) {
-			return t;
-		}
-	}
-
-	// No free mapping, add another channel
-	TrackInfo ti;
-	ti.channelType = TrackInfo::MIDIChannel;
-	ti.channelIndex = midiChannel;
-	assert(t == music->trackInfo.size());
-	music->trackInfo.push_back(ti);
-
-	// Add a track for the new channel
-	TrackPtr track(new Track());
-	pattern->push_back(track);
-	this->lastDelay.push_back(this->totalDelay);
-	this->noteOnTrack.push_back(false);
-	return t;
 }
