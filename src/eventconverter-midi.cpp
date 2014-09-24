@@ -133,6 +133,8 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 void EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
+	assert(ev->velocity < 256);
+
 	const TrackInfo& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
@@ -221,6 +223,12 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	const unsigned int& midiChannel = trackInfo.channelIndex;
 	this->cachedDelay += delay;
 
+	if (this->activeNote[trackIndex] == ACTIVE_NOTE_NONE) {
+		std::cerr << "eventconverter-midi: Tried to switch off note on track "
+			<< trackIndex << " in pattern " << patternIndex
+			<< " but there was no note playing!\n";
+		return;
+	}
 	this->cb->midiNoteOff(this->cachedDelay, midiChannel, this->activeNote[trackIndex],
 		MIDI_DEFAULT_RELEASE_VELOCITY);
 	this->cachedDelay = 0;
