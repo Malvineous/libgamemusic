@@ -297,9 +297,9 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 				NoteOnEvent *nev = dynamic_cast<NoteOnEvent *>(te.event.get());
 				if (!nev) continue;
 
-				// Override MIDI velocity and use zero, so the default volume setting from
-				// the instrument patch is used in EventConverter_OPL::writeOpSettings().
-				nev->velocity = 0;
+				// The velocity is loaded directly into the OPL chip, which uses a
+				// logarithmic volume scale rather than MIDI's linear one.
+				nev->velocity = 255 - log_volume_to_lin_velocity(255 - nev->velocity, 255);
 
 				// Figure out which rhythm instrument (if any) this is
 				// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
