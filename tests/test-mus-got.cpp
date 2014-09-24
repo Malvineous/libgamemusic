@@ -1,8 +1,8 @@
 /**
  * @file   test-mus-got.cpp
- * @brief  Test code for Zone 66 CDFM files.
+ * @brief  Test code for God of Thunder files.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,104 +18,110 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define INITIAL_TEMPO 1000
-#define INSTRUMENT_TYPE  0 // OPL
+#include "test-music.hpp"
 
-#define testdata_noteonoff \
-	"\x01\x00" \
-	"\x00\x20\xAE" \
-	"\x00\x40\x7F" \
-	"\x00\x60\xED" \
-	"\x00\x80\xCB" \
-	"\x00\xE0\x06" \
-	"\x00\x23\xA7" \
-	"\x00\x43\x1F" \
-	"\x00\x63\x65" \
-	"\x00\x83\x43" \
-	"\x00\xE3\x02" \
-	"\x00\xC0\x34" \
-	\
-	"\x00\xA0\x44" \
-	"\x01\xB0\x32" \
-	"\x00\xB0\x12" \
-	\
-	"\x00\x00\x00" "\x00"
+class test_mus_got: public test_music
+{
+	public:
+		test_mus_got()
+		{
+			this->type = "got";
+			this->numInstruments = 1;
+			this->indexInstrumentOPL = 0;
+			this->indexInstrumentMIDI = -1;
+			this->indexInstrumentPCM = -1;
+		}
 
-#define DETECTION_UNCERTAIN
-#define MUSIC_CLASS fmt_mus_got
-#define MUSIC_TYPE  "got"
-#include "test-musictype-read.hpp"
-#include "test-musictype-write.hpp"
+		void addTests()
+		{
+			this->test_music::addTests();
 
-// Test some invalid formats to make sure they're not identified as valid
-// files.  Note that they can still be opened though (by 'force'), this
-// only checks whether they look like valid files or not.
+			// c00: Normal
+			this->isInstance(MusicType::PossiblyYes, this->standard());
 
-// The "c00" test has already been performed in test-musicreader.hpp to ensure
-// the initial state is correctly identified as a valid file.
+			// c01: Too short
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x01"
+				"\x00\x00\x00" "\x00"
+			));
 
-// Too short
-ISINSTANCE_TEST(c01,
-	"\x01"
-	"\x00\x00\x00" "\x00"
-	,
-	MusicType::DefinitelyNo
-);
+			// c02: Uneven length
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x01\x00"
+				"\x00\x20\xAE"
+				"\x00"
+				"\x00\x00\x00" "\x00"
+			));
 
-// Uneven length
-ISINSTANCE_TEST(c02,
-	"\x01\x00"
-	"\x00\x20\xAE"
-	"\x00"
-	"\x00\x00\x00" "\x00"
-	,
-	MusicType::DefinitelyNo
-);
+			// c03: Bad signature
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x02\x00"
+				"\x00\x20\xAE"
+				"\x00\x40\x7F"
+				"\x00\x60\xED"
+				"\x00\x80\xCB"
+				"\x00\xE0\x06"
+				"\x00\x23\xA7"
+				"\x00\x43\x1F"
+				"\x00\x63\x65"
+				"\x00\x83\x43"
+				"\x00\xE3\x02"
+				"\x00\xC0\x04"
 
-// Bad signature
-ISINSTANCE_TEST(c03,
-	"\x02\x00"
-	"\x00\x20\xAE"
-	"\x00\x40\x7F"
-	"\x00\x60\xED"
-	"\x00\x80\xCB"
-	"\x00\xE0\x06"
-	"\x00\x23\xA7"
-	"\x00\x43\x1F"
-	"\x00\x63\x65"
-	"\x00\x83\x43"
-	"\x00\xE3\x02"
-	"\x00\xC0\x34"
+				"\x00\xA0\x44"
+				"\x01\xB0\x32"
+				"\x00\xB0\x12"
 
-	"\x00\xA0\x44"
-	"\x01\xB0\x32"
-	"\x00\xB0\x12"
+				"\x00\x00\x00" "\x00"
+			));
 
-	"\x00\x00\x00" "\x00"
-	,
-	MusicType::DefinitelyNo
-);
+			// c04: Missing/incomplete loop-to-start marker
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"\x01\x00"
+				"\x00\x20\xAE"
+				"\x00\x40\x7F"
+				"\x00\x60\xED"
+				"\x00\x80\xCB"
+				"\x00\xE0\x06"
+				"\x00\x23\xA7"
+				"\x00\x43\x1F"
+				"\x00\x63\x65"
+				"\x00\x83\x43"
+				"\x00\xE3\x02"
+				"\x00\xC0\x04"
 
-// Missing/incomplete loop-to-start marker
-ISINSTANCE_TEST(c04,
-	"\x01\x00"
-	"\x00\x20\xAE"
-	"\x00\x40\x7F"
-	"\x00\x60\xED"
-	"\x00\x80\xCB"
-	"\x00\xE0\x06"
-	"\x00\x23\xA7"
-	"\x00\x43\x1F"
-	"\x00\x63\x65"
-	"\x00\x83\x43"
-	"\x00\xE3\x02"
-	"\x00\xC0\x34"
+				"\x00\xA0\x44"
+				"\x01\xB0\x32"
+				"\x00\xB0\x12"
 
-	"\x00\xA0\x44"
-	"\x01\xB0\x32"
-	"\x00\xB0\x12"
+				"\x00\x00\x00"
+			));
+		}
 
-	"\x00\x00\x00"
-	,
-	MusicType::DefinitelyNo
-);
+		virtual std::string standard()
+		{
+			return STRING_WITH_NULLS(
+				"\x01\x00"
+				"\x00\x20\xAE"
+				"\x00\x40\x7F"
+				"\x00\x60\xED"
+				"\x00\x80\xCB"
+				"\x00\xE0\x06"
+				"\x00\x23\xA7"
+				"\x00\x43\x1F"
+				"\x00\x63\x65"
+				"\x00\x83\x43"
+				"\x00\xE3\x02"
+				"\x00\xC0\x04"
+
+				"\x00\xA0\x44"
+				"\x01\xB0\x32"
+				"\x00\xB0\x12"
+
+				"\x00\x00\x00" "\x00"
+			);
+		}
+
+};
+
+IMPLEMENT_TESTS(mus_got);
