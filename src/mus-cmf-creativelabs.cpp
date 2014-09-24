@@ -156,6 +156,8 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	MusicPtr music = midiDecode(input, MIDIFlags::UsePatchIndex
 		| MIDIFlags::CMFExtensions, initialTempo);
 
+	unsigned int oplChannel = 0;
+	bool opl3 = false;
 	for (TrackInfoVector::iterator
 		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
 	) {
@@ -164,11 +166,12 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 			ti->channelIndex = 15 - ti->channelIndex;
 		} else {
 			ti->channelType = TrackInfo::OPLChannel;
-			if (ti->channelIndex > 8) {
-				std::cout << "cmf-creativelabs: Event on MIDI channel "
-					<< ti->channelIndex << " - map this to a valid OPL channel!\n";
+			ti->channelIndex = oplChannel++;
+			if (oplChannel == 6) {
+				oplChannel = 9;
+				opl3 = true;
 			}
-			// TODO: remap channels based on channel-in-use table?
+			oplChannel %= 18;
 		}
 	}
 
@@ -200,6 +203,16 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		ev->configType = ConfigurationEvent::EnableWaveSel;
 		ev->value = 1;
 		configTrack->insert(configTrack->begin() + 2, te);
+	}
+
+	if (opl3) {
+		TrackEvent te;
+		te.delay = 0;
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		te.event.reset(ev);
+		ev->configType = ConfigurationEvent::EnableOPL3;
+		ev->value = 1;
+		configTrack->insert(configTrack->begin() + 0, te);
 	}
 
 	// Read the instruments
@@ -237,7 +250,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	// Load the default instruments
 	int genericMapping[CMF_NUM_DEFAULT_INSTRUMENTS];
 	PatchBankPtr oplBankDefault(new PatchBank());
-	oplBank->reserve(CMF_NUM_DEFAULT_INSTRUMENTS);
+	oplBankDefault->reserve(CMF_NUM_DEFAULT_INSTRUMENTS);
 	for (unsigned int i = 0; i < CMF_NUM_DEFAULT_INSTRUMENTS; i++) {
 		OPLPatchPtr patch(new OPLPatch());
 		uint8_t *inst = (uint8_t *)(CMF_DEFAULT_PATCHES + i * 16);
