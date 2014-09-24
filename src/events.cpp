@@ -154,6 +154,14 @@ struct MergedEvent
 
 bool trackMergeByTime(const MergedEvent& a, const MergedEvent& b)
 {
+	if (a.absTime == b.absTime) {
+		// These events occur at the same time, so try to put all the note-offs
+		// first, to minimise any unnecessary note polyphony
+		NoteOffEvent *a_off = dynamic_cast<NoteOffEvent *>(a.event.get());
+		NoteOffEvent *b_off = dynamic_cast<NoteOffEvent *>(b.event.get());
+		if (a_off && b_off) return false;
+		return a_off;
+	}
 	return a.absTime < b.absTime;
 }
 
