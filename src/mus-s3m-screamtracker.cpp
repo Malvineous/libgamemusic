@@ -113,6 +113,11 @@ unsigned long MusicType_S3M::getCaps() const
 
 MusicType::Certainty MusicType_S3M::isInstance(stream::input_sptr input) const
 {
+	stream::pos len = input->size();
+	// Too short
+	// TESTED BY: mus_s3m_screamtracker_isinstance_c03
+	if (len < 30) return MusicType::DefinitelyNo;
+
 	input->seekg(28, stream::start);
 	uint8_t sig1, sig2;
 	input

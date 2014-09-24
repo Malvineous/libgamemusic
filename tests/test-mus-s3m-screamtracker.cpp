@@ -202,6 +202,12 @@ class test_s3m_screamtracker: public test_music
 				"\x00\x00\x00\x00\x00\x00\x00\x00"
 				"\0\0\0\0\0\0\0\0\0\0\0\0\0\0" // padding
 			));
+
+			// c03: Too short
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"Test title\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
+				"\x1A"
+			));
 		}
 
 		virtual std::string standard()
