@@ -2,7 +2,7 @@
  * @file   test-mus-mid-type0.cpp
  * @brief  Test code for type-0 MIDI files.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,61 +18,72 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#define INITIAL_TEMPO  ((double)MIDI_DEF_uS_PER_QUARTER_NOTE / MIDI_DEF_TICKS_PER_QUARTER_NOTE)
-#define INSTRUMENT_TYPE  1 // MIDI
+#include "test-music.hpp"
 
-#define testdata_noteonoff \
-	"MThd\x00\x00\x00\x06" \
-	"\x00\x00" \
-	"\x00\x01" \
-	"\x00\xc0" \
-	"MTrk\x00\x00\x00\x15" \
-	"\x00\xff\x51\x03\x07\xa1\x20" \
-	"\x00\xc0\x00" \
-	"\x00\x90\x45\x7f" \
-	"\x10\x45\x00" \
-	"\x00\xff\x2f\x00"
+class test_mid_type0: public test_music
+{
+	public:
+		test_mid_type0()
+		{
+			this->type = "mid-type0";
+			this->numInstruments = 1;
+			this->indexInstrumentOPL = -1;
+			this->indexInstrumentMIDI = 0;
+			this->indexInstrumentPCM = -1;
+		}
 
-#define MUSIC_CLASS fmt_mus_mid_type0
-#define MUSIC_TYPE  "mid-type0"
-#include "test-musictype-read.hpp"
-#include "test-musictype-write.hpp"
+		void addTests()
+		{
+			this->test_music::addTests();
 
-// Test some invalid formats to make sure they're not identified as valid
-// files.  Note that they can still be opened though (by 'force'), this
-// only checks whether they look like valid files or not.
+			// c00: Normal
+			this->isInstance(MusicType::DefinitelyYes, this->standard());
 
-// The "c00" test has already been performed in test-musicreader.hpp to ensure
-// the initial state is correctly identified as a valid file.
+			// c01: Wrong signature
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"MThf\x00\x00\x00\x06"
+				"\x00\x00"
+				"\x00\x01"
+				"\x00\xc0"
+				"MTrk\x00\x00\x00\x15"
+				"\x00\xff\x51\x03\x07\xa1\x20"
+				"\x00\xc0\x00"
+				"\x00\x90\x45\x7f"
+				"\x10\x45\x00"
+				"\x00\xff\x2f\x00"
+			));
 
-// Wrong signature
-ISINSTANCE_TEST(c01,
-	"MThf\x00\x00\x00\x06" \
-	"\x00\x00" \
-	"\x00\x01" \
-	"\x00\xc0" \
-	"MTrk\x00\x00\x00\x15" \
-	"\x00\xff\x51\x03\x07\xa1\x20" \
-	"\x00\xc0\x00" \
-	"\x00\x90\x45\x7f" \
-	"\x10\x45\x00" \
-	"\x00\xff\x2f\x00"
-	,
-	MusicType::DefinitelyNo
-);
+			// c02: Wrong type
+			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+				"MThd\x00\x00\x00\x06"
+				"\x00\x02"
+				"\x00\x01"
+				"\x00\xc0"
+				"MTrk\x00\x00\x00\x15"
+				"\x00\xff\x51\x03\x07\xa1\x20"
+				"\x00\xc0\x00"
+				"\x00\x90\x45\x7f"
+				"\x10\x45\x00"
+				"\x00\xff\x2f\x00"
+			));
+		}
 
-// Wrong type
-ISINSTANCE_TEST(c02,
-	"MThd\x00\x00\x00\x06" \
-	"\x00\x02" \
-	"\x00\x01" \
-	"\x00\xc0" \
-	"MTrk\x00\x00\x00\x15" \
-	"\x00\xff\x51\x03\x07\xa1\x20" \
-	"\x00\xc0\x00" \
-	"\x00\x90\x45\x7f" \
-	"\x10\x45\x00" \
-	"\x00\xff\x2f\x00"
-	,
-	MusicType::DefinitelyNo
-);
+		virtual std::string standard()
+		{
+			return STRING_WITH_NULLS(
+				"MThd\x00\x00\x00\x06"
+				"\x00\x00"
+				"\x00\x01"
+				"\x00\xc0"
+				"MTrk\x00\x00\x00\x15"
+				"\x00\xff\x51\x03\x07\xa1\x20"
+				"\x00\xc0\x00"
+				"\x00\x90\x45\x7f"
+				"\x10\x45\x00"
+				"\x00\xff\x2f\x00"
+			);
+		}
+
+};
+
+IMPLEMENT_TESTS(mid_type0);
