@@ -21,6 +21,7 @@
 #include <sstream>
 #include <list>
 #include <camoto/gamemusic/events.hpp>
+#include <camoto/gamemusic/eventconverter-midi.hpp>
 
 using namespace camoto::gamemusic;
 
@@ -52,10 +53,13 @@ void TempoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 
 std::string NoteOnEvent::getContent() const
 {
+	double semitone = freqToMIDI(this->milliHertz);
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
 		<< "event=note-on;freq=" << this->milliHertz
+		<< ";freq_midi=" << semitone
+		<< ";freq_oct=" << ((int)semitone / 12)
 		<< ";instrument=" << this->instrument
 		<< ";velocity=" << (int)this->velocity
 	;
