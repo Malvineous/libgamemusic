@@ -56,7 +56,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 * stream, until all the events in the song have been written out.
 		 *
 		 * @param channelsUsed
-		 *   Pointer to an array of MIDI_CHANNELS entries of bool.  On return, this
+		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this
 		 *   each entry is set to true where that MIDI channel was used.  Set to
 		 *   NULL if this information is not required.
 		 *
@@ -90,7 +90,7 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		unsigned int midiFlags;            ///< One or more MIDIFlags
 		boost::function<void()> cbEndOfTrack;///< Callback used at end of each track
 		uint8_t lastCommand;               ///< Last MIDI command written
-		bool channelsUsed[MIDI_CHANNELS];  ///< Which MIDI channels had events on them
+		bool channelsUsed[MIDI_CHANNEL_COUNT];  ///< Which MIDI channels had events on them
 
 		/// Write an integer in variable-length MIDI notation.
 		/**
@@ -137,7 +137,7 @@ MIDIEncoder::MIDIEncoder(stream::output_sptr output, ConstMusicPtr music,
 		cbEndOfTrack(cbEndOfTrack),
 		lastCommand(0xFF)
 {
-	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+	for (unsigned int i = 0; i < MIDI_CHANNEL_COUNT; i++) {
 		this->channelsUsed[i] = false;
 	}
 }

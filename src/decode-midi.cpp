@@ -34,9 +34,6 @@ const unsigned int PERC_FREQ = 440000;
 /// Default to a grand piano until a patch change event arrives.
 const unsigned int MIDI_DEFAULT_PATCH = 0;
 
-/// Number of MIDI channels.
-const unsigned int MIDI_CHANNEL_COUNT = 16;
-
 /// Convert a MIDI pitchbend value into a number of semitones, possibly negative
 /**
  * @param bend
@@ -106,13 +103,13 @@ class MIDIDecoder
 		unsigned long usPerQuarterNote;
 
 		/// Current instrument (not MIDI patch) on each MIDI channel
-		uint8_t currentInstrument[MIDI_CHANNELS];
+		uint8_t currentInstrument[MIDI_CHANNEL_COUNT];
 
 		/// Current pitchbend level on each MIDI channel (-8192 to 8191)
-		int16_t currentPitchbend[MIDI_CHANNELS];
+		int16_t currentPitchbend[MIDI_CHANNEL_COUNT];
 
 		/// Which output channel is being used by the given MIDI note?
-		int activeNotes[MIDI_CHANNELS][MIDI_NOTES];
+		int activeNotes[MIDI_CHANNEL_COUNT][MIDI_NOTES];
 
 		/// Read a variable-length integer from MIDI data.
 		/**
@@ -173,7 +170,7 @@ MIDIDecoder::MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
 	memset(this->percMap, 0xFF, sizeof(this->percMap));
 	memset(this->currentInstrument, 0, sizeof(this->currentInstrument));
 	memset(this->activeNotes, 0xFF, sizeof(this->activeNotes));
-	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+	for (unsigned int i = 0; i < MIDI_CHANNEL_COUNT; i++) {
 		this->currentPitchbend[i] = 8192;
 	}
 }

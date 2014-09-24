@@ -92,7 +92,7 @@ EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
 	memset(this->activeNote, ACTIVE_NOTE_NONE, sizeof(this->activeNote));
 	memset(this->lastEvent, 0xFF, sizeof(this->lastEvent));
 	memset(this->channelMap, 0xFF, sizeof(this->channelMap));
-	for (unsigned int c = 0; c < MIDI_CHANNELS; c++) {
+	for (unsigned int c = 0; c < MIDI_CHANNEL_COUNT; c++) {
 		this->currentPitchbend[c] = 8192;
 	}
 	this->deepTremolo = (this->midiFlags & MIDIFlags::CMFExtensions) ? true : false;
@@ -238,7 +238,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		(trackInfo.channelType != TrackInfo::MIDIChannel)
 	) return;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
-	assert(midiChannel < MIDI_CHANNELS);
+	assert(midiChannel < MIDI_CHANNEL_COUNT);
 	this->cachedDelay += delay;
 
 	switch (ev->type) {

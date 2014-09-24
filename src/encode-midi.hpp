@@ -44,7 +44,7 @@ namespace gamemusic {
  *   data is unusual in some way.
  *
  * @param channelsUsed
- *   Pointer to an array of MIDI_CHANNELS entries of bool.  On return, this each
+ *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this each
  *   entry is set to true where that MIDI channel was used.  Set to NULL if this
  *   information is not required.
  *

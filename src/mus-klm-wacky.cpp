@@ -754,7 +754,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 /*
 	if (this->flags & IntegerNotesOnly) return;
 
-	uint8_t midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNELS);
+	uint8_t midiChannel = this->getMIDIchannel(ev->channel, MIDI_CHANNEL_COUNT);
 
 	uint8_t note;
 	int16_t bend;

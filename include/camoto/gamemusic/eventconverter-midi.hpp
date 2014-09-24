@@ -33,7 +33,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Number of MIDI channels.
-const unsigned int MIDI_CHANNELS = 16;
+const unsigned int MIDI_CHANNEL_COUNT = 16;
 
 /// Number of valid MIDI notes.
 const unsigned int MIDI_NOTES = 128;
@@ -325,13 +325,13 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 		bool updateDeep;    ///< True if deepTremolo or deepVibrato have changed
 
 		/// Current patch on each MIDI channel
-		uint8_t currentPatch[MIDI_CHANNELS];
+		uint8_t currentPatch[MIDI_CHANNEL_COUNT];
 
 		/// Current patch on each internal channel
 		uint8_t currentInternalPatch[MAX_CHANNELS];
 
 		/// Current pitchbend level on each MIDI channel
-		int16_t currentPitchbend[MIDI_CHANNELS];
+		int16_t currentPitchbend[MIDI_CHANNEL_COUNT];
 
 		/// List of notes currently being played on each channel
 		uint8_t activeNote[MAX_CHANNELS];
@@ -341,7 +341,7 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 		uint8_t channelMap[MAX_CHANNELS];
 
 		/// Time the last event was played on this channel
-		unsigned long lastEvent[MIDI_CHANNELS];
+		unsigned long lastEvent[MIDI_CHANNEL_COUNT];
 };
 
 } // namespace gamemusic

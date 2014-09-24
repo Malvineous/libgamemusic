@@ -57,7 +57,7 @@ class MUSEncoder: virtual private MIDIEventCallback
 		 * stream, until all the events in the song have been written out.
 		 *
 		 * @param channelsUsed
-		 *   Pointer to an array of MIDI_CHANNELS entries of bool.  On return, this
+		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this
 		 *   each entry is set to true where that MIDI channel was used.  Set to
 		 *   NULL if this information is not required.
 		 *

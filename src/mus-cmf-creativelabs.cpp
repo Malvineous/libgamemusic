@@ -515,7 +515,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	}
 
 	// Call the generic OPL writer.
-	bool channelsUsed[MIDI_CHANNELS];
+	bool channelsUsed[MIDI_CHANNEL_COUNT];
 	unsigned long midiFlags = MIDIFlags::UsePatchIndex | MIDIFlags::CMFExtensions;
 	if (flags & MusicType::IntegerNotesOnly) {
 		midiFlags |= MIDIFlags::IntegerNotesOnly;
@@ -532,8 +532,8 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	;
 
 	// Update the channel-in-use table
-	uint8_t channelsInUse[MIDI_CHANNELS];
-	for (unsigned int i = 0; i < MIDI_CHANNELS; i++) {
+	uint8_t channelsInUse[MIDI_CHANNEL_COUNT];
+	for (unsigned int i = 0; i < MIDI_CHANNEL_COUNT; i++) {
 		channelsInUse[i] = channelsUsed[i] ? 1 : 0;
 	}
 	output->seekp(20, stream::start);
