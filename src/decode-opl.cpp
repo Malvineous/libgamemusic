@@ -22,7 +22,7 @@
 #include <math.h>
 #include <iostream>
 #include <camoto/gamemusic/patch-opl.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "decode-opl.hpp"
 
 using namespace camoto;

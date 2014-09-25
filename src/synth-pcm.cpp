@@ -24,7 +24,7 @@
 #include <camoto/gamemusic/synth-pcm.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
-#include <camoto/gamemusic/audio-util.hpp>
+#include <camoto/gamemusic/util-pcm.hpp>
 
 using namespace camoto;
 using namespace camoto::gamemusic;

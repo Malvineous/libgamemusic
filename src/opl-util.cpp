@@ -20,7 +20,7 @@
 
 #include <iostream>
 #include <cassert>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 
 #define log2(x) (log(x) / 0.30102999566398119521373889472449)

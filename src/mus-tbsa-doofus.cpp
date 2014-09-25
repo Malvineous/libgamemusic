@@ -24,7 +24,7 @@
 #include <camoto/gamemusic/eventconverter-midi.hpp> // midiToFreq
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-pcm.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "mus-tbsa-doofus.hpp"
 
 using namespace camoto;

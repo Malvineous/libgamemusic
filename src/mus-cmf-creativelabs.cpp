@@ -22,7 +22,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-cmf-creativelabs.hpp"

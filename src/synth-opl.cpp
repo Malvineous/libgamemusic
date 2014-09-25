@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <camoto/gamemusic/synth-opl.hpp>
-#include <camoto/gamemusic/audio-util.hpp>
+#include <camoto/gamemusic/util-pcm.hpp>
 #include "dbopl.hpp"
 
 using namespace camoto;

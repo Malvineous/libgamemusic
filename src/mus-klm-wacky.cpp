@@ -21,7 +21,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "mus-klm-wacky.hpp"
 
 using namespace camoto;

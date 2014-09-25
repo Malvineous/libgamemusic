@@ -22,7 +22,7 @@
 #define _CAMOTO_GAMEMUSIC_MUS_CDFM_GUS_ZONE66_HPP_
 
 #include <camoto/gamemusic/musictype.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 
 namespace camoto {
 namespace gamemusic {

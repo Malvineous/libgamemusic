@@ -2,7 +2,7 @@
  * @file   test-opl.hpp
  * @brief  Test code for generic OPL functions.
  *
- * Copyright (C) 2010-2013 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 #include <camoto/util.hpp> // createString()
 #include <camoto/gamemusic.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "tests.hpp"
 
 using namespace camoto;

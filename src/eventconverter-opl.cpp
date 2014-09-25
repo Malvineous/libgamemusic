@@ -26,7 +26,7 @@
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
-#include <camoto/gamemusic/opl-util.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 
 using namespace camoto;

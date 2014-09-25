@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_
-#define _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_
+#ifndef _CAMOTO_GAMEMUSIC_UTIL_PCM_HPP_
+#define _CAMOTO_GAMEMUSIC_UTIL_PCM_HPP_
 
 #include <cassert>
 
@@ -61,4 +61,4 @@ inline long pcm_mix_s16(long a, long b)
 } // namespace gamemusic
 } // namespace camoto
 
-#endif // _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_
+#endif // _CAMOTO_GAMEMUSIC_UTIL_PCM_HPP_
