@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <camoto/gamemusic/playback.hpp>
+#include <camoto/gamemusic/util-pcm.hpp>
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -165,7 +166,7 @@ void Playback::seekByTime(unsigned long ms)
 	return;
 }
 
-void Playback::generate(int16_t *output, unsigned long samples, Playback::Position *pos)
+void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *pos)
 {
 	assert(this->music);
 
@@ -174,8 +175,15 @@ void Playback::generate(int16_t *output, unsigned long samples, Playback::Positi
 			this->nextFrame();
 		}
 		unsigned long left = std::min(samples, this->frameBuffer.size() - this->frameBufferPos);
-		memcpy(output, &this->frameBuffer[this->frameBufferPos], left * sizeof(int16_t));
-		output += left;
+		int16_t *in = &this->frameBuffer[this->frameBufferPos];
+		int16_t *out_end = output + left;
+		while (output < out_end) {
+			*output = pcm_mix_s16(*output, *in);
+			output++;
+			in++;
+		}
+		//memcpy(output, &this->frameBuffer[this->frameBufferPos], left * sizeof(int16_t));
+		//output += left;
 		samples -= left;
 		this->frameBufferPos += left;
 	}

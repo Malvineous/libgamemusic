@@ -212,9 +212,10 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
 	PaStreamCallbackFlags statusFlags, void *userData)
 {
 	PBCallback *pbcb = (PBCallback *)userData;
+	memset(outputBuffer, 0, framesPerBuffer * NUM_CHANNELS * 2);
 	{
 		boost::lock_guard<boost::mutex> lock(pbcb->mut);
-		pbcb->playback->generate((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->position.pos);
+		pbcb->playback->mix((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->position.pos);
 		pbcb->position.time = timeInfo->outputBufferDacTime;
 	}
 	if (
@@ -459,8 +460,9 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 		<< u32le(0) // overwritten later
 	;
 
-	unsigned long lenBuffer = FRAMES_TO_BUFFER * NUM_CHANNELS;
+	const unsigned long lenBuffer = FRAMES_TO_BUFFER * NUM_CHANNELS;
 	int16_t *output = new int16_t[lenBuffer];
+	const unsigned long lenBufferBytes = lenBuffer * 2;
 	boost::shared_array<int16_t> output_sptr(output);
 
 	std::cout << "Writing WAV at " << sampleRate << "Hz, " << bitDepth << "-bit, "
@@ -474,7 +476,8 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	pos.end = false;
 	unsigned int numOrders = music->patternOrder.size();
 	while (!pos.end) {
-		playback.generate(output, lenBuffer, &pos);
+		memset(output, 0, lenBufferBytes);
+		playback.mix(output, lenBuffer, &pos);
 
 		// Make sure samples are little-endian
 		for (unsigned int i = 0; i < lenBuffer; i++) output[i] = htole16(output[i]);
@@ -509,7 +512,8 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	if (extraTime) {
 		unsigned long extraSamples = extraTime * sampleRate * numChannels;
 		while (extraSamples >= lenBuffer) {
-			playback.generate(output, lenBuffer, &pos);
+			memset(output, 0, lenBufferBytes);
+			playback.mix(output, lenBuffer, &pos);
 			extraSamples -= lenBuffer;
 
 			// Make sure samples are little-endian

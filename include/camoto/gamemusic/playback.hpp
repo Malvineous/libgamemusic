@@ -132,11 +132,20 @@ class Playback: virtual public SynthPCMCallback
 
 		/// Synthesize and mix audio into the given buffer.
 		/**
+		 * @param output
+		 *   Input and output buffer.  Synthesized audio is mixed into this buffer
+		 *   and combined with whatever audio is already in it.  Make sure you zero
+		 *   the buffer with memset() before the first call!
+		 *
 		 * @param samples
 		 *   Size of output, in samples.  One sample is one int16_t, and two
 		 *   samples is needed for one frame of stereo audio (four bytes).
+		 *
+		 * @param pos
+		 *   Pointer to a structure that on return, will receive the playback
+		 *   position of the data just placed in the buffer.
 		 */
-		void generate(int16_t *output, unsigned long samples, Position *pos);
+		void mix(int16_t *output, unsigned long samples, Position *pos);
 
 		// TempoCallback
 		virtual void tempoChange(const Tempo& tempo);
