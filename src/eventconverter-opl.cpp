@@ -377,7 +377,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	this->cachedDelay += delay;
 	switch (ev->configType) {
-		case ConfigurationEvent::None:
+		case ConfigurationEvent::EmptyEvent:
 			break;
 		case ConfigurationEvent::EnableOPL3:
 			if (

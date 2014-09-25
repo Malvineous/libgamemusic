@@ -512,7 +512,7 @@ off klm
 			lastDelay[channel] = 0;
 			ConfigurationEvent *ev = new ConfigurationEvent();
 			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::None;
+			ev->configType = ConfigurationEvent::EmptyEvent;
 			ev->value = 0;
 			t->push_back(te);
 		}

@@ -998,7 +998,7 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
-		case ConfigurationEvent::None:
+		case ConfigurationEvent::EmptyEvent:
 			break;
 		case ConfigurationEvent::EnableOPL3:
 			if (ev->value != 0) std::cerr << "OPL3 cannot be enabled in this format, ignoring event.\n";

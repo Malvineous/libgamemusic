@@ -844,7 +844,7 @@ int main(int iArgC, char *cArgV[])
 						gm::ConfigurationEvent *cev = dynamic_cast<gm::ConfigurationEvent *>(te.event.get());
 						if (cev) {
 							switch (cev->configType) {
-								case gm::ConfigurationEvent::None:
+								case gm::ConfigurationEvent::EmptyEvent:
 									// Nothing to do
 									break;
 								case gm::ConfigurationEvent::EnableOPL3:

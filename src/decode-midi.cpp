@@ -573,7 +573,7 @@ MusicPtr MIDIDecoder::decode()
 			lastDelay[track] = 0;
 			ConfigurationEvent *ev = new ConfigurationEvent();
 			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::None;
+			ev->configType = ConfigurationEvent::EmptyEvent;
 			ev->value = 0;
 			pattern->at(track)->push_back(te);
 		}

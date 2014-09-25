@@ -656,7 +656,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
-		case ConfigurationEvent::None:
+		case ConfigurationEvent::EmptyEvent:
 			break;
 		case ConfigurationEvent::EnableOPL3:
 		case ConfigurationEvent::EnableDeepTremolo:

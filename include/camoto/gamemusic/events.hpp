@@ -174,7 +174,7 @@ struct DLL_EXPORT ConfigurationEvent: virtual public Event
 		 * Dummy event that doesn't do anything.  Can be placed last in a file if
 		 * there is a trailing delay.
 		 */
-		None,
+		EmptyEvent,
 
 		/// Enable OPL3 mode (or limit to OPL2)
 		/**

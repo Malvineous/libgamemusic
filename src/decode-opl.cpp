@@ -472,7 +472,7 @@ MusicPtr OPLDecoder::decode()
 			this->lastDelay[t] = 0;
 			ConfigurationEvent *ev = new ConfigurationEvent();
 			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::None;
+			ev->configType = ConfigurationEvent::EmptyEvent;
 			ev->value = 0;
 			pattern->at(t)->push_back(te);
 		}

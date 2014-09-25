@@ -282,7 +282,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 {
 	this->cachedDelay += delay;
 	switch (ev->configType) {
-		case ConfigurationEvent::None:
+		case ConfigurationEvent::EmptyEvent:
 			// cached delay is updated
 			break;
 		case ConfigurationEvent::EnableRhythm:

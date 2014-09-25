@@ -330,7 +330,7 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 				te.delay = lastDelay[t];
 				ConfigurationEvent *ev = new ConfigurationEvent();
 				te.event.reset(ev);
-				ev->configType = ConfigurationEvent::None;
+				ev->configType = ConfigurationEvent::EmptyEvent;
 				ev->value = 0;
 				track->push_back(te);
 			}

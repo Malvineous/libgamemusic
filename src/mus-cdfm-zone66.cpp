@@ -452,7 +452,7 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 				te.delay = lastDelay[t];
 				ConfigurationEvent *ev = new ConfigurationEvent();
 				te.event.reset(ev);
-				ev->configType = ConfigurationEvent::None;
+				ev->configType = ConfigurationEvent::EmptyEvent;
 				ev->value = 0;
 				track->push_back(te);
 			}
@@ -749,7 +749,7 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
-		case ConfigurationEvent::None:
+		case ConfigurationEvent::EmptyEvent:
 			break;
 		case ConfigurationEvent::EnableOPL3:
 			if (ev->value != 0) std::cerr << "CDFM: OPL3 cannot be enabled, ignoring event.\n";

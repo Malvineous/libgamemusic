@@ -115,7 +115,7 @@ std::string ConfigurationEvent::getContent() const
 		<< "event=config;type="
 	;
 	switch (this->configType) {
-		case None:
+		case EmptyEvent:
 			ss << "none";
 			break;
 		case EnableOPL3:
