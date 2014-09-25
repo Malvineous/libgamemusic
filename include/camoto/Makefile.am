@@ -16,3 +16,4 @@ nobase_library_include_HEADERS += gamemusic/patchbank.hpp
 nobase_library_include_HEADERS += gamemusic/playback.hpp
 nobase_library_include_HEADERS += gamemusic/synth-opl.hpp
 nobase_library_include_HEADERS += gamemusic/synth-pcm.hpp
+nobase_library_include_HEADERS += gamemusic/tempo.hpp
