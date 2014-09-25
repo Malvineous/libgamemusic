@@ -24,7 +24,7 @@
 #include <camoto/gamemusic/synth-pcm.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
-#include "audio-util.hpp"
+#include <camoto/gamemusic/audio-util.hpp>
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -98,7 +98,7 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 			int16_t s;
 			if (sample.patch->bitDepth == 8) {
 				// Convert from 8-bit unsigned to 16-bit signed
-				s = U8_TO_S16(*in);
+				s = pcm_u8_to_s16(*in);
 				sample.pos++;
 			} else if (sample.patch->bitDepth == 16) {
 				s = *((int16_t *)in);
@@ -114,9 +114,9 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 			assert(sample.vol < 256);
 			s = (s * (int32_t)sample.vol / 255) / VOL_DAMPEN;
 
-			*output_cur = mix_pcm(*output_cur, s);
+			*output_cur = pcm_mix_s16(*output_cur, s);
 			output_cur++;
-			*output_cur = mix_pcm(*output_cur, s);
+			*output_cur = pcm_mix_s16(*output_cur, s);
 			output_cur++;
 		}
 		if (complete) {

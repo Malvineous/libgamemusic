@@ -21,17 +21,29 @@
 #ifndef _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_
 #define _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_
 
+#include <cassert>
+
+namespace camoto {
+namespace gamemusic {
+
 // Clipping function to prevent integer wraparound after amplification
-#define SAMPLE_SIZE 2
-#define SAMP_BITS (SAMPLE_SIZE << 3)
-#define SAMP_MAX ((1 << (SAMP_BITS-1)) - 1)
-#define SAMP_MIN -((1 << (SAMP_BITS-1)))
-#define CLIP(v) (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)))
+inline int pcm_clip_s16(int s)
+{
+	static const int SAMPLE_SIZE = 2;
+	static const int SAMPLE_BITS = SAMPLE_SIZE << 3;
+	static const int SAMPLE_MAX = (1 << (SAMPLE_BITS - 1)) - 1;
+	static const int SAMPLE_MIN = -(1 << (SAMPLE_BITS - 1));
+	return ((s) > SAMPLE_MAX) ? SAMPLE_MAX : (((s) < SAMPLE_MIN) ? SAMPLE_MIN : (s));
+}
 
 /// Convert unsigned 8-bit sample (0..255) to signed 16-bit (-32768..32767)
-#define U8_TO_S16(s) (s | (s << 8)) - 32768L;
+inline int pcm_u8_to_s16(int s)
+{
+	return (s | (s << 8)) - 32768L;
+}
 
-inline long mix_pcm(long a, long b)
+/// Mix two PCM samples and return the new combined sample
+inline long pcm_mix_s16(long a, long b)
 {
 	a += 32768;
 	b += 32768;
@@ -45,5 +57,8 @@ inline long mix_pcm(long a, long b)
 	assert(m < 65536);
 	return -32768 + m;
 }
+
+} // namespace gamemusic
+} // namespace camoto
 
 #endif // _CAMOTO_GAMEMUSIC_AUDIO_UTIL_HPP_

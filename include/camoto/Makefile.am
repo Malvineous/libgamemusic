@@ -1,6 +1,7 @@
 library_includedir = $(includedir)/@camoto_release@/camoto/
 nobase_library_include_HEADERS = gamemusic.hpp
 nobase_library_include_HEADERS += gamemusic/manager.hpp
+nobase_library_include_HEADERS += gamemusic/audio-util.hpp
 nobase_library_include_HEADERS += gamemusic/eventconverter-midi.hpp
 nobase_library_include_HEADERS += gamemusic/eventconverter-opl.hpp
 nobase_library_include_HEADERS += gamemusic/events.hpp

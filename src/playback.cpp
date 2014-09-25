@@ -20,19 +20,9 @@
 
 #include <iostream>
 #include <camoto/gamemusic/playback.hpp>
-#include "dbopl.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
-
-#define OPL_BUFFER_SIZE 512
-
-// Clipping function to prevent integer wraparound after amplification
-#define SAMPLE_SIZE 2
-#define SAMP_BITS (SAMPLE_SIZE << 3)
-#define SAMP_MAX ((1 << (SAMP_BITS-1)) - 1)
-#define SAMP_MIN -((1 << (SAMP_BITS-1)))
-#define CLIP(v) (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)))
 
 Playback::Position::Position()
 	:	loop(0),

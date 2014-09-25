@@ -38,8 +38,7 @@ libgamemusic_la_SOURCES += synth-opl.cpp
 libgamemusic_la_SOURCES += synth-pcm.cpp
 libgamemusic_la_SOURCES += track-split.cpp
 
-EXTRA_libgamemusic_la_SOURCES = audio-util.hpp
-EXTRA_libgamemusic_la_SOURCES += dbopl.hpp
+EXTRA_libgamemusic_la_SOURCES = dbopl.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-midi.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-opl.hpp
 EXTRA_libgamemusic_la_SOURCES += dosbox.hpp

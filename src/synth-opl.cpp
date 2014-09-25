@@ -21,7 +21,7 @@
 #include <algorithm>
 #include <assert.h>
 #include <camoto/gamemusic/synth-opl.hpp>
-#include "audio-util.hpp"
+#include <camoto/gamemusic/audio-util.hpp>
 #include "dbopl.hpp"
 
 using namespace camoto;
@@ -45,9 +45,9 @@ class OPLMixer: public MixerChannel {
 		virtual void AddSamples_m32(Bitu samples, Bit32s *buffer)
 		{
 			while (samples) {
-				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				*this->buf = pcm_mix_s16(*this->buf, pcm_clip_s16(*buffer << VOL_BOOST));
 				this->buf++;
-				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				*this->buf = pcm_mix_s16(*this->buf, pcm_clip_s16(*buffer << VOL_BOOST));
 				this->buf++;
 				buffer++;
 				samples--;
@@ -59,7 +59,7 @@ class OPLMixer: public MixerChannel {
 		{
 			unsigned long samples = frames * 2;
 			while (samples) {
-				*this->buf = mix_pcm(*this->buf, CLIP(*buffer << VOL_BOOST));
+				*this->buf = pcm_mix_s16(*this->buf, pcm_clip_s16(*buffer << VOL_BOOST));
 				this->buf++;
 				buffer++;
 				samples--;
