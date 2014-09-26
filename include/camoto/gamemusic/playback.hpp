@@ -51,7 +51,7 @@ class Playback: virtual public SynthPCMCallback
 			unsigned int order;
 
 			/// Row index within pattern.  Starts at 0.
-			unsigned int row;
+			unsigned long row;
 
 			/// True if the end of the song has been reached.
 			bool end;
