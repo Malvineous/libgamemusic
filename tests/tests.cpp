@@ -46,7 +46,7 @@ void test_main::printNice(boost::test_tools::predicate_result& res,
 	unsigned int len = s.length();
 	for (unsigned int i = 0; i < len; i++) {
 		if ((i > 0) && (i % this->outputWidth == 0)) {
-			res.message() << ' ' << text.str();
+			res.message() << ' ' << CLR_YELLOW << text.str();
 //res.message() << "\" \\";
 			res.message() << CLR_NORM << "\n" << std::setfill('0') << std::setw(3)
 				<< std::hex << i << ": " << c;
