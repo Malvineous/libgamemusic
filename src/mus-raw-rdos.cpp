@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <camoto/util.hpp>
 #include <camoto/iostream_helpers.hpp>
 #include "decode-opl.hpp"
 #include "encode-opl.hpp"
@@ -230,6 +231,13 @@ MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
 void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
+	unsigned long tempo = uS_TO_RAWCLOCK(music->initialTempo.usPerTick);
+	if (tempo > 65534) {
+		throw format_limitation(createString(
+			"The tempo is too slow for this format (tempo is " << tempo
+			<< ", max is 65534)"
+		));
+	}
 	output
 		<< nullPadded("RAWADATA", 8)
 		<< u16le(uS_TO_RAWCLOCK(music->initialTempo.usPerTick))
