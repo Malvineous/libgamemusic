@@ -252,6 +252,8 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
+	this->cachedDelay += delay;
+
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
@@ -266,7 +268,6 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		// This isn't an OPL track, so ignore it
 		return;
 	}
-	this->cachedDelay += delay;
 
 	if (ti.channelType == TrackInfo::OPLPercChannel) {
 		int keyBit = 1 << ti.channelIndex; // instrument-specific keyon
@@ -294,6 +295,8 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const EffectEvent *ev)
 {
+	this->cachedDelay += delay;
+
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
@@ -315,8 +318,6 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 
 	// No free channels
 	if (chipIndex == OPL_INVALID_CHIP) return;
-
-	this->cachedDelay += delay;
 
 	switch (ev->type) {
 		case EffectEvent::PitchbendNote: {
@@ -360,6 +361,8 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
+	this->cachedDelay += delay;
+
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
@@ -375,7 +378,6 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		return;
 	}
 
-	this->cachedDelay += delay;
 	switch (ev->configType) {
 		case ConfigurationEvent::EmptyEvent:
 			break;
