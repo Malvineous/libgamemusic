@@ -158,7 +158,7 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 	music->ticksPerTrack = 64;
 	music->loopDest = -1; // no loop
 
-	IFFReader iff(input, IFF::Filetype_RIFF);
+	IFFReader iff(input, IFF::Filetype_RIFF_Unpadded);
 	IFF::fourcc type;
 	iff.open(FOURCC_RIFF, &type);
 	if (type.compare(FOURCC_DSMF) != 0) throw stream::error("This is not a DSMF file.");
@@ -442,7 +442,7 @@ void MusicType_DSM::write(stream::output_sptr output, SuppData& suppData,
 			"Calculated value is " << tempo << " but max permitted value is 255."));
 	}
 
-	IFFWriter iff(output, IFF::Filetype_RIFF);
+	IFFWriter iff(output, IFF::Filetype_RIFF_Unpadded);
 	iff.begin(FOURCC_RIFF, FOURCC_DSMF);
 
 	uint8_t speed = music->initialTempo.module_speed();
