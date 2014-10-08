@@ -250,10 +250,9 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 	patches->reserve(numDigInst + numOPLInst);
 
 	for (int i = 0; i < numDigInst; i++) {
-		uint32_t unknown;
 		PCMPatchPtr patch(new PCMPatch());
+		input->seekg(4, stream::cur); // skip address_ptr field
 		input
-			>> u32le(unknown)
 			>> u32le(patch->lenData)
 			>> u32le(patch->loopStart)
 			>> u32le(patch->loopEnd)
@@ -263,10 +262,9 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 		patch->bitDepth = 8;
 		patch->numChannels = 1;
 		if (patch->loopEnd == 0x00FFFFFF) patch->loopEnd = 0; // no loop
+		if (patch->loopStart >= patch->lenData) patch->loopStart = 0;
+		if (patch->loopEnd > patch->lenData) patch->loopEnd = patch->lenData;
 		patches->push_back(patch);
-		if (unknown != 0) {
-			std::cout << "CDFM: Got file with unknown value as " << (int)unknown << "\n";
-		}
 	}
 
 	uint8_t inst[11];
