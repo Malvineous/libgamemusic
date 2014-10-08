@@ -69,7 +69,7 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 		int16_t *output_cur = output;
 		bool complete = false;
 		uint8_t *data = sample.patch->data.get();
-		unsigned long lenInput = sample.patch->lenData;
+		unsigned long lenInput = sample.patch->loopEnd ? sample.patch->loopEnd : sample.patch->lenData;
 		unsigned long numOutputSamples = lenInput * this->outputSampleRate / sample.sampleRate;
 		for (unsigned long j = 0; j < len; j++) {
 
