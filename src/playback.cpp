@@ -174,7 +174,7 @@ void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *p
 		if (this->frameBufferPos >= this->frameBuffer.size()) {
 			this->nextFrame();
 		}
-		unsigned long left = std::min(samples, this->frameBuffer.size() - this->frameBufferPos);
+		unsigned long left = std::min(samples, (unsigned long)(this->frameBuffer.size() - this->frameBufferPos));
 		int16_t *in = &this->frameBuffer[this->frameBufferPos];
 		int16_t *out_end = output + left;
 		while (output < out_end) {
