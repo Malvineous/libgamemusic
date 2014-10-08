@@ -27,6 +27,8 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+#define HERTZ_TO_uS(x) (Tempo::US_PER_SEC / (x))
+
 /// Length of each .dro tick in microseconds
 #define DRO_CLOCK  1000
 
@@ -124,7 +126,6 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 		OPLWriterCallback_DRO_v1(stream::output_sptr output)
 			:	output(output),
 				lastChipIndex(0),
-				usPerTick(DRO_CLOCK),
 				msSongLength(0),
 				oplType(DRO_OPLTYPE_OPL2)
 		{
@@ -134,7 +135,8 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 		{
 			if (oplEvent->valid & OPLEvent::Delay) {
 				// Convert ticks into a DRO delay value (which is actually milliseconds)
-				unsigned long delay = oplEvent->delay * this->usPerTick / DRO_CLOCK;
+				unsigned long delay = oplEvent->delay
+					* oplEvent->tempo.usPerTick / HERTZ_TO_uS(DRO_CLOCK);
 				// Write out the delay in one or more lots of 65535, 255 or less.
 				while (delay > 0) {
 					if (delay > 256) {
@@ -186,18 +188,12 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 					<< u8(oplEvent->val)
 				;
 			}
-
-			if (oplEvent->valid & OPLEvent::Tempo) {
-				assert(oplEvent->tempo.usPerTick != 0);
-				this->usPerTick = oplEvent->tempo.usPerTick;
-			}
 			return;
 		}
 
 	protected:
 		stream::output_sptr output; ///< Output file
 		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
-		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
 
 	public:
 		uint32_t msSongLength;      ///< Song length in milliseconds

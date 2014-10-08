@@ -29,6 +29,8 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+#define HERTZ_TO_uS(x) (Tempo::US_PER_SEC / (x))
+
 /// Length of each .dro tick in microseconds
 #define DRO_CLOCK  1000
 
@@ -127,8 +129,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_DRO_v2()
-			:	usPerTick(Tempo::US_PER_SEC / DRO_CLOCK),  // 1ms per tick
-				buffer(new stream::string()),
+			:	buffer(new stream::string()),
 				oplType(DRO2_OPLTYPE_OPL2),
 				codemapLength(0),
 				cachedDelay(0),
@@ -145,7 +146,8 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 				this->cachedDelay += oplEvent->delay;
 
 				// Convert ticks into a DRO delay value (which is actually milliseconds)
-				unsigned long delay = this->cachedDelay * this->usPerTick / DRO_CLOCK;
+				unsigned long delay = oplEvent->delay
+					* oplEvent->tempo.usPerTick / HERTZ_TO_uS(DRO_CLOCK);
 				this->cachedDelay = 0;
 				this->msSongLength += delay;
 				// Write out the delay in one or more lots of 65535, 255 or less.
@@ -226,11 +228,6 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 					;
 				this->numPairs++;
 			}
-
-			if (oplEvent->valid & OPLEvent::Tempo) {
-				assert(oplEvent->tempo.usPerTick != 0);
-				this->usPerTick = oplEvent->tempo.usPerTick;
-			}
 			return;
 		}
 
@@ -264,7 +261,6 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		}
 
 	protected:
-		double usPerTick;           ///< Latest microseconds per tick value (tempo)
 		stream::string_sptr buffer; ///< Buffer to store output data until finish()
 		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 		uint8_t codemapLength;      ///< Number of valid entries in codemap array
