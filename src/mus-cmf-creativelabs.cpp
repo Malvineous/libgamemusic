@@ -446,11 +446,9 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	output
 		<< u16le(offInst)
 		<< u16le(offMusic)
+		<< u16le(music->initialTempo.ticksPerQuarterNote())
+		<< u16le(music->initialTempo.hertz())
 	;
-	output->write(
-		"\x00\x00" // ticks per quarter note
-		"\x00\x00" // ticks per second
-	, 4);
 
 	// Write offset of title, composer and remarks
 	for (int i = 0; i < 3; i++) {
@@ -538,11 +536,6 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 
 	// Set final filesize to this
 	output->truncate_here();
-	output->seekp(10, stream::start);
-	output
-		<< u16le(music->initialTempo.ticksPerQuarterNote())
-		<< u16le(music->initialTempo.hertz())
-	;
 
 	// Update the channel-in-use table
 	uint8_t channelsInUse[MIDI_CHANNEL_COUNT];
