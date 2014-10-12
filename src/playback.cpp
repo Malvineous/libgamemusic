@@ -157,6 +157,7 @@ void Playback::seekByOrder(unsigned int destOrder)
 		return;
 	}
 	this->pattern = this->music->patternOrder[this->order];
+	this->end = false;
 	return;
 }
 
