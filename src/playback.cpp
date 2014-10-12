@@ -278,11 +278,12 @@ void Playback::nextFrame()
 				this->row = 0;
 				this->order++;
 				if (this->order >= this->music->patternOrder.size()) {
-					if (
-						(this->music->loopDest >= 0) &&
-						((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1))
-					) {
-						this->order = this->music->loopDest;
+					if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1)) {
+						if (this->music->loopDest >= 0) {
+							this->order = this->music->loopDest;
+						} else {
+							this->order = 0; // loop back to start by default
+						}
 						this->loop++;
 					} else {
 						this->end = true;
