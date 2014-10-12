@@ -136,6 +136,18 @@ void Playback::setSong(ConstMusicPtr music)
 	rhythmEvent.configType = ConfigurationEvent::EnableRhythm;
 	rhythmEvent.value = rhythm ? 1 : 0;
 	this->oplConverter->handleEvent(0, 0, 0, &rhythmEvent);
+
+	// Some safety checks to assist with debugging
+	for (PatchBank::const_iterator
+		i = music->patches->begin(); i != music->patches->end(); i++
+	) {
+		const PCMPatch *pcmPatch = dynamic_cast<const PCMPatch *>(i->get());
+		if (pcmPatch) {
+			// Make sure the loop end is clipped to be within the sample data
+			assert((pcmPatch->lenData == 0) || (pcmPatch->loopStart < pcmPatch->lenData));
+			assert(pcmPatch->loopEnd <= pcmPatch->lenData);
+		}
+	}
 	return;
 }
 
