@@ -104,6 +104,8 @@ MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
 
 MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 {
+	stream::len lenData = input->size();
+
 	// Skip CTMF header.  This is an absolute seek as it will be by far the most
 	// common situation and avoids a lot of complexity because the header includes
 	// absolute file offsets, which we thus won't have to adjust.
@@ -121,6 +123,22 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		>> u16le(offComposer)
 		>> u16le(offRemarks)
 	;
+
+	// Highway Hunter has weird CMF files with invalid metadata offsets (not to
+	// mention chunks of random data including MTrk chunks and Microsoft
+	// copyright messages!)
+	if (offTitle > lenData) {
+		std::cerr << "Warning: CMF 'title' field starts past EOF, ignoring.\n";
+		offTitle = 0;
+	}
+	if (offComposer > lenData) {
+		std::cerr << "Warning: CMF 'composer' field starts past EOF, ignoring.\n";
+		offComposer = 0;
+	}
+	if (offRemarks > lenData) {
+		std::cerr << "Warning: CMF 'remarks' field starts past EOF, ignoring.\n";
+		offRemarks = 0;
+	}
 
 	// Skip channel-in-use table as we don't need it
 	input->seekg(16, stream::cur);
