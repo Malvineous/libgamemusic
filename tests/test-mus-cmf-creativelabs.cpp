@@ -357,27 +357,27 @@ class test_cmf_creativelabs: public test_music
 			MusicPtr music(this->pType->read(this->base, this->suppData));
 
 			BOOST_REQUIRE_EQUAL(music->patches->size(), 3);
-			OPLPatchPtr a = boost::dynamic_pointer_cast<OPLPatch>(
+			OPLPatchPtr mel = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(0)
 			);
-			OPLPatchPtr b = boost::dynamic_pointer_cast<OPLPatch>(
+			OPLPatchPtr hat = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(1)
 			);
-			OPLPatchPtr c = boost::dynamic_pointer_cast<OPLPatch>(
+			OPLPatchPtr cym = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(2)
 			);
-			BOOST_REQUIRE(a);
-			BOOST_REQUIRE(b);
-			BOOST_REQUIRE(c);
-			BOOST_CHECK_EQUAL(a->rhythm, 0);
-			BOOST_CHECK_EQUAL(b->rhythm, 1);
-			BOOST_CHECK_EQUAL(c->rhythm, 2);
-			BOOST_CHECK_EQUAL(a->m.attackRate, 0x0e);
-			BOOST_CHECK_EQUAL(a->c.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(b->m.attackRate, 0x0e);
-			BOOST_CHECK_EQUAL(b->c.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(c->m.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(c->c.attackRate, 0x0e);
+			BOOST_REQUIRE(mel);
+			BOOST_REQUIRE(hat);
+			BOOST_REQUIRE(cym);
+			BOOST_CHECK_EQUAL(mel->rhythm, 0);
+			BOOST_CHECK_EQUAL(hat->rhythm, 1);
+			BOOST_CHECK_EQUAL(cym->rhythm, 2);
+			BOOST_CHECK_EQUAL(mel->m.attackRate, 0x0e);
+			BOOST_CHECK_EQUAL(mel->c.attackRate, 0x06);
+			BOOST_CHECK_EQUAL(hat->m.attackRate, 0x0e);
+			BOOST_CHECK_EQUAL(hat->c.attackRate, 0x06);
+			BOOST_CHECK_EQUAL(cym->m.attackRate, 0x06);
+			BOOST_CHECK_EQUAL(cym->c.attackRate, 0x0e);
 		}
 };
 
