@@ -25,6 +25,7 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/util-opl.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-mus-vinyl.hpp"
@@ -89,22 +90,6 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 	initialTempo.ticksPerQuarterNote(240);
 	MusicPtr music = midiDecode(input, MIDIFlags::ShortAftertouch, initialTempo);
 
-	for (TrackInfoVector::iterator
-		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
-	) {
-		if (ti->channelIndex >= 11) {
-			ti->channelType = TrackInfo::OPLPercChannel;
-			ti->channelIndex = 15 - ti->channelIndex;
-		} else {
-			ti->channelType = TrackInfo::OPLChannel;
-			if (ti->channelIndex > 8) {
-				std::cout << "cmf-creativelabs: Event on MIDI channel "
-					<< ti->channelIndex << " - map this to a valid OPL channel!\n";
-			}
-			// TODO: remap channels based on channel-in-use table?
-		}
-	}
-
 	// Set standard settings
 	TrackPtr configTrack = music->patterns.at(0)->at(0);
 	{
@@ -142,6 +127,15 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		ev->configType = ConfigurationEvent::EnableWaveSel;
 		ev->value = 1;
 		configTrack->insert(configTrack->begin() + 3, te);
+	}
+	{
+		TrackEvent te;
+		te.delay = 0;
+		ConfigurationEvent *ev = new ConfigurationEvent();
+		te.event.reset(ev);
+		ev->configType = ConfigurationEvent::EnableRhythm;
+		ev->value = 1;
+		configTrack->insert(configTrack->begin() + 4, te);
 	}
 
 	uint16_t numInstruments, offInstData;
@@ -204,9 +198,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 			if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) {
 				// These two have their carrier settings stored in the modulator
 				// fields, so swap them.
-				OPLOperator t = patch->c;
-				patch->c = patch->m;
-				patch->m = t;
+				std::swap(patch->c, patch->m);
 			}
 		} else {
 			patch->rhythm      = 0;
@@ -217,6 +209,42 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 
 	// Disregard the MIDI patches and use the OPL ones
 	music->patches = oplBank;
+
+
+	PatternPtr& pattern = music->patterns[0];
+
+	// For each track
+	unsigned int trackIndex = 0;
+	unsigned int nextChannel = 0;
+	for (Pattern::iterator
+		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
+	) {
+		TrackInfo& ti = music->trackInfo[trackIndex];
+
+		// For each event in the track
+		for (Track::iterator
+			tev = (*pt)->begin(); tev != (*pt)->end(); tev++
+		) {
+			TrackEvent& te = *tev;
+			NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(te.event.get());
+			if (!ev) continue;
+
+			// If we are here, this is a note-on event
+			if (ev->instrument > music->patches->size()) continue;
+
+			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(ev->instrument));
+			if (!oplPatch) continue;
+
+			if (oplPatch->rhythm) {
+				ti.channelType = TrackInfo::OPLPercChannel;
+				ti.channelIndex = oplPatch->rhythm - 1;
+			} else {
+				ti.channelType = TrackInfo::OPLChannel;
+				ti.channelIndex = nextChannel++;
+			}
+			break;
+		}
+	}
 
 	return music;
 }
