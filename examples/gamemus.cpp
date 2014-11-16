@@ -350,7 +350,7 @@ int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
 					queuePos.pop();
 				} else {
 					// The next event hasn't happened yet, leave it for later
-					pbcb.waitUntil = queuePos.front().time;
+					pbcb.waitUntil = nextH.time;
 					break;
 				}
 			}
