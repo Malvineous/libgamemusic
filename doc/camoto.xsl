@@ -7,7 +7,7 @@
 	<xsl:param name="citerefentry.link" select="1"/>
 
 	<xsl:template name="generate.citerefentry.link">
-		<xsl:text>./manpage?prog=</xsl:text>
+		<xsl:text>/camoto/manpage/</xsl:text>
 		<xsl:value-of select="refentrytitle"/>
 	</xsl:template>
 
