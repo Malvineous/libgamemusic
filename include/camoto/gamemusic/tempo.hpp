@@ -26,6 +26,11 @@
 namespace camoto {
 namespace gamemusic {
 
+#define US_PER_SEC 1000000.0
+
+/// Convert Hertz (ticks per second) into microseconds per tick
+#define HERTZ_TO_uS(x) (US_PER_SEC / (x))
+
 /// Collection of methods for managing playback speeds and time signatures
 struct Tempo
 {
@@ -75,8 +80,6 @@ struct Tempo
 	 * the retrig effect is used.)
 	 */
 	unsigned int framesPerTick;
-
-	static const double US_PER_SEC; // set in main.cpp
 
 	inline Tempo()
 		:	beatsPerBar(4),

@@ -478,7 +478,7 @@ MUSEncoder::MUSEncoder(stream::output_sptr output, ConstMusicPtr music,
 	unsigned int musClock)
 	:	output(output),
 		music(music),
-		musClock(Tempo::US_PER_SEC / musClock),
+		musClock(HERTZ_TO_uS(musClock)),
 		lastVelocity(-1)
 {
 	this->usPerTick = music->initialTempo.usPerTick;

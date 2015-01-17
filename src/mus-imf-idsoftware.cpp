@@ -33,8 +33,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define HERTZ_TO_uS(x) (Tempo::US_PER_SEC / (x))
-
 /// Value passed to OPLReaderCallback_IMF c'tor if the length is unused
 #define IMF_LEN_UNUSED ((unsigned int)-1)
 

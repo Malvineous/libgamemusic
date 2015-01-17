@@ -27,7 +27,6 @@ using namespace camoto;
 using namespace camoto::gamemusic;
 
 #define GOT_DEFAULT_TEMPO 120 ///< Default tempo, in Hertz
-#define HERTZ_TO_uS(x) (1000000 / (x))
 
 /// Decode data in an .imf file to provide register/value pairs.
 class OPLReaderCallback_GOT: virtual public OPLReaderCallback

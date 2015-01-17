@@ -88,7 +88,6 @@ struct test_midi: public test_main
 
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
-		gm::tempo_t usPerTick;
 		stream::output_sptr s = this->base;
 		midiEncode(s, this->music, gm::MIDIFlags::Default, NULL,
 			gm::EventHandler::Order_Row_Track, NULL);

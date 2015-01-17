@@ -41,8 +41,6 @@
 namespace camoto {
 namespace gamemusic {
 
-const double Tempo::US_PER_SEC = 1000000.0;
-
 class ActualManager: virtual public Manager
 {
 	public:

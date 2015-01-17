@@ -27,8 +27,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define HERTZ_TO_uS(x) (Tempo::US_PER_SEC / (x))
-
 /// Length of each .dro tick in microseconds
 #define DRO_CLOCK  1000
 

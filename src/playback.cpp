@@ -323,7 +323,7 @@ void Playback::tempoChange(const Tempo& tempo)
 	this->tempo = tempo;
 
 	unsigned long samplesPerTick = this->outputSampleRate
-		* tempo.usPerTick / Tempo::US_PER_SEC;
+		* tempo.usPerTick / US_PER_SEC;
 	this->samplesPerFrame = samplesPerTick / tempo.framesPerTick;
 	this->frameBuffer.assign(this->samplesPerFrame * 2, 0); // *2 == stereo
 	this->frameBufferPos = this->frameBuffer.size();
