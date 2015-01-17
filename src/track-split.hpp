@@ -2,7 +2,7 @@
  * @file   track-split.hpp
  * @brief  Split tracks with multiple notes into separate tracks.
  *
- * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

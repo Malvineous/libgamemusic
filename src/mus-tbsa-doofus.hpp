@@ -2,7 +2,7 @@
  * @file   mus-tbsa-doofus.hpp
  * @brief  Support for The Bone Shaker Architect used in Doofus.
  *
- * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

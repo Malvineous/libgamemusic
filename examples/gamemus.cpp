@@ -2,7 +2,7 @@
  * @file   gamemus.cpp
  * @brief  Command-line interface to libgamemusic.
  *
- * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -696,7 +696,7 @@ int main(int iArgC, char *cArgV[])
 				strFilename = i->value[0];
 			} else if (i->string_key.compare("help") == 0) {
 				std::cout <<
-					"Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>\n"
+					"Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>\n"
 					"This program comes with ABSOLUTELY NO WARRANTY.  This is free software,\n"
 					"and you are welcome to change and redistribute it under certain conditions;\n"
 					"see <http://www.gnu.org/licenses/> for details.\n"
