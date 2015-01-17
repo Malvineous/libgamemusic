@@ -293,14 +293,14 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 			this->cachedDelay = 0;
 			break;
 		case ConfigurationEvent::EnableDeepTremolo: {
-			if (this->deepTremolo != ev->value) {
+			if (this->deepTremolo != (ev->value != 0)) {
 				this->deepTremolo = ev->value;
 				this->updateDeep = true;
 			}
 			break;
 		}
 		case ConfigurationEvent::EnableDeepVibrato: {
-			if (this->deepVibrato != ev->value) {
+			if (this->deepVibrato != (ev->value != 0)) {
 				this->deepVibrato = ev->value;
 				this->updateDeep = true;
 			}
