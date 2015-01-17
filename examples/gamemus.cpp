@@ -31,7 +31,9 @@
 #include <iostream>
 #include <fstream>
 #include <queue>
+#ifndef _MSC_VER
 #include <config.h>
+#endif
 
 namespace po = boost::program_options;
 namespace gm = camoto::gamemusic;
