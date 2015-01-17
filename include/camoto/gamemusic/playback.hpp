@@ -30,10 +30,10 @@ namespace camoto {
 namespace gamemusic {
 
 /// Helper class to assist with song playback.
-class Playback: virtual public SynthPCMCallback
+class DLL_EXPORT Playback: virtual public SynthPCMCallback
 {
 	public:
-		struct Position
+		struct DLL_EXPORT Position
 		{
 			Position();
 
@@ -68,7 +68,7 @@ class Playback: virtual public SynthPCMCallback
 			}
 		};
 
-		class OPLHandler: virtual public OPLWriterCallback
+		class DLL_EXPORT OPLHandler : virtual public OPLWriterCallback
 		{
 			public:
 				OPLHandler(Playback *playback, bool midi);
