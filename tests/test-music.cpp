@@ -315,7 +315,7 @@ void test_music::test_invalidContent(const std::string& content,
 boost::test_tools::predicate_result test_music::is_content_equal(
 	const std::string& exp)
 {
-	return this->is_equal(exp, this->base->str());
+	return this->is_equal(exp, *(this->base->str()));
 }
 
 boost::test_tools::predicate_result test_music::is_supp_equal(
@@ -323,7 +323,7 @@ boost::test_tools::predicate_result test_music::is_supp_equal(
 {
 	stream::string_sptr suppBase =
 		boost::dynamic_pointer_cast<stream::string>(this->suppData[type]);
-	return this->is_equal(strExpected, suppBase->str());
+	return this->is_equal(strExpected, *(suppBase->str()));
 }
 
 void test_music::test_test_init()

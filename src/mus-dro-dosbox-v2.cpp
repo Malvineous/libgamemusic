@@ -255,7 +255,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 				}
 			}
 			// Write the actual OPL data from the buffer
-			output->write(this->buffer->str().c_str(), this->numPairs << 1);
+			output->write(this->buffer->str()->c_str(), this->numPairs << 1);
 
 			return;
 		}

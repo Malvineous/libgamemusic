@@ -93,7 +93,7 @@ struct test_midi: public test_main
 		midiEncode(s, this->music, gm::MIDIFlags::Default, NULL,
 			gm::EventHandler::Order_Row_Track, NULL);
 
-		return this->test_main::is_equal(strExpected, this->base->str());
+		return this->test_main::is_equal(strExpected, *(this->base->str()));
 	}
 
 };
