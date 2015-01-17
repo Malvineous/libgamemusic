@@ -96,14 +96,14 @@ struct Tempo
 	 */
 	inline void bpm(unsigned int bpm)
 	{
-		this->usPerTick = 60.0d * US_PER_SEC / (this->ticksPerBeat * bpm);
+		this->usPerTick = 60.0 * US_PER_SEC / (this->ticksPerBeat * bpm);
 		return;
 	}
 
 	/// Get the tempo as a number of beats per minute.
 	inline unsigned int bpm(void) const
 	{
-		return round(60.0d * US_PER_SEC / ((double)this->ticksPerBeat * this->usPerTick));
+		return round(60.0 * US_PER_SEC / ((double)this->ticksPerBeat * this->usPerTick));
 	}
 
 	/// Set the tempo by the number of ticks in a quarter note.
@@ -213,7 +213,7 @@ struct Tempo
 	inline unsigned long msPerTick(void) const
 	{
 		assert(this->usPerTick != 0);
-		return round(this->usPerTick / 1000.0d);
+		return round(this->usPerTick / 1000.0);
 	}
 };
 
