@@ -176,7 +176,7 @@ namespace gamemusic {
  *   Flag indicating whether percussive instruments need their operators
  *   swapped.
  */
-void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
+void DLL_EXPORT oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
 
 /// Remove all possible duplicate percussive instruments.
 /**
@@ -198,7 +198,7 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
  *   patches will point to the same place as in the original bank - only
  *   the modified patches will be different pointers.
  */
-PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
+PatchBankPtr DLL_EXPORT oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
 
 } // namespace gamemusic
 } // namespace camoto

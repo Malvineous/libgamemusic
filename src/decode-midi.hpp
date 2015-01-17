@@ -53,7 +53,7 @@ namespace gamemusic {
  *   particularly important for a MIDI file to get the beat/bar arrangement
  *   correct.
  */
-MusicPtr midiDecode(stream::input_sptr input, unsigned int flags,
+MusicPtr DLL_EXPORT midiDecode(stream::input_sptr input, unsigned int flags,
 	const Tempo& initialTempo);
 
 } // namespace gamemusic

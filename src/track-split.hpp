@@ -57,7 +57,7 @@ struct DLL_EXPORT PolyphonicEffectEvent: virtual public EffectEvent
  * Run through all tracks in the song and move any polyphonic notes onto
  * separate tracks so that only monophonic tracks exist upon return.
  */
-void splitPolyphonicTracks(MusicPtr& music);
+void DLL_EXPORT splitPolyphonicTracks(MusicPtr& music);
 
 } // namespace gamemusic
 } // namespace camoto
