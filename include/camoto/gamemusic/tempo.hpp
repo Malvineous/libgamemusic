@@ -76,7 +76,7 @@ struct Tempo
 	 */
 	unsigned int framesPerTick;
 
-	static const double US_PER_SEC = 1000000.0d;
+	static const double US_PER_SEC; // set in main.cpp
 
 	inline Tempo()
 		:	beatsPerBar(4),
