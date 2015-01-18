@@ -2,7 +2,7 @@
  * @file   test-mus-dsm-dsik.cpp
  * @brief  Test code for Digital Sound Interface Kit DSM modules.
  *
- * Copyright (C) 2010-2014 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
