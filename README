@@ -74,7 +74,8 @@ a command-line interface to the library as well as an example of how to use
 the library.  This program is installed as part of the "make install" process.
 See "man gamemus" for full details.
 
-All supported music file formats are fully documented on the ModdingWiki - see
-http://www.shikadi.net/moddingwiki/
+All supported file formats are fully documented on the ModdingWiki - see:
+
+ * http://www.shikadi.net/moddingwiki/Category:Music_formats
 
 This library is released under the GPLv3 license.
