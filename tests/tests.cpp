@@ -83,8 +83,8 @@ void test_main::printNice(boost::test_tools::predicate_result& res,
 	}
 
 	// If the last row was only a partial one, pad it out and write the text side
-	if (len % this->outputWidth) {
-		for (int i = len % this->outputWidth; i < this->outputWidth; i++) {
+	if (len > 0) {
+		for (int i = ((len - 1) % this->outputWidth) + 1; i < this->outputWidth; i++) {
 			res.message() << "   ";
 		}
 		res.message() << ' ' << text.str();
