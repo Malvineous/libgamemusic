@@ -102,7 +102,18 @@ struct MIDIFlags {
 		EmbedTempo = 32,
 
 		/// Use extensions for .cmf file format (cmf-creativelabs)
+		/**
+		 * This also preserves note order on MIDI channels 12-15 as they are used
+		 * for OPL percussion.
+		 */
 		CMFExtensions = 64,
+
+		/// Use AdLib .mus format timing bytes.
+		/**
+		 * These use 0xF8 as an overflow byte (of value 240) rather than the high
+		 * bit to signify variable-length timing values.
+		 */
+		AdLibMUS = 128,
 	};
 };
 
@@ -212,11 +223,14 @@ class MIDIEventCallback
 		virtual void endOfSong(uint32_t delay) = 0;
 };
 
+/// Middle-C note number for MIDI functions.
+static const int midiMiddleC = 60;
+
 /// Convert MIDI note number into milliHertz.
 /**
  * @param midi
  *   MIDI note number between 0 and 127 inclusive.  Fractional numbers (i.e.
- *   as a result of a pitchbend) are permitted.
+ *   as a result of a pitchbend) are permitted.  Middle-C is 60.
  *
  * @return Frequency in milliHertz (440000 == 440Hz == A4)
  */

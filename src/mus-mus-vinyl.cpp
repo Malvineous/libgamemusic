@@ -3,7 +3,7 @@
  * @brief  Format handler for Vinyl Goddess From Mars .mus files.
  *
  * This file format is fully documented on the ModdingWiki:
- *   http://www.shikadi.net/moddingwiki/VGFM_Music_Format
+ *   http://www.shikadi.net/moddingwiki/AdLib_MIDI_Format
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -26,12 +26,19 @@
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 #include <camoto/gamemusic/util-opl.hpp>
+#include <camoto/gamemusic/eventconverter-midi.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
 #include "mus-mus-vinyl.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
+
+/// Snare+hi-hat are this many semitones above the last tom-tom note
+const unsigned int SNARE_PERC_OFFSET = 7;
+
+/// Initial tom-tom note until changed.  Two octaves below middle-C.
+const unsigned int DEFAULT_TOM_FREQ = midiMiddleC - 24;
 
 std::string MusicType_MUS_Vinyl::getCode() const
 {
@@ -65,6 +72,15 @@ MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input_sptr psMusic)
 	// TESTED BY: mus_mus_vinyl_isinstance_c02
 	if (lenFile < 0x2A + 4) return MusicType::DefinitelyNo;
 
+	uint8_t majorVersion, minorVersion;
+	psMusic->seekg(0, stream::start);
+	psMusic
+		>> u8(majorVersion)
+		>> u8(minorVersion)
+	;
+	// Unknown version
+	if ((majorVersion != 1) || (minorVersion != 0)) return MusicType::DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_mus_vinyl_isinstance_c01
 	uint32_t lenNotes;
@@ -78,17 +94,39 @@ MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input_sptr psMusic)
 
 MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData) const
 {
-	uint32_t lenNotes;
-	input->seekg(0x2A, stream::start);
-	input >> u32le(lenNotes);
-
-	// Process the MIDI data
-	input->seekg(0x46, stream::start);
+	uint8_t majorVersion, minorVersion, tickBeat, beatMeasure, soundMode, pitchBRange;
+	uint32_t tuneId, totalTick, dataSize, nrCommand;
+	uint16_t basicTempo;
+	std::string title;
+	input->seekg(0, stream::start);
+	input
+		>> u8(majorVersion)
+		>> u8(minorVersion)
+		>> u32le(tuneId)
+		>> nullPadded(title, 30)
+		>> u8(tickBeat)
+		>> u8(beatMeasure)
+		>> u32le(totalTick)
+		>> u32le(dataSize)
+		>> u32le(nrCommand)
+	;
+	input->seekg(8, stream::cur); // skip over filler
+	input
+		>> u8(soundMode)
+		>> u8(pitchBRange)
+		>> u16le(basicTempo)
+	;
+	input->seekg(8, stream::cur); // skip over filler2
 
 	Tempo initialTempo;
-	initialTempo.hertz(500);
-	initialTempo.ticksPerQuarterNote(240);
-	MusicPtr music = midiDecode(input, MIDIFlags::ShortAftertouch, initialTempo);
+	initialTempo.beatsPerBar = beatMeasure;
+	initialTempo.ticksPerBeat = tickBeat;
+	initialTempo.bpm(basicTempo);
+	MusicPtr music = midiDecode(input,
+		MIDIFlags::ShortAftertouch
+		| MIDIFlags::Channel10NoPerc
+		| MIDIFlags::AdLibMUS,
+		initialTempo);
 
 	// Set standard settings
 	TrackPtr configTrack = music->patterns.at(0)->at(0);
@@ -98,7 +136,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		ConfigurationEvent *ev = new ConfigurationEvent();
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableOPL3;
-		ev->value = 1;
+		ev->value = 0;
 		configTrack->insert(configTrack->begin() + 0, te);
 	}
 	{
@@ -134,7 +172,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		ConfigurationEvent *ev = new ConfigurationEvent();
 		te.event.reset(ev);
 		ev->configType = ConfigurationEvent::EnableRhythm;
-		ev->value = 1;
+		ev->value = (soundMode == 0) ? 0 : 1;
 		configTrack->insert(configTrack->begin() + 4, te);
 	}
 
@@ -151,7 +189,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 	oplBank->reserve(numInstruments);
 	ins->seekg(offInstData, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
-		OPLPatchPtr patch(new OPLPatch());
+		OPLPatchPtr oplPatch(new OPLPatch());
 		uint16_t inst[13*2+2];
 		ins->read((uint8_t *)&inst[0], sizeof(inst));
 
@@ -169,7 +207,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 #define INS_KSR      inst[op * 13 + 11]
 #define INS_CON      inst[op * 13 + 12]
 #define INS_WAVESEL  inst[26 + op]
-		OPLOperator *o = &patch->m;
+		OPLOperator *o = &oplPatch->m;
 		for (int op = 0; op < 2; op++) {
 			o->enableTremolo = le16toh(INS_AM) ? 1 : 0;
 			o->enableVibrato = le16toh(INS_VIB) ? 1 : 0;
@@ -183,43 +221,58 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 			o->sustainRate   = le16toh(INS_SUSTAIN) & 0x0f;
 			o->releaseRate   = le16toh(INS_RELEASE) & 0x0f;
 			o->waveSelect    = le16toh(INS_WAVESEL) & 0x07;
-			o = &patch->c;
+			o = &oplPatch->c;
 		}
 		// The instruments store both a Modulator and a Carrier value for the
 		// Feedback and Connection, but the OPL only uses one value for each
-		// Modulator+Carrier pair.  Luckily both values often seem to be set the
+		// Modulator+Carrier pair.  Both values often seem to be set the same,
+		// however the official docs say to use op0 and ignore the op1 value.
 		// same, so we can just pick the Modulator's value here.
 		int op = 0;
-		patch->feedback    = le16toh(INS_FEEDBACK) & 7;
-		patch->connection  = le16toh(INS_CON) ? 0 : 1;
-		// The last five instruments appear to be percussion mode ones
+		oplPatch->feedback   = le16toh(INS_FEEDBACK) & 7;
+		oplPatch->connection = le16toh(INS_CON) ? 0 : 1;
+
+		// The last five instruments are often percussion mode ones.  We'll set
+		// them like this here as defaults, and then if we are wrong, they will
+		// be changed below when we run through the note-on events.
 		if ((signed int)i > (signed int)numInstruments - 6) {
-			patch->rhythm      = (OPLPatch::Rhythm)(numInstruments - i);
-			if (oplCarOnly(patch->rhythm)) {
+			oplPatch->rhythm = (OPLPatch::Rhythm)(numInstruments - i);
+			if (oplCarOnly(oplPatch->rhythm)) {
 				// These two have their carrier settings stored in the modulator
 				// fields, so swap them.
-				std::swap(patch->c, patch->m);
+				std::swap(oplPatch->c, oplPatch->m);
 			}
 		} else {
-			patch->rhythm      = OPLPatch::Melodic;
+			oplPatch->rhythm = OPLPatch::Melodic;
 		}
-
-		oplBank->push_back(patch);
+		oplBank->push_back(oplPatch);
 	}
-
-	// Disregard the MIDI patches and use the OPL ones
-	music->patches = oplBank;
 
 
 	PatternPtr& pattern = music->patterns[0];
 
+	double lastPercNote = DEFAULT_TOM_FREQ;
 	// For each track
 	unsigned int trackIndex = 0;
-	unsigned int nextChannel = 0;
 	for (Pattern::iterator
 		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
 	) {
 		TrackInfo& ti = music->trackInfo[trackIndex];
+		const unsigned int& oplChannel = ti.channelIndex;
+
+		OPLPatch::Rhythm rhythm = OPLPatch::Melodic;
+		if ((soundMode != 0) && (oplChannel > 5)) {
+			// Percussive mode
+			ti.channelType = TrackInfo::OPLPercChannel;
+			ti.channelIndex = 4 - (oplChannel - 6); // 4=bd, 3=snare, ...
+
+			// Convert 'rhythm' from channel index into perc instrument type
+			rhythm = (OPLPatch::Rhythm)(ti.channelIndex + 1);
+		} else {
+			// Melodic mode or melodic instruments in percussive mode
+			ti.channelType = TrackInfo::OPLChannel;
+			// ti.channelIndex = unchanged, leave as source MIDI channel
+		}
 
 		// For each event in the track
 		for (Track::iterator
@@ -230,21 +283,94 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 			if (!ev) continue;
 
 			// If we are here, this is a note-on event
+
+			// midiDecode() returned a MIDI patch bank, which is a list of MIDI patch
+			// numbers used by the song.  For example if the first note in the song
+			// used patch 5, then the bank would contain one entry with a MIDI patch
+			// of 5.
+			//
+			// This means all notes that use MIDI patch 5 are set to instrument #0
+			// because instrument #0 is the only entry in the returned MIDI bank
+			// (and this single entry points to MIDI patch 5, remember.)
+			//
+			// However once we load the OPL instruments, that same event will point
+			// to OPL instrument #0, whereas it needs to point to OPL instrument #5,
+			// as if it was a MIDI patch.
+			//
+			// So we have to go through all the note-on events, find out what MIDI
+			// patch they are using, then change the instrument number to be that of
+			// the final MIDI patch, instead of an index into the MIDI bank.  Once
+			// that's done we can discard the MIDI bank.
 			if (ev->instrument > music->patches->size()) continue;
+			MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>
+				(music->patches->at(ev->instrument));
+			const uint8_t& oplInstrument = midiPatch->midiPatch;
 
-			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(ev->instrument));
-			if (!oplPatch) continue;
-
-			if (oplPatch->rhythm) {
-				ti.channelType = TrackInfo::OPLPercChannel;
-				ti.channelIndex = oplPatch->rhythm - 1;
-			} else {
-				ti.channelType = TrackInfo::OPLChannel;
-				ti.channelIndex = nextChannel++;
+			if (oplInstrument >= oplBank->size()) {
+				std::cerr << "[mus-vinyl] Warning: Song tried to set MIDI patch "
+					<< oplInstrument << " but there are only " << oplBank->size()
+					<< " OPL patches" << std::endl;
+				continue;
 			}
-			break;
+			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(oplBank->at(oplInstrument));
+			// This should never fail as we never add any other type to oplBank above.
+			assert(oplPatch);
+
+			// Remap the instrument from an index into the patchbank back to the
+			// original target MIDI patch number.
+			ev->instrument = oplInstrument;
+			ev->velocity = log_volume_to_lin_velocity(ev->velocity, 255);
+
+			if (soundMode != 0) {
+				// If this instrument is used on a rhythm channel, update that too
+				if (oplPatch->rhythm != rhythm) {
+					// This patch assignment is non-default, so correct it.
+
+					// Undo the swap above, if we swapped operators there.
+					if (oplCarOnly(oplPatch->rhythm)) {
+						// These two have their carrier settings stored in the modulator
+						// fields, so swap them.
+						std::swap(oplPatch->c, oplPatch->m);
+					}
+
+					oplPatch->rhythm = rhythm;
+
+					// Now swap again, if we need to
+					if (oplCarOnly(oplPatch->rhythm)) {
+						// These two have their carrier settings stored in the modulator
+						// fields, so swap them.
+						std::swap(oplPatch->c, oplPatch->m);
+					}
+				}
+
+				switch (rhythm) {
+					case OPLPatch::TomTom:
+						// When a note is played on the tom-tom channel, it changes the
+						// frequency of all single-operator percussion notes.
+						lastPercNote = freqToMIDI(ev->milliHertz);
+						// TODO: We need to immediately update the pitch of any other
+						// percussive notes currently playing.
+						break;
+					case OPLPatch::TopCymbal:
+						ev->milliHertz = midiToFreq(lastPercNote);
+						break;
+					case OPLPatch::SnareDrum:
+					case OPLPatch::HiHat:
+						// This is 142mHz in crush.mus, which definitely isn't two octaves
+						// below middle-C!
+						ev->milliHertz = midiToFreq(lastPercNote + SNARE_PERC_OFFSET);
+						break;
+					case OPLPatch::Unknown:
+					case OPLPatch::Melodic:
+					case OPLPatch::BassDrum:
+						break;
+				}
+			}
 		}
 	}
+
+	// Disregard the MIDI patches and use the OPL ones
+	music->patches = oplBank;
 
 	return music;
 }

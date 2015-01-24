@@ -591,12 +591,26 @@ uint32_t MIDIDecoder::readMIDINumber()
 	assert(this->input);
 
 	uint32_t val = 0;
-	for (int i = 0; i < 4; i++) {
-		uint8_t n;
-		this->input >> u8(n);
-		val <<= 7;
-		val |= (n & 0x7F); // ignore the MSB
-		if (!(n & 0x80)) break; // last byte has the MSB unset
+
+	if (this->midiFlags & MIDIFlags::AdLibMUS) {
+		for (int i = 0; i < 255; i++) { // 255 is just an arbitrary limit
+			uint8_t n;
+			this->input >> u8(n);
+			if (n == 0xF8) {
+				val += 240;
+			} else {
+				val += n;
+				break;
+			}
+		}
+	} else {
+		for (int i = 0; i < 4; i++) {
+			uint8_t n;
+			this->input >> u8(n);
+			val <<= 7;
+			val |= (n & 0x7F); // ignore the MSB
+			if (!(n & 0x80)) break; // last byte has the MSB unset
+		}
 	}
 	return val;
 }

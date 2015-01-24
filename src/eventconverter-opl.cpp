@@ -270,7 +270,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	}
 
 	if (ti.channelType == TrackInfo::OPLPercChannel) {
-		int keyBit = 1 << ti.channelIndex; // instrument-specific keyon
+		uint8_t keyBit = 1 << ti.channelIndex; // instrument-specific keyon
 		this->processNextPair(0, 0xBD,
 			(this->oplState[0][0xBD] & ~keyBit)
 		);
