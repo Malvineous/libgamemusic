@@ -29,6 +29,25 @@ std::ostream& operator << (std::ostream& s, const OPLPatchPtr p)
 	return s;
 }
 
+std::ostream& operator << (std::ostream& s, const OPLOperator& o)
+{
+	s
+		<< (o.enableTremolo ? 'T' : 't')
+		<< (o.enableVibrato ? 'V' : 'v')
+		<< (o.enableSustain ? 'S' : 's')
+		<< (o.enableKSR ? 'K' : 'k') << '.'
+		<< std::setfill('0') << std::setw(2) << (int)o.freqMult << '.'
+		<< std::setfill('0') << std::setw(2) << (int)o.scaleLevel << '-'
+		<< std::setfill('0') << std::setw(2) << (int)o.outputLevel << '.'
+		<< std::setfill('0') << std::setw(2) << (int)o.attackRate << '-'
+		<< std::setfill('0') << std::setw(2) << (int)o.decayRate << '.'
+		<< std::setfill('0') << std::setw(2) << (int)o.sustainRate << '-'
+		<< std::setfill('0') << std::setw(2) << (int)o.releaseRate << '.'
+		<< (int)o.waveSelect
+	;
+	return s;
+}
+
 std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 {
 	s << "[" << std::hex
@@ -36,35 +55,23 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 		<< (int)p.feedback << '.'
 		<< (p.connection ? 'C' : 'c')
 		<< '/'
-
-		<< (p.c.enableTremolo ? 'T' : 't')
-		<< (p.c.enableVibrato ? 'V' : 'v')
-		<< (p.c.enableSustain ? 'S' : 's')
-		<< (p.c.enableKSR ? 'K' : 'k') << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.freqMult << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.scaleLevel << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.outputLevel << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.attackRate << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.decayRate << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.sustainRate << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.c.releaseRate << '.'
-		<< (int)p.c.waveSelect << '/'
-
-		<< (p.m.enableTremolo ? 'T' : 't')
-		<< (p.m.enableVibrato ? 'V' : 'v')
-		<< (p.m.enableSustain ? 'S' : 's')
-		<< (p.m.enableKSR ? 'K' : 'k') << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.freqMult << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.scaleLevel << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.outputLevel << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.attackRate << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.decayRate << '.'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.sustainRate << '-'
-		<< std::setfill('0') << std::setw(2) << (int)p.m.releaseRate << '.'
-		<< (int)p.m.waveSelect
-
+	;
+	if (!OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) {
+		s << p.c;
+	}
+	if (!OPL_IS_RHYTHM_CARRIER_ONLY(p.rhythm)) {
+		if (!OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) s << '/';
+		s << p.m;
+	}
+	s
 		<< ']' << std::dec
 	;
+	if (OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) {
+		s << " {Unused C: " << p.c << "}";
+	}
+	if (OPL_IS_RHYTHM_CARRIER_ONLY(p.rhythm)) {
+		s << " {Unused M: " << p.m << "}";
+	}
 	return s;
 }
 
