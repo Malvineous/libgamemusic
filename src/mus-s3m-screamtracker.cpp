@@ -348,7 +348,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 				}
 				p->feedback    = (inst[10] >> 1) & 0x07;
 				p->connection  =  inst[10] & 1;
-				p->rhythm      = 0;
+				p->rhythm      = OPLPatch::Melodic;
 
 				input->seekg(1, stream::cur);
 				uint8_t volume;

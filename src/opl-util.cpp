@@ -109,7 +109,7 @@ struct Purpose {
 	int map[6];
 };
 
-void mapInstrument(std::vector<Purpose>& instPurpose, unsigned int rhythm,
+void mapInstrument(std::vector<Purpose>& instPurpose, OPLPatch::Rhythm rhythm,
 	unsigned int *inst, PatchBankPtr& patches)
 {
 	Purpose& p = instPurpose[*inst];
@@ -190,13 +190,13 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 				if (ev->instrument > music->patches->size()) continue;
 
 				//Purpose& p = instPurpose[ev->instrument];
-				int rhythm = -1;
+				OPLPatch::Rhythm rhythm = OPLPatch::Unknown;
 				if (ti.channelType == TrackInfo::OPLChannel) {
-					rhythm = 0;
+					rhythm = OPLPatch::Melodic;
 				} else if (ti.channelType == TrackInfo::OPLPercChannel) {
-					rhythm = ti.channelIndex + 1;
+					rhythm = (OPLPatch::Rhythm)(ti.channelIndex + 1);
 				}
-				if (rhythm >= 0) {
+				if (rhythm >= OPLPatch::Melodic) {
 					mapInstrument(instPurpose, rhythm, &ev->instrument, music->patches);
 				}
 			}
@@ -211,7 +211,7 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 		if (!oplPatch) continue;
 		switch (method) {
 			case OPLPerc_CarFromMod:
-				if (OPL_IS_RHYTHM_CARRIER_ONLY(oplPatch->rhythm)) {
+				if (oplCarOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a carrier-only channel, and the
 					// format says the carrier should be loaded from the modulator
 					// settings.
@@ -219,7 +219,7 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 				}
 				break;
 			case OPLPerc_ModFromCar:
-				if (OPL_IS_RHYTHM_MODULATOR_ONLY(oplPatch->rhythm)) {
+				if (oplModOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a modulator-only channel, and the
 					// format says the modulator should be loaded from the carrier
 					// settings.
@@ -251,7 +251,7 @@ PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 		newPatchBank->push_back(oplPatch);
 		switch (method) {
 			case OPLPerc_CarFromMod:
-				if (OPL_IS_RHYTHM_CARRIER_ONLY(oplPatch->rhythm)) {
+				if (oplCarOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a carrier-only channel, and the
 					// format says the carrier should be loaded from the modulator
 					// settings.
@@ -259,7 +259,7 @@ PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 				}
 				break;
 			case OPLPerc_ModFromCar:
-				if (OPL_IS_RHYTHM_MODULATOR_ONLY(oplPatch->rhythm)) {
+				if (oplModOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a modulator-only channel, and the
 					// format says the modulator should be loaded from the carrier
 					// settings.

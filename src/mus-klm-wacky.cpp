@@ -269,7 +269,7 @@ off klm
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = 0;
+		patch->rhythm      = OPLPatch::Melodic;
 
 ///TEMP
 		switch (i) {

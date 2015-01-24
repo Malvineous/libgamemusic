@@ -291,7 +291,7 @@ MusicPtr MusicType_CDFM::read(stream::input_sptr input, SuppData& suppData) cons
 		}
 		patch->feedback    = (inst[0] >> 1) & 0x07;
 		patch->connection  =  inst[0] & 1;
-		patch->rhythm      = 0;
+		patch->rhythm      = OPLPatch::Melodic;
 
 		patches->push_back(patch);
 	}

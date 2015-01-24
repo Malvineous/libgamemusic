@@ -90,7 +90,7 @@ class OPLDecoder
 
 		void createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 			unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
-			unsigned int rhythm, unsigned int b0val);
+			OPLPatch::Rhythm rhythm, unsigned int b0val);
 
 		void createOrUpdatePitchbend(const TrackPtr& track,
 			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
@@ -352,7 +352,7 @@ MusicPtr OPLDecoder::decode()
 
 							if (oplev.val & keyonBit) {
 								this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],
-									oplev.chipIndex, oplChannel, rhythm + 1,
+									oplev.chipIndex, oplChannel, (OPLPatch::Rhythm)(rhythm + 1),
 									oplState[oplev.chipIndex][0xB0 | oplChannel]);
 							} else {
 								TrackEvent te;
@@ -423,15 +423,17 @@ MusicPtr OPLDecoder::decode()
 				if (OPL_IS_RHYTHM_ON && (oplev.chipIndex == 0) && (oplChannel > 5)) {
 					if (noteon && bitsChanged(0x1F)) {
 						// Rhythm-mode instrument (incl. bass drum) has changed pitch
-						this->createOrUpdatePitchbend(pattern->at(track), &this->lastDelay[track],
+						this->createOrUpdatePitchbend(pattern->at(track),
+							&this->lastDelay[track],
 							oplState[oplev.chipIndex][0xA0 | oplChannel], oplev.val);
 					}
 				} else { // normal instrument
 					if (bitsChanged(OPLBIT_KEYON)) {
 						if (oplev.val & OPLBIT_KEYON) {
 							// Note is now on
-							this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],
-								oplev.chipIndex, oplChannel, 0, oplev.val);
+							this->createNoteOn(pattern->at(track), patches,
+								&this->lastDelay[track], oplev.chipIndex, oplChannel,
+								OPLPatch::Melodic, oplev.val);
 						} else {
 							// Note is now off
 							TrackEvent te;
@@ -509,9 +511,9 @@ OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 		o = &curPatch->c;
 	}
 
-	curPatch->feedback        = (this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] >> 1) & 0x07;
-	curPatch->connection      =  this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] & 1;
-	curPatch->rhythm          = 0; // will be overridden later if needed
+	curPatch->feedback   = (this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] >> 1) & 0x07;
+	curPatch->connection =  this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] & 1;
+	curPatch->rhythm     = OPLPatch::Melodic; // will be overridden later if needed
 	return curPatch;
 }
 
@@ -532,7 +534,7 @@ int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 
 void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 	unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
-	unsigned int rhythm, unsigned int b0val)
+	OPLPatch::Rhythm rhythm, unsigned int b0val)
 {
 	TrackEvent te;
 	te.delay = *lastDelay;
@@ -553,7 +555,7 @@ void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 	ev->milliHertz = fnumToMilliHertz(fnum, block, this->fnumConversion);
 
 	// Ignore velocity for modulator-only rhythm instruments
-	if (OPL_IS_RHYTHM_MODULATOR_ONLY(rhythm)) {
+	if (oplModOnly(rhythm)) {
 		ev->velocity = DefaultVelocity;
 	} else {
 		unsigned int curVol = 0x3F &

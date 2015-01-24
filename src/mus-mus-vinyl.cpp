@@ -194,14 +194,14 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 		patch->connection  = le16toh(INS_CON) ? 0 : 1;
 		// The last five instruments appear to be percussion mode ones
 		if ((signed int)i > (signed int)numInstruments - 6) {
-			patch->rhythm      = (numInstruments - i);
-			if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) {
+			patch->rhythm      = (OPLPatch::Rhythm)(numInstruments - i);
+			if (oplCarOnly(patch->rhythm)) {
 				// These two have their carrier settings stored in the modulator
 				// fields, so swap them.
 				std::swap(patch->c, patch->m);
 			}
 		} else {
-			patch->rhythm      = 0;
+			patch->rhythm      = OPLPatch::Melodic;
 		}
 
 		oplBank->push_back(patch);

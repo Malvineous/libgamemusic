@@ -56,34 +56,34 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 		<< (p.connection ? 'C' : 'c')
 		<< '/'
 	;
-	if (!OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) {
+	if (!oplModOnly(p.rhythm)) {
 		s << p.c;
 	}
-	if (!OPL_IS_RHYTHM_CARRIER_ONLY(p.rhythm)) {
-		if (!OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) s << '/';
+	if (!oplCarOnly(p.rhythm)) {
+		if (!oplModOnly(p.rhythm)) s << '/';
 		s << p.m;
 	}
 	s
 		<< ']' << std::dec
 	;
-	if (OPL_IS_RHYTHM_MODULATOR_ONLY(p.rhythm)) {
+	if (oplModOnly(p.rhythm)) {
 		s << " {Unused C: " << p.c << "}";
 	}
-	if (OPL_IS_RHYTHM_CARRIER_ONLY(p.rhythm)) {
+	if (oplCarOnly(p.rhythm)) {
 		s << " {Unused M: " << p.m << "}";
 	}
 	return s;
 }
 
-const char *camoto::gamemusic::rhythmToText(int rhythm)
+const char *camoto::gamemusic::rhythmToText(OPLPatch::Rhythm rhythm)
 {
 	switch (rhythm) {
-		case 0: return "normal (non-rhythm) instrument";
-		case 1: return "hi-hat";
-		case 2: return "top cymbal";
-		case 3: return "tom tom";
-		case 4: return "snare drum";
-		case 5: return "bass drum";
+		case OPLPatch::Melodic: return "normal (non-rhythm) instrument";
+		case OPLPatch::HiHat: return "hi-hat";
+		case OPLPatch::TopCymbal: return "top cymbal";
+		case OPLPatch::TomTom: return "tom tom";
+		case OPLPatch::SnareDrum: return "snare drum";
+		case OPLPatch::BassDrum: return "bass drum";
 		default: return "[unknown instrument type]";
 	}
 }
@@ -107,6 +107,6 @@ OPLOperator::OPLOperator()
 OPLPatch::OPLPatch()
 	:	feedback(0),
 		connection(false),
-		rhythm(0)
+		rhythm(OPLPatch::Melodic)
 {
 }

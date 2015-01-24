@@ -110,14 +110,27 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	 * 4 == snare drum (c only)
 	 * 5 == bass drum (c and m)
 	 */
-	int rhythm;
+	enum Rhythm {
+		Unknown   = -1,
+		Melodic   =  0,
+		HiHat     =  1,
+		TopCymbal =  2,
+		TomTom    =  3,
+		SnareDrum =  4,
+		BassDrum  =  5,
+	};
+	Rhythm rhythm;
 };
 
 /// True if OPLPatch::rhythm parameter is a carrier-only percussion instrument
-#define OPL_IS_RHYTHM_CARRIER_ONLY(c) ((c == 2) || (c == 4))
+inline bool oplCarOnly(OPLPatch::Rhythm c) {
+	return (c == OPLPatch::TopCymbal) || (c == OPLPatch::SnareDrum);
+}
 
 /// True if OPLPatch::rhythm parameter is a modulator-only percussion instrument
-#define OPL_IS_RHYTHM_MODULATOR_ONLY(c) ((c == 1) || (c == 3))
+inline bool oplModOnly(OPLPatch::Rhythm c) {
+	return (c == OPLPatch::HiHat) || (c == OPLPatch::TomTom);
+}
 
 inline bool operator== (const OPLOperator& a, const OPLOperator& b)
 {
@@ -144,15 +157,15 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 //	if (a.rhythm != b.rhythm) return false;
 
 	if ((
-		(!OPL_IS_RHYTHM_MODULATOR_ONLY(a.rhythm))
-		|| (!OPL_IS_RHYTHM_MODULATOR_ONLY(b.rhythm))
+		(!oplModOnly(a.rhythm))
+		|| (!oplModOnly(b.rhythm))
 	) && (
 		!(a.c == b.c)
 	)) return false;  // carrier used and didn't match
 
 	if ((
-		(!OPL_IS_RHYTHM_CARRIER_ONLY(a.rhythm))
-		|| (!OPL_IS_RHYTHM_CARRIER_ONLY(b.rhythm))
+		(!oplCarOnly(a.rhythm))
+		|| (!oplCarOnly(b.rhythm))
 	) && (
 		!(a.m == b.m)
 	)) return false;  // modulator used and didn't match
@@ -175,7 +188,7 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 typedef boost::shared_ptr<OPLPatch> OPLPatchPtr;
 
 /// Convert the OPLPatch::rhythm value into text for error messages.
-const char DLL_EXPORT *rhythmToText(int rhythm);
+const char DLL_EXPORT *rhythmToText(OPLPatch::Rhythm rhythm);
 
 } // namespace gamemusic
 } // namespace camoto

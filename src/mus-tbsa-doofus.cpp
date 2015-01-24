@@ -212,7 +212,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 
 		patch->feedback         = inst[5] & 0x07;
 		patch->connection       = inst[10] & 1;
-		patch->rhythm           = 0;
+		patch->rhythm           = OPLPatch::Melodic;
 
 		patches->push_back(patch);
 	}

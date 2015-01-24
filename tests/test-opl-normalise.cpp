@@ -119,37 +119,37 @@ gm::MusicPtr createDefaultMusic()
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 1;
 	opl->m.attackRate = 2;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 3;
 	opl->m.attackRate = 4;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 5;
 	opl->m.attackRate = 6;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 7;
 	opl->m.attackRate = 8;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 9;
 	opl->m.attackRate = 10;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	opl.reset(new gm::OPLPatch);
 	opl->c.attackRate = 11;
 	opl->m.attackRate = 12;
-	opl->rhythm = 0;
+	opl->rhythm = gm::OPLPatch::Melodic;
 	music->patches->push_back(opl);
 
 	return music;

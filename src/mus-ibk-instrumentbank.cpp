@@ -115,7 +115,7 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = 0;
+		patch->rhythm      = OPLPatch::Melodic;
 
 		uint8_t *name = &names[i * IBK_NAME_LEN];
 		unsigned int namelen = 9;

@@ -260,7 +260,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = 0;
+		patch->rhythm      = OPLPatch::Melodic;
 
 		oplBank->push_back(patch);
 	}
@@ -291,7 +291,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = 0;
+		patch->rhythm      = OPLPatch::Melodic;
 
 		oplBankDefault->push_back(patch);
 		genericMapping[i] = -1; // not yet assigned
@@ -534,7 +534,7 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 			inst[6 + op] = (o->sustainRate << 4) | (o->releaseRate & 0x0F);
 			inst[8 + op] =  o->waveSelect & 7;
 
-			if (OPL_IS_RHYTHM_CARRIER_ONLY(patch->rhythm)) break; // ignore other op
+			if (oplCarOnly(patch->rhythm)) break; // ignore other op
 			o = &patch->c;
 		}
 		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
