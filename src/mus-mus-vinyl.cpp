@@ -372,6 +372,8 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 	// Disregard the MIDI patches and use the OPL ones
 	music->patches = oplBank;
 
+	if (!title.empty()) music->metadata[Metadata::Title] = title;
+
 	return music;
 }
 
