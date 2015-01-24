@@ -38,6 +38,7 @@ class test_dro_dosbox_v1: public test_music
 
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_delay_combining);
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_inst_read);
+			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_perc_dupe);
 
 			// c00: Normal
 			this->isInstance(MusicType::DefinitelyYes, this->standard());
@@ -207,6 +208,187 @@ class test_dro_dosbox_v1: public test_music
 				"\xb0\x12"
 			);
 			BOOST_REQUIRE(this->is_content_equal(target));
+		}
+
+		/// Make sure the percussion patches are duplicated if they refer to
+		/// different rhythm instruments.
+		void test_perc_dupe()
+		{
+			this->base.reset(new stream::string());
+			this->base << STRING_WITH_NULLS(
+				"DBRAWOPL" "\x00\x00\x01\x00"
+				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
+				"\x00\x07" // initial delay
+				"\x20\x11\x40\x11\x60\x11\x80\x11\xe0\x11"
+				"\x23\x11\x43\x11\x63\x11\x83\x11\xe3\x11\xc0\x11"
+				"\xa0\x44"
+				"\xb0\x32" "\x00\x0f"
+				"\xb0\x12" "\x00\x03"
+				// Rhythm hi-hat
+				"\x31\x11"
+				"\x51\x11"
+				"\x71\x11"
+				"\x91\x11"
+				"\xf1\x11"
+				"\xa7\x11"
+				"\xb7\x11"
+				"\xbd\x21" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				// Rhythm top-cymbal
+				"\x35\x11"
+				"\x55\x11"
+				"\x75\x11"
+				"\x95\x11"
+				"\xf5\x11"
+				"\xa8\x11"
+				"\xb8\x11"
+				"\xbd\x22" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				// Rhythm tom-tom
+				"\x32\x11"
+				"\x52\x11"
+				"\x72\x11"
+				"\x92\x11"
+				"\xf2\x11"
+				"\xa8\x11"
+				"\xb8\x11"
+				"\xbd\x24" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				// Rhythm snare
+				"\x34\x11"
+				"\x54\x11"
+				"\x74\x11"
+				"\x94\x11"
+				"\xf4\x11"
+				"\xa7\x11"
+				"\xb7\x11"
+				"\xbd\x28" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				// Rhythm bass-drum
+				"\x30\x11"
+				"\x50\x11"
+				"\x70\x11"
+				"\x90\x11"
+				"\xf0\x11"
+				"\x33\x11"
+				"\x53\x11"
+				"\x73\x11"
+				"\x93\x11"
+				"\xf3\x11"
+				"\xa6\x11"
+				"\xb6\x11"
+				"\xbd\x30" "\x00\x0f"
+				"\xbd\x20" "\x00\x03" // trailing delay
+			);
+			MusicPtr music(this->pType->read(this->base, this->suppData));
+			CHECK_OPL_PATCH(0, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(0, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(0, rhythm, OPLPatch::Melodic);
+			// Rhythm hi-hat
+			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(1, rhythm, OPLPatch::HiHat);
+			// Rhythm top-cymbal
+			CHECK_OPL_PATCH(2, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(2, rhythm, OPLPatch::TopCymbal);
+			// Rhythm tom-tom
+			CHECK_OPL_PATCH(3, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(3, rhythm, OPLPatch::TomTom);
+			// Rhythm snare
+			CHECK_OPL_PATCH(4, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(4, rhythm, OPLPatch::SnareDrum);
+			// Rhythm bass-drum
+			CHECK_OPL_PATCH(5, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(5, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(5, rhythm, OPLPatch::BassDrum);
+
+			// Do exactly the same again but load all the instruments before playing
+			// any notes.
+			this->base.reset(new stream::string());
+			this->base << STRING_WITH_NULLS(
+				"DBRAWOPL" "\x00\x00\x01\x00"
+				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
+				"\x00\x07" // initial delay
+				"\x20\x11\x40\x11\x60\x11\x80\x11\xe0\x11"
+				"\x23\x11\x43\x11\x63\x11\x83\x11\xe3\x11\xc0\x11"
+				// Rhythm hi-hat
+				"\x31\x11"
+				"\x51\x11"
+				"\x71\x11"
+				"\x91\x11"
+				"\xf1\x11"
+				"\xa7\x11"
+				"\xb7\x11"
+				// Rhythm top-cymbal
+				"\x35\x11"
+				"\x55\x11"
+				"\x75\x11"
+				"\x95\x11"
+				"\xf5\x11"
+				"\xa8\x11"
+				"\xb8\x11"
+				// Rhythm tom-tom
+				"\x32\x11"
+				"\x52\x11"
+				"\x72\x11"
+				"\x92\x11"
+				"\xf2\x11"
+				"\xa8\x11"
+				"\xb8\x11"
+				// Rhythm snare
+				"\x34\x11"
+				"\x54\x11"
+				"\x74\x11"
+				"\x94\x11"
+				"\xf4\x11"
+				"\xa7\x11"
+				"\xb7\x11"
+				// Rhythm bass-drum
+				"\x30\x11"
+				"\x50\x11"
+				"\x70\x11"
+				"\x90\x11"
+				"\xf0\x11"
+				"\x33\x11"
+				"\x53\x11"
+				"\x73\x11"
+				"\x93\x11"
+				"\xf3\x11"
+				"\xa6\x11"
+				"\xb6\x11"
+				"\xa0\x44"
+				"\xb0\x32" "\x00\x0f"
+				"\xb0\x12" "\x00\x03"
+				"\xbd\x21" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				"\xbd\x22" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				"\xbd\x24" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				"\xbd\x28" "\x00\x0f"
+				"\xbd\x20" "\x00\x03"
+				"\xbd\x30" "\x00\x0f"
+				"\xbd\x20" "\x00\x03" // trailing delay
+			);
+			music = this->pType->read(this->base, this->suppData);
+			CHECK_OPL_PATCH(0, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(0, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(0, rhythm, 0);
+			// Rhythm hi-hat
+			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(1, rhythm, 1);
+			// Rhythm top-cymbal
+			CHECK_OPL_PATCH(2, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(2, rhythm, 2);
+			// Rhythm tom-tom
+			CHECK_OPL_PATCH(3, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(3, rhythm, 3);
+			// Rhythm snare
+			CHECK_OPL_PATCH(4, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(4, rhythm, 4);
+			// Rhythm bass-drum
+			CHECK_OPL_PATCH(5, m.attackRate, 0x1);
+			CHECK_OPL_PATCH(5, c.attackRate, 0x1);
+			CHECK_OPL_PATCH(5, rhythm, 5);
 		}
 };
 
