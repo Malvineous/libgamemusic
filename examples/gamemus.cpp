@@ -594,6 +594,9 @@ int main(int iArgC, char *cArgV[])
 		("list-instruments,i",
 			"list channel map and all instruments in the song")
 
+		("list-tags,a",
+			"list metadata tags (title, etc.)")
+
 		("remap-tracks,m", po::value<std::string>(),
 			"change the target channel for each track")
 
@@ -1021,6 +1024,23 @@ int main(int iArgC, char *cArgV[])
 					psMusicOut->remove();
 					return RET_UNCOMMON_FAILURE;
 				}
+
+			} else if (i->string_key.compare("list-tags") == 0) {
+				bool listed = false;
+				for (camoto::Metadata::TypeMap::const_iterator
+					i = pMusic->metadata.begin(); i != pMusic->metadata.end(); i++
+				) {
+					switch (i->first) {
+						case camoto::Metadata::Description: std::cout << "Description"; break;
+						case camoto::Metadata::PaletteFilename: std::cout << "Palette Filename"; break;
+						case camoto::Metadata::Version: std::cout << "Version"; break;
+						case camoto::Metadata::Title: std::cout << "Title"; break;
+						case camoto::Metadata::Author: std::cout << "Author"; break;
+					}
+					std::cout << ": " << i->second << "\n";
+					listed = true;
+				}
+				if (!listed) std::cout << "No tags.\n";
 
 			} else if (i->string_key.compare("list-instruments") == 0) {
 				std::cout << "Loop return: ";
