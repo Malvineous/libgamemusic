@@ -147,6 +147,9 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		 */
 		void mix(int16_t *output, unsigned long samples, Position *pos);
 
+		/// Switch all playing notes off.  Notes will still linger as they fade out.
+		void allNotesOff();
+
 		// TempoCallback
 		virtual void tempoChange(const Tempo& tempo);
 

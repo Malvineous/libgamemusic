@@ -210,6 +210,40 @@ void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *p
 	return;
 }
 
+void Playback::allNotesOff()
+{
+	const PatternPtr& pattern = this->music->patterns.at(this->pattern);
+	unsigned int trackIndex = 0;
+	TrackInfoVector::const_iterator ti = this->music->trackInfo.begin();
+	for (Pattern::const_iterator
+		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++, ti++
+	) {
+		NoteOffEvent *ev = new NoteOffEvent();
+		EventPtr event(ev);
+		if (
+			(ti->channelType == TrackInfo::AnyChannel)
+			|| (ti->channelType == TrackInfo::OPLChannel)
+			|| (ti->channelType == TrackInfo::OPLPercChannel)
+		) {
+			event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
+		}
+		if (
+			(ti->channelType == TrackInfo::AnyChannel)
+			|| (ti->channelType == TrackInfo::MIDIChannel)
+		) {
+			event->processEvent(0, trackIndex, this->pattern, this->oplConvMIDI.get());
+			event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
+		}
+		if (
+			(ti->channelType == TrackInfo::AnyChannel)
+			|| (ti->channelType == TrackInfo::PCMChannel)
+		) {
+			event->processEvent(0, trackIndex, this->pattern, &this->pcm);
+		}
+	}
+	return;
+}
+
 void Playback::nextFrame()
 {
 	// Trigger the next event
@@ -300,16 +334,16 @@ void Playback::nextFrame()
 					} else {
 						this->end = true;
 						this->frame = 0;
-						return; // don't update this->pattern
 					}
+					this->allNotesOff();
 				}
-				if (this->music->patternOrder.size() <= this->order) {
+				if (this->order >= this->music->patternOrder.size()) {
 					// order points past end of patterns
 					this->end = true;
 					this->frame = 0;
-					return;
+				} else {
+					this->pattern = this->music->patternOrder[this->order];
 				}
-				this->pattern = this->music->patternOrder[this->order];
 			}
 		}
 	}
