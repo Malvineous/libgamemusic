@@ -1031,7 +1031,30 @@ int main(int iArgC, char *cArgV[])
 				for (std::vector<gm::TrackInfo>::const_iterator
 					i = pMusic->trackInfo.begin(); i != pMusic->trackInfo.end(); i++, j++
 				) {
-					std::cout << "Track " << j << ": " << getTrackChannelText(*i) << "\n";
+					std::cout << "Track " << j << ": " << getTrackChannelText(*i)
+						<< " (inst:";
+					// Figure out which instruments play on this channel
+					std::map<unsigned int, bool> printed;
+					for (std::vector<gm::PatternPtr>::const_iterator
+						pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++
+					) {
+						gm::TrackPtr& pt = (*pp)->at(j);
+						for (gm::Track::const_iterator
+							tev = pt->begin(); tev != pt->end(); tev++
+						) {
+							const gm::TrackEvent& te = *tev;
+							const gm::NoteOnEvent *ev = dynamic_cast<const gm::NoteOnEvent *>(te.event.get());
+							if (!ev) continue;
+
+							// If we are here, this is a note-on event
+							if (printed.find(ev->instrument) == printed.end()) {
+								std::cout << ' ' << ev->instrument;
+								printed[ev->instrument] = true;
+							}
+						}
+					}
+					if (printed.size() == 0) std::cout << " none";
+					std::cout << ")\n";
 				}
 				std::cout << std::endl;
 
@@ -1314,6 +1337,10 @@ int main(int iArgC, char *cArgV[])
 			} else if (i->string_key.compare("force") == 0) {
 			} else if (i->string_key.compare("f") == 0) {
 			}
+
+			// Make sure output doesn't get mixed in with PortAudio messages
+			std::cout << std::flush;
+
 		} // for (all command line elements)
 
 	} catch (const po::unknown_option& e) {
