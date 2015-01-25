@@ -473,12 +473,12 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		output << u16le(offText[i]);
 	}
 
-	// Temporary channel-in-use table
+	// Placeholder channel-in-use table (overwritten later)
 	for (int i = 0; i < 16; i++) output << u8(1);
 
 	output
 		<< u16le(numInstruments)
-		<< u16le(0) // TODO: default value for 'basic tempo'
+		<< u16le(music->initialTempo.bpm())
 	;
 
 	// Write title, composer and remarks strings here (null terminated)
