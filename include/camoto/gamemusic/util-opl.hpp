@@ -1,5 +1,5 @@
 /**
- * @file   opl-util.hpp
+ * @file   util-opl.hpp
  * @brief  Utility functions related to OPL chips.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
@@ -142,6 +142,14 @@ int DLL_EXPORT fnumToMilliHertz(unsigned int fnum, unsigned int block,
 void DLL_EXPORT milliHertzToFnum(unsigned int milliHertz,
 	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor);
 
+} // namespace gamemusic
+} // namespace camoto
+
+#include <camoto/gamemusic/music.hpp>
+
+namespace camoto {
+namespace gamemusic {
+
 typedef enum {
 	/// Matching operators: mod -> mod, car -> car, for all rhythm instruments.
 	OPLPerc_MatchingOps,
@@ -150,14 +158,6 @@ typedef enum {
 	/// Modulator-only perc have settings loaded from the carrier fields.
 	OPLPerc_ModFromCar,
 } OPL_NORMALISE_PERC;
-
-} // namespace gamemusic
-} // namespace camoto
-
-#include <camoto/gamemusic/music.hpp>
-
-namespace camoto {
-namespace gamemusic {
 
 /// Ensure all the percussive instruments are set correctly.
 /**
