@@ -29,6 +29,7 @@
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
+#include "patch-adlib.hpp"
 #include "mus-mus-vinyl.hpp"
 
 using namespace camoto;
@@ -190,47 +191,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 	ins->seekg(offInstData, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
 		OPLPatchPtr oplPatch(new OPLPatch());
-		uint16_t inst[13*2+2];
-		ins->read((uint8_t *)&inst[0], sizeof(inst));
-
-#define INS_KSL      inst[op * 13 + 0]
-#define INS_MULTIPLE inst[op * 13 + 1]
-#define INS_FEEDBACK inst[op * 13 + 2]
-#define INS_ATTACK   inst[op * 13 + 3]
-#define INS_SUSTAIN  inst[op * 13 + 4]
-#define INS_EG       inst[op * 13 + 5]
-#define INS_DECAY    inst[op * 13 + 6]
-#define INS_RELEASE  inst[op * 13 + 7]
-#define INS_LEVEL    inst[op * 13 + 8]
-#define INS_AM       inst[op * 13 + 9]
-#define INS_VIB      inst[op * 13 + 10]
-#define INS_KSR      inst[op * 13 + 11]
-#define INS_CON      inst[op * 13 + 12]
-#define INS_WAVESEL  inst[26 + op]
-		OPLOperator *o = &oplPatch->m;
-		for (int op = 0; op < 2; op++) {
-			o->enableTremolo = le16toh(INS_AM) ? 1 : 0;
-			o->enableVibrato = le16toh(INS_VIB) ? 1 : 0;
-			o->enableSustain = le16toh(INS_EG) ? 1 : 0;
-			o->enableKSR     = le16toh(INS_KSR) ? 1 : 0;
-			o->freqMult      = le16toh(INS_MULTIPLE) & 0x0f;
-			o->scaleLevel    = le16toh(INS_KSL) & 0x03;
-			o->outputLevel   = le16toh(INS_LEVEL) & 0x3f;
-			o->attackRate    = le16toh(INS_ATTACK) & 0x0f;
-			o->decayRate     = le16toh(INS_DECAY) & 0x0f;
-			o->sustainRate   = le16toh(INS_SUSTAIN) & 0x0f;
-			o->releaseRate   = le16toh(INS_RELEASE) & 0x0f;
-			o->waveSelect    = le16toh(INS_WAVESEL) & 0x07;
-			o = &oplPatch->c;
-		}
-		// The instruments store both a Modulator and a Carrier value for the
-		// Feedback and Connection, but the OPL only uses one value for each
-		// Modulator+Carrier pair.  Both values often seem to be set the same,
-		// however the official docs say to use op0 and ignore the op1 value.
-		// same, so we can just pick the Modulator's value here.
-		int op = 0;
-		oplPatch->feedback   = le16toh(INS_FEEDBACK) & 7;
-		oplPatch->connection = le16toh(INS_CON) ? 0 : 1;
+		readAdLibPatch<uint16_t>(ins, &*oplPatch);
 
 		// The last five instruments are often percussion mode ones.  We'll set
 		// them like this here as defaults, and then if we are wrong, they will
