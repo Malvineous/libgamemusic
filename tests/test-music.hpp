@@ -35,10 +35,6 @@ using namespace camoto::gamemusic;
 /// Print a list of all the events in the song to stdout.
 void listEvents(MusicPtr music);
 
-/// Exception thrown if test_musicmetadata::metadata_*() is called for
-/// unsupported fields.
-class test_metadata_not_supported {};
-
 class test_music: public test_main
 {
 	public:

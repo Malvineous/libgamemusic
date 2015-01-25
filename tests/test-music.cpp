@@ -523,25 +523,30 @@ void test_music::test_metadata_generic(const std::string& name,
 
 std::string test_music::metadata_desc_replaced()
 {
-	throw new test_metadata_not_supported;
+	BOOST_FAIL("No file content supplied for changed metadata element: Description");
+	return std::string();
 }
 
 std::string test_music::metadata_palfile_replaced()
 {
-	throw new test_metadata_not_supported;
+	BOOST_FAIL("No file content supplied for changed metadata element: PaletteFilename");
+	return std::string();
 }
 
 std::string test_music::metadata_version_replaced()
 {
-	throw new test_metadata_not_supported;
+	BOOST_FAIL("No file content supplied for changed metadata element: Version");
+	return std::string();
 }
 
 std::string test_music::metadata_title_replaced()
 {
-	throw new test_metadata_not_supported;
+	BOOST_FAIL("No file content supplied for changed metadata element: Title");
+	return std::string();
 }
 
 std::string test_music::metadata_author_replaced()
 {
-	throw new test_metadata_not_supported;
+	BOOST_FAIL("No file content supplied for changed metadata element: Author");
+	return std::string();
 }
