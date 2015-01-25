@@ -25,6 +25,7 @@ File formats from the following games are supported:
   * Blake Stone (.wlf)
   * Commander Keen (.imf)
   * Cosmo's Cosmic Adventures (.imf)
+  * Dark Ages (.mid, with OPL patches in sysex events) [read only]
   * Doofus (.bsa) [read only]
   * Doom (.mus)
   * Drum Blaster (early .cmf)

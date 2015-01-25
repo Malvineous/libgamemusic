@@ -23,6 +23,8 @@
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
+#include <camoto/gamemusic/patch-opl.hpp>
+#include "patch-adlib.hpp"
 #include "decode-midi.hpp"
 #include "track-split.hpp"
 
@@ -535,23 +537,98 @@ MusicPtr MIDIDecoder::decode()
 									}
 									break;
 								}
+								case 0x7F: { // AdLib MDI
+									if (len < 3+2+1) break; // too short for opcode + data
+									uint8_t mfgId1;
+									uint16_t mfgId2;
+									this->input
+										>> u8(mfgId1)
+										>> u16be(mfgId2)
+									;
+									len -= 3;
+									if ((mfgId1 == 0) && (mfgId2 == 0x3F)) {
+										// AdLib MDI opcode
+										uint16_t opcode;
+										this->input >> u16be(opcode);
+										len -= 2;
+										switch (opcode) {
+											case 1: { // Instrument change
+												uint8_t channel;
+												this->input >> u8(channel);
+												len--;
+												if (len < 28) {
+													std::cout << "[decode-midi] Got AdLib patch change "
+														"but register data is only " << len
+														<< " bytes long (expected 28)" << std::endl;
+													break;
+												}
+												if (channel > 15) {
+													std::cout << "[decode-midi] Got AdLib patch change "
+														"for out-of-range channel #" << (int)channel
+														<< ", ignoring." << std::endl;
+													break;
+												}
+												OPLPatchPtr oplPatch(new OPLPatch);
+												readAdLibPatch<uint8_t>(this->input, &*oplPatch);
+												len -= 28;
+												this->currentInstrument[channel] = music->patches->size();
+												music->patches->push_back(oplPatch);
+
+												// Switch this track from MIDI instruments to OPL ones
+												TrackInfo& t = music->trackInfo[channel];
+												t.channelType = TrackInfo::OPLChannel;
+												break;
+											}
+											case 2: { // Rhythm-mode change
+												uint8_t soundMode;
+												this->input >> u8(soundMode);
+												len--;
+												TrackEvent te;
+												te.delay = this->lastDelay[track];
+												this->lastDelay[track] = 0;
+												ConfigurationEvent *ev = new ConfigurationEvent();
+												te.event.reset(ev);
+												ev->configType = ConfigurationEvent::EnableRhythm;
+												ev->value = (soundMode == 0) ? 0 : 1;
+												pattern->at(track)->push_back(te);
+												break;
+											}
+											case 3: { // Pitchbend range change
+												uint8_t pitchBRange;
+												this->input >> u8(pitchBRange);
+												len--;
+												std::cout << "[decode-midi] AdLib pitchbend range "
+													"change (to " << (int)pitchBRange
+													<< ") unimplemented!" << std::endl;
+												break;
+											}
+										}
+									} else {
+										// Unknown manufacturer ID, skip
+										std::cout << "[decode-midi] Unknown manufacturer ID in "
+											"MIDI meta-event 0x7F: " << std::hex << (int)mfgId1
+											<< "/" << mfgId2 << std::dec << std::endl;
+									}
+									this->input->seekg(len, stream::cur); // message data (ignored)
+									break;
+								}
 								default:
-									std::cout << "Unknown MIDI meta-event 0x" << std::hex
-										<< (int)evdata << std::dec << std::endl;
+									std::cout << "[decode-midi] Unknown MIDI meta-event 0x"
+										<< std::hex << (int)evdata << std::dec << std::endl;
 									this->input->seekg(len, stream::cur); // message data (ignored)
 									break;
 							}
 							break;
 						}
 						default:
-							std::cout << "Unknown MIDI system command 0x" << std::hex
-								<< (int)event << std::dec << std::endl;
+							std::cout << "[decode-midi] Unknown MIDI system command 0x"
+								<< std::hex << (int)event << std::dec << std::endl;
 							break;
 					}
 					break;
 				default:
-					std::cout << "Unknown MIDI command 0x" << std::hex << (int)event
-						<< std::dec << std::endl;
+					std::cout << "[decode-midi] Unknown MIDI command 0x" << std::hex
+						<< (int)event << std::dec << std::endl;
 					break;
 			}
 		} while (!eof);
