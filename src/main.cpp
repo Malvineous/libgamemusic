@@ -21,6 +21,7 @@
 #include <camoto/gamemusic/manager.hpp>
 
 // Include all the file formats for the Manager to load
+#include "ins-ins-adlib.hpp"
 #include "mus-imf-idsoftware.hpp"
 #include "mus-dro-dosbox-v1.hpp"
 #include "mus-dro-dosbox-v2.hpp"
@@ -61,6 +62,10 @@ const ManagerPtr getManager()
 
 ActualManager::ActualManager()
 {
+	// Instruments/instrument banks
+	this->musicTypes.push_back(MusicTypePtr(new MusicType_INS_AdLib()));
+
+	// Songs
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM()));
 	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM_GUS()));

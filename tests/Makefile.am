@@ -3,6 +3,7 @@ check_PROGRAMS = tests
 tests_SOURCES = tests.cpp
 #tests_SOURCES += test-patchbank-ibk.cpp
 tests_SOURCES += test-midi.cpp
+tests_SOURCES += test-ins-ins-adlib.cpp
 tests_SOURCES += test-mus-imf-idsoftware-type0.cpp
 tests_SOURCES += test-mus-imf-idsoftware-type1.cpp
 tests_SOURCES += test-mus-raw-rdos.cpp
