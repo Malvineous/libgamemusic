@@ -53,13 +53,13 @@ class test_cmf_creativelabs: public test_music
 				"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x01\x01\x01\x01"
 				"\x06\x00"
 				"\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 				// Duplicated instruments, until the normalisation problems are solved
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 
 				"\x05" "\xc0\x00"     // leading delay
 				"\x00" "\x90\x45\x7f"
@@ -103,13 +103,13 @@ class test_cmf_creativelabs: public test_music
 				"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x01\x01\x01\x01"
 				"\x06\x00"
 				"\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 				// Duplicated instruments, until the normalisation problems are solved
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\x7E\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 
 				"\x05" "\xc0\x00"     // leading delay
 				"\x00" "\x90\x45\x7f"
@@ -205,13 +205,13 @@ class test_cmf_creativelabs: public test_music
 				"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x01\x01\x01\x01"
 				"\x06\x00"
 				"\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 				// Duplicated instruments, until the normalisation problems are solved
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 
 				"\x05" "\xc0\x00"     // leading delay
 				"\x00" "\x90\x45\x7f"
@@ -250,18 +250,29 @@ class test_cmf_creativelabs: public test_music
 		void test_op_swap()
 		{
 			MusicPtr music(this->pType->read(this->base, this->suppData));
-			OPLPatchPtr a = boost::dynamic_pointer_cast<OPLPatch>(
+
+			BOOST_REQUIRE_GE(music->patches->size(), 3);
+			OPLPatchPtr mel = boost::dynamic_pointer_cast<OPLPatch>(
+				music->patches->at(0)
+			);
+			OPLPatchPtr hat = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(1)
 			);
-			OPLPatchPtr b = boost::dynamic_pointer_cast<OPLPatch>(
+			OPLPatchPtr cym = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(2)
 			);
-			BOOST_REQUIRE(a);
-			BOOST_REQUIRE(b);
-			BOOST_CHECK_EQUAL(a->m.attackRate, 0x0e);
-			BOOST_CHECK_EQUAL(a->c.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(b->m.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(b->c.attackRate, 0x0e);
+			BOOST_REQUIRE(mel);
+			BOOST_REQUIRE(hat);
+			BOOST_REQUIRE(cym);
+			BOOST_CHECK_EQUAL(mel->rhythm, OPLPatch::Melodic);
+			BOOST_CHECK_EQUAL(hat->rhythm, OPLPatch::HiHat);
+			BOOST_CHECK_EQUAL(cym->rhythm, OPLPatch::TopCymbal);
+			BOOST_CHECK_EQUAL(mel->m.attackRate, 15);
+			BOOST_CHECK_EQUAL(mel->c.attackRate, 14);
+			BOOST_CHECK_EQUAL(hat->m.attackRate, 15);
+			BOOST_CHECK_EQUAL(hat->c.attackRate, 14);
+			BOOST_CHECK_EQUAL(cym->m.attackRate, 14); // cym is swapped
+			BOOST_CHECK_EQUAL(cym->c.attackRate, 15);
 		}
 
 		/// Make sure setting the tremolo/vibrato to the same values is ignored
@@ -338,7 +349,7 @@ class test_cmf_creativelabs: public test_music
 				"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 				"\x01\x00"
 				"\x00\x00"
-				"\xae\xa7\x7f\x1f\xed\x65\xcb\x43\x06\x02\x04" "\x00\x00\x00\x00\x00"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
 				"\x00" "\xb0\x63\x03" // set to default value, should be ignored
 				"\x00" "\xc0\x00"
 				"\x00" "\x90\x45\x7f"
@@ -360,24 +371,30 @@ class test_cmf_creativelabs: public test_music
 			OPLPatchPtr mel = boost::dynamic_pointer_cast<OPLPatch>(
 				music->patches->at(0)
 			);
+			// You would expect the hihat to be instrument #1 and the cymbal to be #2,
+			// but because the denormalisation process (where instruments are
+			// duplicated as needed) works channel by channel, the order is changed.
+			// So the top cymbal is instrument #1 because channel 14 comes before
+			// channel 15.  When we get to channel 15, the hi-hat is assigned
+			// instrument #2.
 			OPLPatchPtr hat = boost::dynamic_pointer_cast<OPLPatch>(
-				music->patches->at(1)
+				music->patches->at(2)
 			);
 			OPLPatchPtr cym = boost::dynamic_pointer_cast<OPLPatch>(
-				music->patches->at(2)
+				music->patches->at(1)
 			);
 			BOOST_REQUIRE(mel);
 			BOOST_REQUIRE(hat);
 			BOOST_REQUIRE(cym);
-			BOOST_CHECK_EQUAL(mel->rhythm, 0);
-			BOOST_CHECK_EQUAL(hat->rhythm, 1);
-			BOOST_CHECK_EQUAL(cym->rhythm, 2);
-			BOOST_CHECK_EQUAL(mel->m.attackRate, 0x0e);
-			BOOST_CHECK_EQUAL(mel->c.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(hat->m.attackRate, 0x0e);
-			BOOST_CHECK_EQUAL(hat->c.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(cym->m.attackRate, 0x06);
-			BOOST_CHECK_EQUAL(cym->c.attackRate, 0x0e);
+			BOOST_CHECK_EQUAL(mel->rhythm, OPLPatch::Melodic);
+			BOOST_CHECK_EQUAL(hat->rhythm, OPLPatch::HiHat);
+			BOOST_CHECK_EQUAL(cym->rhythm, OPLPatch::TopCymbal);
+			BOOST_CHECK_EQUAL(mel->m.attackRate, 15);
+			BOOST_CHECK_EQUAL(mel->c.attackRate, 14);
+			BOOST_CHECK_EQUAL(hat->m.attackRate, 15);
+			BOOST_CHECK_EQUAL(hat->c.attackRate, 14);
+			BOOST_CHECK_EQUAL(cym->m.attackRate, 14); // cym is swapped
+			BOOST_CHECK_EQUAL(cym->c.attackRate, 15);
 		}
 };
 

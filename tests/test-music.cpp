@@ -147,13 +147,45 @@ void listEvents(MusicPtr music)
 test_music::test_music()
 	:	init(false),
 		numIsInstanceTests(0),
-		numInvalidContentTests(1)
+		numInvalidContentTests(1),
+		oplPatch(new OPLPatch)
 {
 	this->writeFlags = 0;
 	this->numInstruments = -1;
 	this->indexInstrumentOPL = -2;
 	this->indexInstrumentMIDI = -2;
 	this->indexInstrumentPCM = -2;
+
+	this->oplPatch->m.enableTremolo = true;
+	this->oplPatch->m.enableVibrato = true;
+	this->oplPatch->m.enableSustain = true;
+	this->oplPatch->m.enableKSR = true;
+	this->oplPatch->m.freqMult = 15;
+	this->oplPatch->m.scaleLevel = 3;
+	this->oplPatch->m.outputLevel = 63;
+	this->oplPatch->m.attackRate = 15;
+	this->oplPatch->m.decayRate = 15;
+	this->oplPatch->m.sustainRate = 15;
+	this->oplPatch->m.releaseRate = 15;
+	this->oplPatch->m.waveSelect = 7;
+
+	this->oplPatch->c.enableTremolo = false;
+	this->oplPatch->c.enableVibrato = false;
+	this->oplPatch->c.enableSustain = false;
+	this->oplPatch->c.enableKSR = false;
+	this->oplPatch->c.freqMult = 14;
+	this->oplPatch->c.scaleLevel = 2;
+	this->oplPatch->c.outputLevel = 62;
+	this->oplPatch->c.attackRate = 14;
+	this->oplPatch->c.decayRate = 14;
+	this->oplPatch->c.sustainRate = 14;
+	this->oplPatch->c.releaseRate = 14;
+	this->oplPatch->c.waveSelect = 6;
+
+	this->oplPatch->feedback = 7;
+	this->oplPatch->connection = true;
+	this->oplPatch->rhythm = OPLPatch::Melodic;
+
 	this->dumpEvents = false;
 
 	this->hasMetadata[Metadata::Description] = false;
@@ -369,6 +401,60 @@ void test_music::test_read()
 	MusicPtr music(this->pType->read(this->base, this->suppData));
 
 	if (this->dumpEvents) listEvents(music);
+
+	if (this->indexInstrumentOPL >= 0) {
+		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentOPL);
+
+		OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(
+			music->patches->at(this->indexInstrumentOPL));
+		BOOST_REQUIRE(oplPatch);
+
+		BOOST_CHECK_EQUAL(oplPatch->m.enableTremolo, this->oplPatch->m.enableTremolo);
+		BOOST_CHECK_EQUAL(oplPatch->m.enableVibrato, this->oplPatch->m.enableVibrato);
+		BOOST_CHECK_EQUAL(oplPatch->m.enableSustain, this->oplPatch->m.enableSustain);
+		BOOST_CHECK_EQUAL(oplPatch->m.enableKSR, this->oplPatch->m.enableKSR);
+		BOOST_CHECK_EQUAL(oplPatch->m.freqMult, this->oplPatch->m.freqMult);
+		BOOST_CHECK_EQUAL(oplPatch->m.scaleLevel, this->oplPatch->m.scaleLevel);
+		BOOST_CHECK_EQUAL(oplPatch->m.outputLevel, this->oplPatch->m.outputLevel);
+		BOOST_CHECK_EQUAL(oplPatch->m.attackRate, this->oplPatch->m.attackRate);
+		BOOST_CHECK_EQUAL(oplPatch->m.decayRate, this->oplPatch->m.decayRate);
+		BOOST_CHECK_EQUAL(oplPatch->m.sustainRate, this->oplPatch->m.sustainRate);
+		BOOST_CHECK_EQUAL(oplPatch->m.releaseRate, this->oplPatch->m.releaseRate);
+		BOOST_CHECK_EQUAL(oplPatch->m.waveSelect, this->oplPatch->m.waveSelect);
+
+		BOOST_CHECK_EQUAL(oplPatch->c.enableTremolo, this->oplPatch->c.enableTremolo);
+		BOOST_CHECK_EQUAL(oplPatch->c.enableVibrato, this->oplPatch->c.enableVibrato);
+		BOOST_CHECK_EQUAL(oplPatch->c.enableSustain, this->oplPatch->c.enableSustain);
+		BOOST_CHECK_EQUAL(oplPatch->c.enableKSR, this->oplPatch->c.enableKSR);
+		BOOST_CHECK_EQUAL(oplPatch->c.freqMult, this->oplPatch->c.freqMult);
+		BOOST_CHECK_EQUAL(oplPatch->c.scaleLevel, this->oplPatch->c.scaleLevel);
+		BOOST_CHECK_EQUAL(oplPatch->c.outputLevel, this->oplPatch->c.outputLevel);
+		BOOST_CHECK_EQUAL(oplPatch->c.attackRate, this->oplPatch->c.attackRate);
+		BOOST_CHECK_EQUAL(oplPatch->c.decayRate, this->oplPatch->c.decayRate);
+		BOOST_CHECK_EQUAL(oplPatch->c.sustainRate, this->oplPatch->c.sustainRate);
+		BOOST_CHECK_EQUAL(oplPatch->c.releaseRate, this->oplPatch->c.releaseRate);
+		BOOST_CHECK_EQUAL(oplPatch->c.waveSelect, this->oplPatch->c.waveSelect);
+
+		BOOST_CHECK_EQUAL(oplPatch->feedback, this->oplPatch->feedback);
+		BOOST_CHECK_EQUAL(oplPatch->connection, this->oplPatch->connection);
+		BOOST_CHECK_EQUAL(oplPatch->rhythm, this->oplPatch->rhythm);
+	}
+
+	if (this->indexInstrumentMIDI >= 0) {
+		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentMIDI);
+
+		MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>(
+			music->patches->at(this->indexInstrumentMIDI));
+		BOOST_REQUIRE(midiPatch);
+	}
+
+	if (this->indexInstrumentPCM >= 0) {
+		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentPCM);
+
+		PCMPatchPtr pcmPatch = boost::dynamic_pointer_cast<PCMPatch>(
+			music->patches->at(this->indexInstrumentPCM));
+		BOOST_REQUIRE(pcmPatch);
+	}
 
 	BOOST_REQUIRE_EQUAL(music->patches->size(), this->numInstruments);
 }

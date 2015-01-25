@@ -28,9 +28,9 @@ class test_cdfm_zone66: public test_music
 		{
 			this->type = "cdfm-zone66";
 			this->numInstruments = 2;
-			this->indexInstrumentOPL = 0;
+			this->indexInstrumentOPL = 1;
 			this->indexInstrumentMIDI = -1;
-			this->indexInstrumentPCM = 1;
+			this->indexInstrumentPCM = 0;
 		}
 
 		void addTests()
@@ -197,7 +197,7 @@ class test_cdfm_zone66: public test_music
 				"\x00\x00\x00\x00"
 				"\x0B\x00\x00\x00"
 				"\x00\x00\x00\x00" "\x10\x00\x00\x00" "\x00\x00\x00\x00" "\xFF\xFF\xFF\x00"
-				"\x09\x63\x49\x12\x34\x06\xC9\x96\x56\x78\x01"
+				"\x0F\xFF\xFF\xFF\xFF\x07\x0E\xBE\xEE\xEE\x06"
 				// Pattern 0
 				"\x00\x49\x0F"
 				"\x40\x05"

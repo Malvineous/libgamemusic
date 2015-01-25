@@ -87,8 +87,8 @@ class test_dro_dosbox_v2: public test_music
 				"\xa6\xb6"
 				// Note data
 				"\xff\x07" // leading delay
-				"\x00\xae\x01\x7f\x02\xed\x03\xcb\x04\x06"
-				"\x05\xa7\x06\x1f\x07\x65\x08\x43\x09\x02\x0a\x04"
+				"\x00\xff\x01\xff\x02\xff\x03\xff\x04\x07"
+				"\x05\x0e\x06\xbe\x07\xee\x08\xee\x09\x06\x0a\x0f"
 				"\x0b\x44"
 				"\x0c\x32" "\xff\x0f"
 				"\x0c\x12" "\xff\x03"
@@ -162,10 +162,7 @@ class test_dro_dosbox_v2: public test_music
 		{
 			// Read the standard file
 			MusicPtr music(this->pType->read(this->base, this->suppData));
-			CHECK_OPL_PATCH(0, feedback, 0x2);
-			CHECK_OPL_PATCH(0, m.attackRate, 0xE);
-			CHECK_OPL_PATCH(0, c.attackRate, 0x6);
-			CHECK_OPL_PATCH(0, rhythm, 0);
+			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.scaleLevel, 0x1);
 			CHECK_OPL_PATCH(1, m.attackRate, 0xD);

@@ -214,6 +214,9 @@ class test_music: public test_main
 		 */
 		int indexInstrumentPCM;
 
+		/// Patch to expect at patchbank position indexInstrumentOPL.
+		OPLPatchPtr oplPatch;
+
 		/// If true, list music events in read() test on stdout.  Defaults to false.
 		bool dumpEvents;
 

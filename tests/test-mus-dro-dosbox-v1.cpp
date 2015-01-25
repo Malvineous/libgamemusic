@@ -70,8 +70,8 @@ class test_dro_dosbox_v1: public test_music
 				"DBRAWOPL" "\x00\x00\x01\x00"
 				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
 				"\x00\x07" // initial delay
-				"\x20\xae\x40\x7f\x60\xed\x80\xcb\xe0\x06"
-				"\x23\xa7\x43\x1f\x63\x65\x83\x43\xe3\x02\xc0\x04"
+				"\x20\xff\x40\xff\x60\xff\x80\xff\xe0\x07"
+				"\x23\x0e\x43\xbe\x63\xee\x83\xee\xe3\x06\xc0\x0f"
 				"\xa0\x44"
 				"\xb0\x32" "\x00\x0f"
 				"\xb0\x12" "\x00\x03"
@@ -145,10 +145,7 @@ class test_dro_dosbox_v1: public test_music
 		{
 			// Read the standard file
 			MusicPtr music(this->pType->read(this->base, this->suppData));
-			CHECK_OPL_PATCH(0, feedback, 0x2);
-			CHECK_OPL_PATCH(0, m.attackRate, 0xE);
-			CHECK_OPL_PATCH(0, c.attackRate, 0x6);
-			CHECK_OPL_PATCH(0, rhythm, 0);
+			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.scaleLevel, 0x1);
 			CHECK_OPL_PATCH(1, m.attackRate, 0xD);
@@ -219,8 +216,8 @@ class test_dro_dosbox_v1: public test_music
 				"DBRAWOPL" "\x00\x00\x01\x00"
 				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
 				"\x00\x07" // initial delay
-				"\x20\x11\x40\x11\x60\x11\x80\x11\xe0\x11"
-				"\x23\x11\x43\x11\x63\x11\x83\x11\xe3\x11\xc0\x11"
+				"\x20\xff\x40\xff\x60\xff\x80\xff\xe0\x07"
+				"\x23\x0e\x43\xbe\x63\xee\x83\xee\xe3\x06\xc0\x0f"
 				"\xa0\x44"
 				"\xb0\x32" "\x00\x0f"
 				"\xb0\x12" "\x00\x03"
@@ -281,9 +278,7 @@ class test_dro_dosbox_v1: public test_music
 				"\xbd\x20" "\x00\x03" // trailing delay
 			);
 			MusicPtr music(this->pType->read(this->base, this->suppData));
-			CHECK_OPL_PATCH(0, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(0, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(0, rhythm, OPLPatch::Melodic);
+			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
 			CHECK_OPL_PATCH(1, rhythm, OPLPatch::HiHat);
@@ -370,9 +365,7 @@ class test_dro_dosbox_v1: public test_music
 				"\xbd\x20" "\x00\x03" // trailing delay
 			);
 			music = this->pType->read(this->base, this->suppData);
-			CHECK_OPL_PATCH(0, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(0, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(0, rhythm, 0);
+			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
 			CHECK_OPL_PATCH(1, rhythm, 1);
