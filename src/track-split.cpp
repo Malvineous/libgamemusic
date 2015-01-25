@@ -41,6 +41,23 @@ void SpecificNoteOffEvent::processEvent(unsigned long delay, unsigned int trackI
 	return;
 }
 
+std::string SpecificNoteEffectEvent::getContent() const
+{
+	std::ostringstream ss;
+	ss
+		<< this->Event::getContent()
+		<< "event=effect-specific;freq=" << this->milliHertz
+	;
+	return ss.str();
+}
+
+void SpecificNoteEffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
+{
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
+	return;
+}
+
 std::string PolyphonicEffectEvent::getContent() const
 {
 	std::ostringstream ss;
@@ -144,6 +161,29 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 					continue;
 				}
 
+				SpecificNoteEffectEvent *evSpecNoteEffect =
+					dynamic_cast<SpecificNoteEffectEvent *>(te.event.get());
+				if (evSpecNoteEffect) {
+					if (evSpecNoteEffect->milliHertz == curNoteFreq) {
+						// This is an effect for the current note, replace the specific
+						// effect event with a normal track-wide effect.
+						te.delay = delayMain;
+						delayMain = 0;
+						EffectEvent *evEffect = new EffectEvent();
+						*evEffect = *evSpecNoteEffect;
+						te.event.reset(evEffect);
+						main->push_back(te);
+						curNoteFreq = 0;
+					} else {
+						// Might be an effect for one of the overflow notes, move it
+						te.delay = delayOverflow;
+						delayOverflow = 0;
+						overflow->push_back(te);
+						// movedNotes is only set for note-on events
+					}
+					continue;
+				}
+
 				NoteOffEvent *evNoteOff =
 					dynamic_cast<NoteOffEvent *>(te.event.get());
 				if (evNoteOff) {
@@ -160,27 +200,44 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 
 				PolyphonicEffectEvent *evPolyEffect =
 					dynamic_cast<PolyphonicEffectEvent *>(te.event.get());
-				if (evPolyEffect && (evPolyEffect->type == (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel)) {
-					curBend = midiPitchbendToSemitones(evPolyEffect->data);
+				if (evPolyEffect) {
+					switch ((PolyphonicEffectEvent::PolyphonicEffectType)evPolyEffect->type) {
+						case PolyphonicEffectEvent::PitchbendChannel:
+							curBend = midiPitchbendToSemitones(evPolyEffect->data);
 
-					// Create a normal pitchbend if there is a note currently playing
-					if (curNoteFreq) {
-						TrackEvent teCopy;
-						teCopy.delay = delayMain;
-						delayMain = 0;
-						EffectEvent *evEffect = new EffectEvent();
-						teCopy.event.reset(evEffect);
-						evEffect->type = EffectEvent::PitchbendNote;
-						double targetNote = curBend + freqToMIDI(curNoteFreq);
-						evEffect->data = midiToFreq(targetNote);
-						main->push_back(teCopy);
+							// Create a normal pitchbend if there is a note currently playing
+							if (curNoteFreq) {
+								TrackEvent teCopy;
+								teCopy.delay = delayMain;
+								delayMain = 0;
+								EffectEvent *evEffect = new EffectEvent();
+								teCopy.event.reset(evEffect);
+								evEffect->type = EffectEvent::PitchbendNote;
+								double targetNote = curBend + freqToMIDI(curNoteFreq);
+								evEffect->data = midiToFreq(targetNote);
+								main->push_back(teCopy);
+							}
+							break;
+
+						case PolyphonicEffectEvent::VolumeChannel:
+							// Just convert the event to a normal volume change
+							TrackEvent teCopy;
+							teCopy.delay = delayMain;
+							delayMain = 0;
+							EffectEvent *evEffect = new EffectEvent();
+							teCopy.event.reset(evEffect);
+							evEffect->type = EffectEvent::Volume;
+							evEffect->data = evPolyEffect->data;
+							main->push_back(teCopy);
+							break;
 					}
-
 					// Move the polyphonic event onto the overflow channel in case there
 					// are other notes playing.  (If not, no harm done).
 					te.delay = delayOverflow;
 					delayOverflow = 0;
 					overflow->push_back(te);
+
+					// Don't want these events added to the main channel below
 					continue;
 				}
 

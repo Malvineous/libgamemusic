@@ -367,10 +367,20 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xA0: { // Polyphonic key pressure (two data bytes)
+					const uint8_t& note = evdata;
 					uint8_t pressure;
-					// note in is evdata
 					this->input >> u8(pressure);
-					std::cout << "Key pressure not yet implemented!" << std::endl;
+
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+
+					SpecificNoteEffectEvent *ev = new SpecificNoteEffectEvent();
+					te.event.reset(ev);
+					ev->type = EffectEvent::Volume;
+					ev->data = (pressure << 1) | (pressure >> 6);
+					ev->milliHertz = midiToFreq(note);
+					pattern->at(track)->push_back(te);
 					break;
 				}
 				case 0xB0: { // Controller (two data bytes)
@@ -450,8 +460,16 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
-					// pressure is in evdata
-					std::cout << "Channel pressure not yet implemented!" << std::endl;
+					TrackEvent te;
+					te.delay = this->lastDelay[track];
+					this->lastDelay[track] = 0;
+					PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
+					te.event.reset(ev);
+					ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::VolumeChannel;
+					// MIDI is 1-127, we are 1-255 (MIDI velocity 0 is note off)
+					ev->data = (evdata << 1) | (evdata >> 6);
+					pattern->at(track)->push_back(te);
+
 					break;
 				}
 				case 0xE0: { // Pitch bend (two data bytes)

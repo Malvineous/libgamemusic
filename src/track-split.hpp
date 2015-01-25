@@ -38,12 +38,25 @@ struct DLL_EXPORT SpecificNoteOffEvent: virtual public NoteOffEvent
 	unsigned int milliHertz;
 };
 
+/// Just one note on this channel is having an effect applied.
+struct DLL_EXPORT SpecificNoteEffectEvent: virtual public EffectEvent
+{
+	virtual std::string getContent() const;
+
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
+
+	/// Note frequency (440000 == 440Hz)
+	unsigned int milliHertz;
+};
+
 /// Similar to effect event but data stored differently to apply to all notes
 /// in the track.
 struct DLL_EXPORT PolyphonicEffectEvent: virtual public EffectEvent
 {
 	enum PolyphonicEffectType {
 		PitchbendChannel, ///< Change note freq of all current notes: data=0..8192..16384 for -2..0..+2 semitones
+		VolumeChannel, ///< Change volume (velocity aftertouch) of all current notes: data 0-255
 	};
 
 	virtual std::string getContent() const;
