@@ -93,7 +93,7 @@ bool split(const std::string& in, char delim, std::string *out1, std::string *ou
  */
 gm::MusicPtr openMusicFile(const std::string& strFilename,
 	const char *typeArg, const std::string& strType, gm::ManagerPtr pManager,
-	bool bForceOpen)
+	bool bForceOpen, gm::MusicTypePtr *pMusicTypeOut)
 {
 	stream::input_file_sptr psMusic(new stream::input_file());
 	try {
@@ -188,6 +188,7 @@ finishTesting:
 	gm::MusicPtr pMusic = pMusicType->read(psMusic, suppData);
 	assert(pMusic);
 
+	*pMusicTypeOut = pMusicType;
 	return pMusic;
 }
 
@@ -797,10 +798,11 @@ int main(int iArgC, char *cArgV[])
 					strInstType.clear(); // no type given, autodetect
 				}
 
+				gm::MusicTypePtr pInstType;
 				gm::MusicPtr pInst;
 				try {
 					pInst = openMusicFile(strInstFile, "-b/--midibank", strInstType,
-						pManager, bForceOpen);
+						pManager, bForceOpen, &pInstType);
 				} catch (int ret) {
 					return ret;
 				}
@@ -826,9 +828,11 @@ int main(int iArgC, char *cArgV[])
 		if (!bScript) std::cout << "Opening " << strFilename << " as type "
 			<< (strType.empty() ? "<autodetect>" : strType) << std::endl;
 
+		gm::MusicTypePtr pMusicType;
 		gm::MusicPtr pMusic;
 		try {
-			pMusic = openMusicFile(strFilename, "-t/--type", strType, pManager, bForceOpen);
+			pMusic = openMusicFile(strFilename, "-t/--type", strType, pManager,
+				bForceOpen, &pMusicType);
 		} catch (int ret) {
 			return ret;
 		}
@@ -1027,17 +1031,25 @@ int main(int iArgC, char *cArgV[])
 
 			} else if (i->string_key.compare("list-tags") == 0) {
 				bool listed = false;
+				camoto::Metadata::MetadataTypes availableTypes = pMusicType->getMetadataList();
 				for (camoto::Metadata::TypeMap::const_iterator
 					i = pMusic->metadata.begin(); i != pMusic->metadata.end(); i++
 				) {
-					switch (i->first) {
-						case camoto::Metadata::Description: std::cout << "Description"; break;
-						case camoto::Metadata::PaletteFilename: std::cout << "Palette Filename"; break;
-						case camoto::Metadata::Version: std::cout << "Version"; break;
-						case camoto::Metadata::Title: std::cout << "Title"; break;
-						case camoto::Metadata::Author: std::cout << "Author"; break;
+					std::cout << i->first << ": \"" << i->second << "\"";
+					camoto::Metadata::MetadataTypes::iterator a =
+						std::find(availableTypes.begin(), availableTypes.end(), i->first);
+					if (a == availableTypes.end()) {
+						std::cout << " [*** Metadata item not included in getMetadataList() ***]";
+					} else {
+						availableTypes.erase(a);
 					}
-					std::cout << ": " << i->second << "\n";
+					std::cout << "\n";
+					listed = true;
+				}
+				for (camoto::Metadata::MetadataTypes::const_iterator
+					i = availableTypes.begin(); i != availableTypes.end(); i++
+				) {
+					std::cout << *i << ": [empty]\n";
 					listed = true;
 				}
 				if (!listed) std::cout << "No tags.\n";
@@ -1210,9 +1222,11 @@ int main(int iArgC, char *cArgV[])
 					strInstType.clear();
 				}
 
+				gm::MusicTypePtr pInstType;
 				gm::MusicPtr pInst;
 				try {
-					pInst = openMusicFile(strInstFile, "-n/--newinst", strInstType, pManager, bForceOpen);
+					pInst = openMusicFile(strInstFile, "-n/--newinst", strInstType,
+						pManager, bForceOpen, &pInstType);
 				} catch (int ret) {
 					return ret;
 				}
