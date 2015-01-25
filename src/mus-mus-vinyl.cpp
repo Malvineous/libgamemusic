@@ -397,5 +397,6 @@ SuppFilenames MusicType_MUS_Vinyl::getRequiredSupps(stream::input_sptr input,
 Metadata::MetadataTypes MusicType_MUS_Vinyl::getMetadataList() const
 {
 	Metadata::MetadataTypes types;
+	types.push_back(Metadata::Title);
 	return types;
 }
