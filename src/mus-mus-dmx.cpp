@@ -1,6 +1,6 @@
 /**
- * @file   mus-mus-dmx.cpp
- * @brief  Support for id Software MIDI (.mus) format.
+ * @file  mus-mus-dmx.cpp
+ * @brief Support for id Software MIDI (.mus) format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -51,15 +51,10 @@ class MUSEncoder: virtual private MIDIEventCallback
 		/// Destructor.
 		~MUSEncoder();
 
-		/// Process the events, and write out MIDI data.
+		/// Process the events, and write out data in the target format.
 		/**
-		 * This function will write SMF (standard MIDI format) data to the output
-		 * stream, until all the events in the song have been written out.
-		 *
-		 * @param channelsUsed
-		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this
-		 *   each entry is set to true where that MIDI channel was used.  Set to
-		 *   NULL if this information is not required.
+		 * This function will data to the output stream, until all the events in
+		 * the song have been written out.
 		 *
 		 * @throw stream:error
 		 *   If the output data could not be written for some reason.

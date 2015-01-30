@@ -1,6 +1,6 @@
 /**
- * @file   audio-util.hpp
- * @brief  Utility functions for processing audio.
+ * @file  camoto/gamemusic/util-pcm.hpp
+ * @brief Utility functions for processing audio.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

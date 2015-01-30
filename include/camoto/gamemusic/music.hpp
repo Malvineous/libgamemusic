@@ -1,7 +1,7 @@
 /**
- * @file   music.hpp
- * @brief  Declaration of top-level Music class, for in-memory representation
- *         of all music formats.
+ * @file  camoto/gamemusic/music.hpp
+ * @brief Declaration of top-level Music class, for in-memory representation
+ *        of all music formats.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

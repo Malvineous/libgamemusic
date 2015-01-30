@@ -1,5 +1,5 @@
 /**
- * @file  exceptions.hpp
+ * @file  camoto/gamemusic/exceptions.hpp
  * @brief Common errors.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>

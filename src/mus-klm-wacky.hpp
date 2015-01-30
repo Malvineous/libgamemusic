@@ -1,6 +1,6 @@
 /**
- * @file   mus-klm-wacky.hpp
- * @brief  Support for Wacky Wheels Adlib (.klm) format.
+ * @file  mus-klm-wacky.hpp
+ * @brief Support for Wacky Wheels Adlib (.klm) format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

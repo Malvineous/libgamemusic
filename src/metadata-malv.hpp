@@ -1,6 +1,6 @@
 /**
- * @file   metadata-malv.hpp
- * @brief  Read/write functions for file tags in Malvineous' tag format.
+ * @file  metadata-malv.hpp
+ * @brief Read/write functions for file tags in Malvineous' tag format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   mus-dsm-dsik.hpp
- * @brief  Support for the Digital Sound Interface Kit DSMF format.
+ * @file  mus-dsm-dsik.hpp
+ * @brief Support for the Digital Sound Interface Kit DSMF format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

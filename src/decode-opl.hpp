@@ -1,6 +1,6 @@
 /**
- * @file   decode-opl.hpp
- * @brief  Function to convert raw OPL data into a Music instance.
+ * @file  decode-opl.hpp
+ * @brief Function to convert raw OPL data into a Music instance.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   mus-tbsa-doofus.hpp
- * @brief  Support for The Bone Shaker Architect used in Doofus.
+ * @file  mus-tbsa-doofus.hpp
+ * @brief Support for The Bone Shaker Architect used in Doofus.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   mus-mid-type0.cpp
- * @brief  Support for Type-0 (single track) MIDI files.
+ * @file  mus-mid-type0.cpp
+ * @brief Support for Type-0 (single track) MIDI files.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

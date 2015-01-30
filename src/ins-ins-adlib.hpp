@@ -1,6 +1,6 @@
 /**
- * @file   ins-ins-adlib.hpp
- * @brief  Support for Ad Lib .INS instruments.
+ * @file  ins-ins-adlib.hpp
+ * @brief Support for Ad Lib .INS instruments.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

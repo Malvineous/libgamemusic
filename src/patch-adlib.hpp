@@ -1,6 +1,6 @@
 /**
- * @file   opl-util.hpp
- * @brief  Utility functions related to AdLib OPL patches.
+ * @file  patch-adlib.hpp
+ * @brief Utility functions related to AdLib OPL patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

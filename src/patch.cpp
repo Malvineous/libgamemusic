@@ -1,6 +1,6 @@
 /**
- * @file   patch.cpp
- * @brief  Implementation of top-level Patch class, for managing patches.
+ * @file  patch.cpp
+ * @brief Implementation of top-level Patch class, for managing patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

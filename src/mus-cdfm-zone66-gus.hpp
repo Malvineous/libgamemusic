@@ -1,6 +1,6 @@
 /**
- * @file   mus-cdfm-zone66-gus.hpp
- * @brief  Support for Renaissance's CDFM format used in Zone 66 (GUS variant).
+ * @file  mus-cdfm-zone66-gus.hpp
+ * @brief Support for Renaissance's CDFM format used in Zone 66 (GUS variant).
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

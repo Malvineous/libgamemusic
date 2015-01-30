@@ -1,6 +1,6 @@
 /**
- * @file   mus-ibk-instrumentbank.hpp
- * @brief  Support for .IBK (Instrument Bank) files.
+ * @file  mus-ibk-instrumentbank.hpp
+ * @brief Support for .IBK (Instrument Bank) files.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

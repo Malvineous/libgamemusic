@@ -1,6 +1,6 @@
 /**
- * @file   patch-midi.cpp
- * @brief  Implementation of MIDI Patch class, for managing MIDI patches.
+ * @file  patch-midi.cpp
+ * @brief Implementation of MIDI Patch class, for managing MIDI patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

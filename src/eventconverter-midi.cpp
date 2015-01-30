@@ -1,6 +1,6 @@
 /**
- * @file   eventconverter-midi.cpp
- * @brief  EventConverter implementation that produces MIDI events from Events.
+ * @file  eventconverter-midi.cpp
+ * @brief EventConverter implementation that produces MIDI events from Events.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   mus-mus-vinyl.cpp
- * @brief  Format handler for Vinyl Goddess From Mars .mus files.
+ * @file  mus-mus-vinyl.cpp
+ * @brief Format handler for Vinyl Goddess From Mars .mus files.
  *
  * This file format is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/AdLib_MIDI_Format

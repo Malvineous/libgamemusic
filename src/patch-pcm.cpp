@@ -1,6 +1,6 @@
 /**
- * @file   patch-pcm.cpp
- * @brief  Implementation of PCM Patch class, for managing sampled instruments.
+ * @file  patch-pcm.cpp
+ * @brief Implementation of PCM Patch class, for managing sampled instruments.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   gamemusic.hpp
- * @brief  Main header for libgamemusic (includes everything.)
+ * @file  camoto/gamemusic.hpp
+ * @brief Main header for libgamemusic (includes everything.)
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -33,7 +33,7 @@ namespace gamemusic {
 libgamemusic provides a standard interface to access different music file
 formats.
 
-\section structure Structure
+\section libgamemusic_structure Structure
 
 The main interface to the library is the getManager() function, which returns
 an instance of the Manager class.  The Manager is used to query supported
@@ -50,7 +50,7 @@ Reading and writing files through the Music class is done with lists of
 "events", such as note-on and note-off.  These events are transparently
 converted to and from the underlying file format by the Music class.
 
-\section example Examples
+\section libgamemusic_example Examples
 
 The libgamemusic distribution comes with example code in the form of the
 <a href="http://github.com/Malvineous/libgamemusic/blob/master/examples/gamemus.cpp">gamemus
@@ -67,10 +67,10 @@ When run, this program produces output similar to the following:
 TODO
 @endverbatim
 
-\section info More information
+\section libgamemusic_info More information
 
-Additional information including a mailing list is available from the Camoto
-homepage <http://www.shikadi.net/camoto>.
+Additional information is available from the Camoto homepage
+<http://www.shikadi.net/camoto>.
 
 **/
 }

@@ -1,6 +1,6 @@
 /**
- * @file   gamemus.cpp
- * @brief  Command-line interface to libgamemusic.
+ * @file  gamemus.cpp
+ * @brief Command-line interface to libgamemusic.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

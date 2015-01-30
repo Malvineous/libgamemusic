@@ -1,6 +1,6 @@
 /**
- * @file   mus-cdfm-zone66.cpp
- * @brief  Support for Renaissance's CDFM format used in Zone 66.
+ * @file  mus-cdfm-zone66.cpp
+ * @brief Support for Renaissance's CDFM format used in Zone 66.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -38,10 +38,14 @@ using namespace camoto::gamemusic;
 class EventConverter_CDFM: virtual public EventHandler
 {
 	public:
-		/// Prepare to convert events into KLM data sent to a stream.
+		/// Prepare to convert events into CDFM data sent to a stream.
 		/**
 		 * @param output
 		 *   Output stream the CDFM data will be written to.
+		 *
+		 * @param music
+		 *   Song parameters (patches, initial tempo, etc.)  Events are not read
+		 *   from here, the EventHandler is used for that.
 		 */
 		EventConverter_CDFM(stream::output_sptr output, ConstMusicPtr music);
 

@@ -1,6 +1,6 @@
 /**
- * @file   events.cpp
- * @brief  Implementation of all Event types.
+ * @file  events.cpp
+ * @brief Implementation of all Event types.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

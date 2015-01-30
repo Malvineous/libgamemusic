@@ -1,6 +1,6 @@
 /**
- * @file   events.hpp
- * @brief  Declaration of all the Event types.
+ * @file  camoto/gamemusic/events.hpp
+ * @brief Declaration of all the Event types.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -326,6 +326,17 @@ class DLL_EXPORT EventHandler
 		 * @param delay
 		 *   The number of ticks to delay (at the original tempo) before the
 		 *   new tempo takes effect.
+		 *
+		 * @param trackIndex
+		 *   Zero-based index of the track the event came from.  This is often used
+		 *   to look up (via Music::trackInfo) what channel the track will be
+		 *   played on.
+		 *
+		 * @param patternIndex
+		 *   Index of the pattern the event is being played on.
+		 *
+		 * @param ev
+		 *   The event to process.
 		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev) = 0;
@@ -335,27 +346,58 @@ class DLL_EXPORT EventHandler
 		 * If the instrument is incorrect for the song (e.g. OPL instrument on a
 		 * PCM channel), the behaviour is undefined.  Typically the instrument
 		 * number will be set anyway but it will correspond to the wrong patch.
+		 *
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev) = 0;
 
+		/// A note has finished playing.
+		/**
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev) = 0;
 
+		/// An effect is being applied.
+		/**
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev) = 0;
 
+		/// A global song parameter is being changed.
+		/**
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev) = 0;
 
+		/// Process all the events in a given song.
+		/**
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 */
 		void handleAllEvents(EventOrder eventOrder, ConstMusicPtr music);
 
 	private:
 		/// Merge the given pattern into a single track and process that.
+		/**
+		 * @param music
+		 *   Song being processed.
+		 *
+		 * @param pattern
+		 *   Pattern to process this time.
+		 *
+		 * @param patternIndex
+		 *   Zero-based index of \a pattern.
+		 */
 		void processPattern_mergeTracks(const ConstMusicPtr& music,
 			const PatternPtr& pattern, unsigned int patternIndex);
 
 		/// Process the events in each track, track by track.
+		/**
+		 * @copydetails processPattern_mergeTracks
+		 */
 		void processPattern_separateTracks(const ConstMusicPtr& music,
 			const PatternPtr& pattern, unsigned int patternIndex);
 

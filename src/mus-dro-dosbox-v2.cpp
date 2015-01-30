@@ -1,6 +1,6 @@
 /**
- * @file   mus-dro-dosbox-v2.cpp
- * @brief  Support for the second version of the DOSBox Raw OPL .DRO format.
+ * @file  mus-dro-dosbox-v2.cpp
+ * @brief Support for the second version of the DOSBox Raw OPL .DRO format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

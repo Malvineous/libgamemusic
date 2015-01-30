@@ -1,6 +1,6 @@
 /**
- * @file   mus-s3m-screamtracker.hpp
- * @brief  Support for the ScreamTracker S3M format.
+ * @file  mus-s3m-screamtracker.hpp
+ * @brief Support for the ScreamTracker S3M format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

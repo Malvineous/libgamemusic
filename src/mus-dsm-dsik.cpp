@@ -1,6 +1,6 @@
 /**
- * @file   mus-dsm-dsik.cpp
- * @brief  Support for the Digital Sound Interface Kit DSMF format.
+ * @file  mus-dsm-dsik.cpp
+ * @brief Support for the Digital Sound Interface Kit DSMF format.
  *
  * This file format is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/DSIK_Module_Format
@@ -54,8 +54,14 @@ class EventConverter_DSM: virtual public EventHandler
 	public:
 		/// Prepare to convert events into KLM data sent to a stream.
 		/**
+		 * @param iff
+		 *   IFF interface to output.
+		 *
 		 * @param output
 		 *   Output stream the DSM data will be written to.
+		 *
+		 * @param patches
+		 *   Patch bank to write.
 		 */
 		EventConverter_DSM(IFFWriter *iff, stream::output_sptr output,
 			const PatchBankPtr& patches);

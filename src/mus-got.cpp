@@ -1,6 +1,6 @@
 /**
- * @file   mus-got.cpp
- * @brief  Support for God of Thunder song files.
+ * @file  mus-got.cpp
+ * @brief Support for God of Thunder song files.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

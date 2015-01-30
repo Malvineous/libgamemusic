@@ -1,6 +1,6 @@
 /**
- * @file   mus-imf-idsoftware.cpp
- * @brief  Support for id Software's .IMF format.
+ * @file  mus-imf-idsoftware.cpp
+ * @brief Support for id Software's .IMF format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

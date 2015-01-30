@@ -1,6 +1,6 @@
 /**
- * @file   eventconverter-opl.cpp
- * @brief  EventHandler implementation that produces OPL data from Events.
+ * @file  eventconverter-opl.cpp
+ * @brief EventHandler implementation that produces OPL data from Events.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

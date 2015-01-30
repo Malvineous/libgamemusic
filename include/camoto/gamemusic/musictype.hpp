@@ -1,7 +1,7 @@
 /**
- * @file   musictype.hpp
- * @brief  MusicType class, used to identify, read and write an instance of a
- *         particular music format.
+ * @file  camoto/gamemusic/musictype.hpp
+ * @brief MusicType class, used to identify, read and write an instance of a
+ *        particular music format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

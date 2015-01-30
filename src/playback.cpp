@@ -1,6 +1,6 @@
 /**
- * @file   playback.hpp
- * @brief  Helper class for managing song playback.
+ * @file  playback.hpp
+ * @brief Helper class for managing song playback.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

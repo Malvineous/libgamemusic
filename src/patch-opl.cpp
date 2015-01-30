@@ -1,6 +1,6 @@
 /**
- * @file   patch-opl.cpp
- * @brief  Implementation of OPL Patch class, for managing OPL patches.
+ * @file  patch-opl.cpp
+ * @brief Implementation of OPL Patch class, for managing OPL patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   ins-ins-adlib.hpp
- * @brief  Support for Ad Lib .INS instruments.
+ * @file  ins-ins-adlib.hpp
+ * @brief Support for Ad Lib .INS instruments.
  *
  * This file format is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/AdLib_Instrument_Format

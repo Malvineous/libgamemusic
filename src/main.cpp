@@ -1,6 +1,6 @@
 /**
- * @file   main.cpp
- * @brief  Entry point for libgamemusic.
+ * @file  main.cpp
+ * @brief Entry point for libgamemusic.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

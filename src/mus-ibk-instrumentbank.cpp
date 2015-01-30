@@ -1,6 +1,6 @@
 /**
- * @file   mus-ibk-instrumentbank.cpp
- * @brief  Support for .IBK (Instrument Bank) files.
+ * @file  mus-ibk-instrumentbank.cpp
+ * @brief Support for .IBK (Instrument Bank) files.
  *
  * This file format is fully documented on the ModdingWiki:
  *   http://www.shikadi.net/moddingwiki/IBK_Format

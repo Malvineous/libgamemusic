@@ -1,6 +1,6 @@
 /**
- * @file   encode-midi.cpp
- * @brief  Function to convert a Music instance into raw MIDI data.
+ * @file  encode-midi.cpp
+ * @brief Function to convert a Music instance into raw MIDI data.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -54,6 +54,10 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		/**
 		 * This function will write SMF (standard MIDI format) data to the output
 		 * stream, until all the events in the song have been written out.
+		 *
+		 * @param eventOrder
+		 *   The order the events should be processed (e.g. chronologically or
+		 *   track by track).
 		 *
 		 * @param channelsUsed
 		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this

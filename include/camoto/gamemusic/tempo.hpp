@@ -1,6 +1,6 @@
 /**
- * @file   tempo.hpp
- * @brief  Declaration of Tempo object and conversion functions.
+ * @file  camoto/gamemusic/tempo.hpp
+ * @brief Declaration of Tempo object and conversion functions.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

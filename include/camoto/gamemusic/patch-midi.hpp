@@ -1,6 +1,6 @@
 /**
- * @file   patch-midi.hpp
- * @brief  Derived Patch for MIDI patches.
+ * @file  camoto/gamemusic/patch-midi.hpp
+ * @brief Derived Patch for MIDI patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

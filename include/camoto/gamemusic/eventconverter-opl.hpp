@@ -1,6 +1,6 @@
 /**
- * @file   eventconverter-opl.hpp
- * @brief  EventConverter implementation that produces OPL data from Events.
+ * @file  camoto/gamemusic/eventconverter-opl.hpp
+ * @brief EventConverter implementation that produces OPL data from Events.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

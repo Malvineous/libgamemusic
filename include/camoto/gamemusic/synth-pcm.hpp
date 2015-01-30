@@ -1,6 +1,6 @@
 /**
- * @file   synth-pcm.hpp
- * @brief  Implementation of a synthesiser that uses PCM samples.
+ * @file  camoto/gamemusic/synth-pcm.hpp
+ * @brief Implementation of a synthesiser that uses PCM samples.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

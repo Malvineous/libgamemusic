@@ -1,6 +1,6 @@
 /**
- * @file   decode-midi.cpp
- * @brief  Format decoder for Standard MIDI Format (SMF) MIDI data.
+ * @file  decode-midi.cpp
+ * @brief Format decoder for Standard MIDI Format (SMF) MIDI data.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

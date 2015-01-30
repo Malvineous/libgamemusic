@@ -1,6 +1,6 @@
 /**
- * @file   manager.hpp
- * @brief  Manager class, used for accessing the various music format readers.
+ * @file  camoto/gamemusic/manager.hpp
+ * @brief Manager class, used for accessing the various music format readers.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

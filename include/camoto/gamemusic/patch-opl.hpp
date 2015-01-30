@@ -1,6 +1,6 @@
 /**
- * @file   patch-opl.hpp
- * @brief  Derived Patch for OPL patches.
+ * @file  camoto/gamemusic/patch-opl.hpp
+ * @brief Derived Patch for OPL patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

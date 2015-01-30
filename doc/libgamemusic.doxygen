@@ -15,3 +15,5 @@ EXAMPLE_PATH           = ../examples/
 DOCSET_FEEDNAME        = "Camoto"
 DOCSET_BUNDLE_ID       = net.shikadi.Camoto
 GENERATE_LATEX         = NO
+GENERATE_TAGFILE       = libgamemusic.tag
+TAGFILES               = ../../libgamecommon/doc/libgamecommon.tag=../libgamecommon

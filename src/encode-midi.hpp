@@ -1,6 +1,6 @@
 /**
- * @file   encode-midi.hpp
- * @brief  Function to convert a Music instance into raw MIDI data.
+ * @file  encode-midi.hpp
+ * @brief Function to convert a Music instance into raw MIDI data.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

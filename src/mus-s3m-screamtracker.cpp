@@ -1,6 +1,6 @@
 /**
- * @file   mus-s3m-screamtracker.cpp
- * @brief  Support for the ScreamTracker S3M format.
+ * @file  mus-s3m-screamtracker.cpp
+ * @brief Support for the ScreamTracker S3M format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -49,6 +49,9 @@ class EventConverter_S3M: virtual public EventHandler
 		/**
 		 * @param output
 		 *   Output stream the S3M data will be written to.
+		 *
+		 * @param patches
+		 *   Patch bank to write.
 		 */
 		EventConverter_S3M(stream::output_sptr output, const PatchBankPtr& patches);
 

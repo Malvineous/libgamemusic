@@ -1,6 +1,6 @@
 /**
- * @file   track-split.hpp
- * @brief  Split tracks with multiple notes into separate tracks.
+ * @file  track-split.hpp
+ * @brief Split tracks with multiple notes into separate tracks.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

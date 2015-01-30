@@ -1,6 +1,6 @@
 /**
- * @file   opl-util.cpp
- * @brief  Utility functions related to OPL chips.
+ * @file  opl-util.cpp
+ * @brief Utility functions related to OPL chips.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

@@ -1,6 +1,6 @@
 /**
- * @file   patch.hpp
- * @brief  Declaration of top-level Patch class, for managing patches.
+ * @file  camoto/gamemusic/patch.hpp
+ * @brief Declaration of top-level Patch class, for managing patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

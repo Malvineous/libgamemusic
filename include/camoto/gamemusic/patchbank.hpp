@@ -1,7 +1,7 @@
 /**
- * @file   patchbank.hpp
- * @brief  Declaration of top-level PatchBank class, for managing
- *         collections of patches.
+ * @file  camoto/gamemusic/patchbank.hpp
+ * @brief Declaration of top-level PatchBank class, for managing
+ *        collections of patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

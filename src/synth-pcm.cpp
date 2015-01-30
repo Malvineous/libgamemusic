@@ -1,6 +1,6 @@
 /**
- * @file   synth-pcm.cpp
- * @brief  Implementation of a synthesiser that uses PCM samples.
+ * @file  synth-pcm.cpp
+ * @brief Implementation of a synthesiser that uses PCM samples.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

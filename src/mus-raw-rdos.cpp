@@ -1,6 +1,6 @@
 /**
- * @file   mus-raw-rdos.cpp
- * @brief  Support for Rdos RAW OPL capture (.raw) format.
+ * @file  mus-raw-rdos.cpp
+ * @brief Support for Rdos RAW OPL capture (.raw) format.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

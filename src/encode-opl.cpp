@@ -1,6 +1,6 @@
 /**
- * @file   encode-opl.cpp
- * @brief  Function to convert a Music instance into raw OPL data.
+ * @file  encode-opl.cpp
+ * @brief Function to convert a Music instance into raw OPL data.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

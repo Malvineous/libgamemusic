@@ -1,6 +1,6 @@
 /**
- * @file   patch-pcm.hpp
- * @brief  Derived Patch for PCM patches.
+ * @file  camoto/gamemusic/patch-pcm.hpp
+ * @brief Derived Patch for PCM patches.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

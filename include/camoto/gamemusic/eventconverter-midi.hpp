@@ -1,6 +1,6 @@
 /**
- * @file   eventconverter-midi.hpp
- * @brief  EventConverter implementation that produces MIDI events from Events.
+ * @file  camoto/gamemusic/eventconverter-midi.hpp
+ * @brief EventConverter implementation that produces MIDI events from Events.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -208,8 +208,8 @@ class MIDIEventCallback
 		 *   Delay since previous event, in MIDI ticks.  This is the delay at the
 		 *   old tempo before the tempo change is actioned.
 		 *
-		 * @param usPerTick
-		 *   New tempo, in number of microseconds per tick.
+		 * @param tempo
+		 *   New tempo.
 		 */
 		virtual void midiSetTempo(uint32_t delay, const Tempo& tempo) = 0;
 

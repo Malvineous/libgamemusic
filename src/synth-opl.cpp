@@ -1,6 +1,6 @@
 /**
- * @file   synth-opl.cpp
- * @brief  Interface to an OPL/FM/Adlib synthesizer.
+ * @file  synth-opl.cpp
+ * @brief Interface to an OPL/FM/Adlib synthesizer.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

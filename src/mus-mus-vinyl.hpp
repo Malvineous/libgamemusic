@@ -1,6 +1,6 @@
 /**
- * @file   mus-mus-vinyl.hpp
- * @brief  Format handler for Vinyl Goddess From Mars .mus files.
+ * @file  mus-mus-vinyl.hpp
+ * @brief Format handler for Vinyl Goddess From Mars .mus files.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *

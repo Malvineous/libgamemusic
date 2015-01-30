@@ -1,6 +1,6 @@
 /**
- * @file   mus-cmf-creativelabs.hpp
- * @brief  Support for Creative Labs' CMF files.
+ * @file  mus-cmf-creativelabs.hpp
+ * @brief Support for Creative Labs' CMF files.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
