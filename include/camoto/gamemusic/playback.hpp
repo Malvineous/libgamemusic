@@ -170,6 +170,7 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		unsigned int pattern;
 		unsigned int row;
 		unsigned int frame;
+		unsigned int nextRow;
 		Tempo tempo;
 
 		unsigned int samplesPerFrame;

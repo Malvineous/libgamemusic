@@ -105,6 +105,7 @@ void Playback::setSong(ConstMusicPtr music)
 		std::cerr << "Warning: Song's ticksPerTrack is zero!" << std::endl;
 	}
 	this->row = 0;
+	this->nextRow = 1;
 	this->frame = 0;
 
 	this->tempoChange(music->initialTempo);
@@ -160,6 +161,7 @@ void Playback::setLoopCount(unsigned int count)
 void Playback::seekByOrder(unsigned int destOrder)
 {
 	this->row = 0;
+	this->nextRow = 1;
 	this->frame = 0;
 	this->order = destOrder;
 	if (this->music->patternOrder.size() <= this->order) {
@@ -287,6 +289,15 @@ void Playback::nextFrame()
 						) {
 							te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
 						}
+						// Check for any effects that affect playback progress
+						EffectEvent *effect = dynamic_cast<EffectEvent *>(te.event.get());
+						if (effect) {
+							switch (effect->type) {
+								case EffectEvent::PatternBreak:
+									this->nextRow = this->music->ticksPerTrack;
+									break;
+							}
+						}
 					} else if (trackPos > this->row) {
 						// Not up to this event yet, don't keep looking
 						break;
@@ -319,9 +330,11 @@ void Playback::nextFrame()
 		this->frame++;
 		if (this->frame >= this->tempo.framesPerTick) {
 			this->frame = 0;
-			this->row++;
+			this->row = this->nextRow;
+			this->nextRow++;
 			if (this->row >= this->music->ticksPerTrack) {
 				this->row = 0;
+				this->nextRow = 1;
 				this->order++;
 				if (this->order >= this->music->patternOrder.size()) {
 					if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1)) {

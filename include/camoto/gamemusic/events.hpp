@@ -141,6 +141,7 @@ struct DLL_EXPORT EffectEvent: virtual public Event
 	enum EffectType {
 		PitchbendNote, ///< Change note freq: data=new freq in milliHertz
 		Volume,        ///< Change note volume: 0=silent, 255=loud
+		PatternBreak,  ///< Jump to next pattern, after delay has elapsed
 	};
 
 	/// Type of effect.
