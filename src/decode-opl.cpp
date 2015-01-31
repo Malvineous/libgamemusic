@@ -523,7 +523,11 @@ int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
 	unsigned int j = 0;
 	for (PatchBank::const_iterator i = patches->begin(); i != patches->end(); i++, j++) {
 		OPLPatchPtr p = boost::dynamic_pointer_cast<OPLPatch>(*i);
-		if ((p) && (*p == *curPatch)) return j; // patch already saved
+		if (
+			(p)
+			&& (*p == *curPatch)
+			&& (p->rhythm == curPatch->rhythm)
+		) return j; // patch already saved
 	}
 
 	// Save the patch
