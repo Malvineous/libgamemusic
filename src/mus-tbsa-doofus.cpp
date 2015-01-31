@@ -36,6 +36,9 @@ using namespace camoto::gamemusic;
 /// Fixed module tempo/bpm for all songs (but module 'speed' can change)
 #define TBSA_TEMPO 66
 
+/// Number of rows in a normal (full-length) pattern
+#define TBSA_PATTERN_LENGTH 63
+
 // Safety limits to avoid infinite loops
 #define TBSA_MAX_ORDERS 256
 #define TBSA_MAX_INSTS  256
@@ -261,6 +264,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 		// patsegList now contains a list of all the segments, one per track, that
 		// make up this pattern.
 		unsigned int trackIndex = 0;
+		unsigned int patternLength = 0;
 		for (std::vector<uint8_t>::const_iterator
 			p = patsegList.begin(); p != patsegList.end(); p++, trackIndex++
 		) {
@@ -321,6 +325,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 			double lastShift = 0.0;
 			int delay = 0;
 			bool noteOn = false;
+			int patsegLength = 0;
 			for (int row = 0; row < TBSA_MAX_PATSEG_LEN; row++) {
 				uint8_t code;
 				input >> u8(code);
@@ -334,6 +339,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 					case 2: { // 4x,5x: note
 						TrackEvent te;
 						te.delay = delay;
+						patsegLength += delay;
 						delay = lastIncrement;
 						NoteOnEvent *ev = new NoteOnEvent();
 						te.event.reset(ev);
@@ -376,6 +382,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 								if (noteOn) {
 									TrackEvent te;
 									te.delay = delay;
+									patsegLength += delay;
 									delay = 0;
 									EffectEvent *ev = new EffectEvent();
 									te.event.reset(ev);
@@ -387,6 +394,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 							case 0xFE: { // note off
 								TrackEvent te;
 								te.delay = delay;
+								patsegLength += delay;
 								delay = lastIncrement;
 								NoteOffEvent *ev = new NoteOffEvent();
 								te.event.reset(ev);
@@ -395,6 +403,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 								break;
 							}
 							default:
+								delay += lastIncrement;
 								std::cout << "TBSA: Unrecognised extended command: "
 									<< std::hex << (int)code << std::dec << "\n";
 								break;
@@ -405,10 +414,40 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 							<< std::hex << (int)code << std::dec << "\n";
 						break;
 				}
-			}
+			} // for each byte in the pattern segment data
+			if (patsegLength > patternLength) patternLength = patsegLength;
+		} // for each pattern segment
 
+		// If this pattern is short, add a pattern-break event
+		if (patternLength < TBSA_PATTERN_LENGTH) {
+			TrackPtr t = pattern->at(0);
+			if (t) {
+				// Find out how long all the events in the track go for
+				unsigned int totalDelay = 0;
+				for (Track::iterator j = t->begin(); j != t->end(); j++) {
+					TrackEvent& te = *j;
+					totalDelay += te.delay;
+				}
+
+				// If this assertion fails, then somehow we didn't add up the length of
+				// the track correctly, as patternLength is supposed to be the largest
+				// value of all the pattern segment lengths.
+				assert(patternLength >= totalDelay);
+
+				// Now add a pattern break with enough of a delay that it will trigger
+				// the right amount of time after the last event on this track.
+				TrackEvent te;
+				te.delay = patternLength - totalDelay;
+				EffectEvent *ev = new EffectEvent();
+				te.event.reset(ev);
+
+				ev->type = EffectEvent::PatternBreak;
+				ev->data = 0;
+
+				t->push_back(te);
+			}
 		}
-	}
+	} // for each entry in the order list
 	oplDenormalisePerc(music, OPLPerc_CarFromMod);
 	return music;
 }
