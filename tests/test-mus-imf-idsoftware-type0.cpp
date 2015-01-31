@@ -98,7 +98,7 @@ class test_imf_idsoftware_type0: public test_music
 				// Note on/off
 				"\xa1\x44" "\x00\x00"
 				"\xb1\x32" "\x10\x00"
-				"\xb1\x12" "\x30\x00" // trailing delay
+				"\xb1\x12" "\x40\x00" // trailing delay
 			);
 		}
 
