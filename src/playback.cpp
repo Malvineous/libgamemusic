@@ -248,6 +248,8 @@ void Playback::allNotesOff()
 
 void Playback::nextFrame()
 {
+	static bool loadNextOrder = false; // has the order number changed?
+
 	// Trigger the next event
 	if (!this->end) {
 		if (this->frame == 0) {
@@ -290,13 +292,24 @@ void Playback::nextFrame()
 							te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
 						}
 						// Check for any effects that affect playback progress
-						EffectEvent *effect = dynamic_cast<EffectEvent *>(te.event.get());
-						if (effect) {
-							switch (effect->type) {
-								case EffectEvent::PatternBreak:
-									this->nextRow = this->music->ticksPerTrack;
+						GotoEvent *jump = dynamic_cast<GotoEvent *>(te.event.get());
+						if (jump) {
+							switch (jump->type) {
+								case GotoEvent::CurrentPattern:
+									this->nextRow = jump->targetRow;
+									break;
+								case GotoEvent::NextPattern:
+									this->nextOrder++;
+									this->nextRow = jump->targetRow;
+									loadNextOrder = true;
+									break;
+								case GotoEvent::SpecificOrder:
+									this->nextOrder = jump->targetOrder;
+									this->nextRow = jump->targetRow;
+									loadNextOrder = true;
 									break;
 							}
+							if (jump->loop != 0) std::cout << "TODO: Handle looping jumps\n";
 						}
 					} else if (trackPos > this->row) {
 						// Not up to this event yet, don't keep looking
@@ -335,7 +348,12 @@ void Playback::nextFrame()
 			if (this->row >= this->music->ticksPerTrack) {
 				this->row = 0;
 				this->nextRow = 1;
-				this->order++;
+				this->nextOrder++;
+				loadNextOrder = true;
+			}
+			if (loadNextOrder) {
+				loadNextOrder = false;
+				this->order = this->nextOrder;
 				if (this->order >= this->music->patternOrder.size()) {
 					if ((this->loopCount == 0) || ((unsigned int)this->loop < this->loopCount - 1)) {
 						if (this->music->loopDest >= 0) {

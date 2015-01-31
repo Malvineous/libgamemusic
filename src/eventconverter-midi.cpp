@@ -277,6 +277,14 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 }
 
 void EventConverter_MIDI::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	// MIDI doesn't really have a concept of jumps, EMIDI notwithstanding
+	this->cachedDelay += delay;
+	return;
+}
+
+void EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {

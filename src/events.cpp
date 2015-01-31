@@ -107,6 +107,26 @@ void EffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	return;
 }
 
+std::string GotoEvent::getContent() const
+{
+	std::ostringstream ss;
+	ss
+		<< this->Event::getContent()
+		<< "event=goto;type=" << this->type
+		<< ";loop=" << this->loop
+		<< ";targetOrder=" << this->targetOrder
+		<< ";targetRow=" << this->targetRow
+	;
+	return ss.str();
+}
+
+void GotoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, EventHandler *handler)
+{
+	handler->handleEvent(delay, trackIndex, patternIndex, this);
+	return;
+}
+
 std::string ConfigurationEvent::getContent() const
 {
 	std::ostringstream ss;

@@ -81,6 +81,8 @@ class EventConverter_DSM: virtual public EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::len> lenPattern; ///< Offset of each pattern
@@ -651,6 +653,18 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 		case EffectEvent::Volume:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x20; // event with volume only
 			*this->patBufPos++ = ev->data >> 2; // volume value
+			break;
+	}
+	return;
+}
+
+void EventConverter_DSM::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	this->writeDelay(delay);
+	switch (ev->type) {
+		case GotoEvent::CurrentPattern:
+			std::cout << "DSM: TODO - implement pattern breaks\n";
 			break;
 	}
 	return;

@@ -325,6 +325,8 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:

@@ -325,7 +325,7 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 			double lastShift = 0.0;
 			int delay = 0;
 			bool noteOn = false;
-			int patsegLength = 0;
+			unsigned int patsegLength = 0;
 			for (int row = 0; row < TBSA_MAX_PATSEG_LEN; row++) {
 				uint8_t code;
 				input >> u8(code);
@@ -438,11 +438,11 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 				// the right amount of time after the last event on this track.
 				TrackEvent te;
 				te.delay = patternLength - totalDelay;
-				EffectEvent *ev = new EffectEvent();
+				GotoEvent *ev = new GotoEvent();
 				te.event.reset(ev);
 
-				ev->type = EffectEvent::PatternBreak;
-				ev->data = 0;
+				ev->type = GotoEvent::NextPattern;
+				ev->targetRow = 0;
 
 				t->push_back(te);
 			}

@@ -139,16 +139,58 @@ struct DLL_EXPORT NoteOffEvent: virtual public Event
 struct DLL_EXPORT EffectEvent: virtual public Event
 {
 	enum EffectType {
-		PitchbendNote, ///< Change note freq: data=new freq in milliHertz
-		Volume,        ///< Change note volume: 0=silent, 255=loud
-		PatternBreak,  ///< Jump to next pattern, after delay has elapsed
+		PitchbendNote, ///< Change note freq
+		Volume,        ///< Change note volume
 	};
 
 	/// Type of effect.
 	EffectType type;
 
-	/// Effect data.  See EffectType.
+	/// Effect data.
+	/**
+	 * - PitchbendNote: new frequency in milliHertz
+	 * - Volume: new volume, 0=silent, 255=loud
+	 */
 	unsigned int data;
+
+	virtual std::string getContent() const;
+
+	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+		unsigned int patternIndex, EventHandler *handler);
+};
+
+
+/// Change the way playback is progressing.
+struct DLL_EXPORT GotoEvent: virtual public Event
+{
+	enum GotoType {
+		CurrentPattern, ///< Stay on the current pattern
+		NextPattern,    ///< Jump to the next pattern specified in the order list
+		SpecificOrder,  ///< Jump to the given index in the order list
+	};
+
+	/// Type of jump.
+	GotoType type;
+
+	/// Number of times to jump, if jumping backwards so this event gets reached
+	/// again.
+	/**
+	 * - 0=loop forever (default)
+	 * - 1=loop once
+	 */
+	unsigned int loop;
+
+	/// Target entry in the order list.
+	/**
+	 * @pre Only valid when \a type is #SpecificOrder.  Set to 0 otherwise.
+	 */
+	unsigned int targetOrder;
+
+	/// Target row in destination order.
+	/**
+	 * 0 is the first row in the pattern.
+	 */
+	unsigned int targetRow;
 
 	virtual std::string getContent() const;
 
@@ -366,6 +408,13 @@ class DLL_EXPORT EventHandler
 		 */
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev) = 0;
+
+		/// An jump is being performed.
+		/**
+		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 */
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev) = 0;
 
 		/// A global song parameter is being changed.
 		/**

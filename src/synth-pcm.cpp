@@ -253,6 +253,12 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 }
 
 void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, const GotoEvent *ev)
+{
+	return;
+}
+
+void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const ConfigurationEvent *ev)
 {
 	return;

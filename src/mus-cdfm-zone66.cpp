@@ -64,6 +64,8 @@ class EventConverter_CDFM: virtual public EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<unsigned int> instMapPCM, instMapOPL;
@@ -742,6 +744,14 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 			;
 			break;
 	}
+	return;
+}
+
+void EventConverter_CDFM::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	this->writeDelay(delay);
+	// Not supported by this format?
 	return;
 }
 

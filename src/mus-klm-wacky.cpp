@@ -57,6 +57,8 @@ class EventConverter_KLM: virtual public EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
@@ -776,6 +778,14 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 */
 	this->lastDelay += delay;
 	//this->lastEvent[midiChannel] = ev->absTime;
+	return;
+}
+
+void EventConverter_KLM::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	// Nothing to do
+	this->lastDelay += delay;
 	return;
 }
 

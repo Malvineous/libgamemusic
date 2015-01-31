@@ -357,6 +357,15 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 	return;
 }
 
+void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
+	unsigned int patternIndex, const GotoEvent *ev)
+{
+	// We'll do something here when we encounter the first raw OPL format that
+	// supports jumps.
+	this->cachedDelay += delay;
+	return;
+}
+
 void EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)

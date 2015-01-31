@@ -70,6 +70,8 @@ class EventConverter_S3M: virtual public EventHandler
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
 		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::len> lenPattern; ///< Offset of each pattern
@@ -548,6 +550,32 @@ C-4 note
 							lastTempo = ev->tempo;
 							break;
 						}
+						case 0x02: { // B: Jump to order
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							GotoEvent *ev = new GotoEvent();
+							te.event.reset(ev);
+							ev->type = GotoEvent::SpecificOrder;
+							ev->loop = 0;
+							ev->targetOrder = info;
+							ev->targetRow = 0;
+							track->push_back(te);
+							lastRow[channel] = row;
+							break;
+						}
+						case 0x03: { // C: Jump to row
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							GotoEvent *ev = new GotoEvent();
+							te.event.reset(ev);
+							ev->type = GotoEvent::NextPattern;
+							ev->loop = 0;
+							ev->targetOrder = 0;
+							ev->targetRow = ((info & 0xf0) >> 4) * 10 + (info & 0x0f);
+							track->push_back(te);
+							lastRow[channel] = row;
+							break;
+						}
 						case 0x20: { // T: set tempo
 							TrackEvent te;
 							te.delay = row - lastRow[channel];
@@ -990,6 +1018,25 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 		case EffectEvent::Volume:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x40; // event with volume only
 			*this->patBufPos++ = ev->data >> 2; // volume value
+			break;
+	}
+	return;
+}
+
+void EventConverter_S3M::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	this->writeDelay(delay);
+	switch (ev->type) {
+		case GotoEvent::NextPattern:
+			*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // event with effect only
+			*this->patBufPos++ = 0x03; // C: Jump to row
+			*this->patBufPos++ = ((ev->targetRow / 10) << 4) | (ev->targetRow % 10); // decimal as hex
+			break;
+		case GotoEvent::SpecificOrder:
+			*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // event with effect only
+			*this->patBufPos++ = 0x02; // B: Jump to order
+			*this->patBufPos++ = ev->targetOrder;
 			break;
 	}
 	return;
