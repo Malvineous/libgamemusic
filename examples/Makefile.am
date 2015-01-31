@@ -1,6 +1,8 @@
 bin_PROGRAMS = gamemus
+noinst_PROGRAMS = hello
 
 gamemus_SOURCES = gamemus.cpp
+hello_SOURCES = hello.cpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 

@@ -64,7 +64,8 @@ For a small "hello world" example, try this:
 When run, this program produces output similar to the following:
 
 @verbatim
-TODO
+There are 13 instruments in this song.
+This song is called: Jill of the Jungle - Funky
 @endverbatim
 
 \section libgamemusic_info More information
