@@ -95,6 +95,7 @@ void Playback::setSong(ConstMusicPtr music)
 	this->end = false;
 	this->loop = 0;
 	this->order = 0;
+	this->nextOrder = 0; // incremented to 1 at end of pattern
 	if (music->patternOrder.size() == 0) {
 		this->pattern = 0;
 		std::cerr << "Warning: Song has no pattern order numbers!" << std::endl;
@@ -105,7 +106,7 @@ void Playback::setSong(ConstMusicPtr music)
 		std::cerr << "Warning: Song's ticksPerTrack is zero!" << std::endl;
 	}
 	this->row = 0;
-	this->nextRow = 1;
+	this->nextRow = this->row + 1;
 	this->frame = 0;
 
 	this->tempoChange(music->initialTempo);
@@ -161,9 +162,10 @@ void Playback::setLoopCount(unsigned int count)
 void Playback::seekByOrder(unsigned int destOrder)
 {
 	this->row = 0;
-	this->nextRow = 1;
+	this->nextRow = this->row + 1;
 	this->frame = 0;
 	this->order = destOrder;
+	this->nextOrder = 0; // incremented to 1 at end of pattern
 	if (this->music->patternOrder.size() <= this->order) {
 		// order points past end of patterns
 		this->end = true;
