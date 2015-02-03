@@ -455,7 +455,9 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 void MusicType_TBSA::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
-	assert(false);
+	#warning Doofus TBSA writing still needs to be implemented
+	throw stream::error("Writing Doofus TBSA files is not "
+		"yet implemented.  Please ask for it if you need it.");
 	return;
 }
 

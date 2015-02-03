@@ -358,8 +358,9 @@ MusicPtr MusicType_CDFM_GUS::read(stream::input_sptr input, SuppData& suppData) 
 void MusicType_CDFM_GUS::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
-	assert(false);
-	return;
+	#warning Zone 66 GUS writing still needs to be implemented
+	throw stream::error("Writing the GUS variant of Zone 66 CDFM files is not "
+		"yet implemented.  Please ask for it if you need it.");
 }
 
 SuppFilenames MusicType_CDFM_GUS::getRequiredSupps(stream::input_sptr input,
