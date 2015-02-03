@@ -270,6 +270,8 @@ void test_music::prepareTest()
 	this->base.reset(new stream::string());
 
 	this->base << this->standard();
+	// Don't seek back to the start of the data to ensure all format handlers
+	// have an initial seek.
 	return;
 }
 
@@ -403,7 +405,7 @@ void test_music::test_read()
 	if (this->dumpEvents) listEvents(music);
 
 	if (this->indexInstrumentOPL >= 0) {
-		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentOPL);
+		BOOST_REQUIRE_GT(music->patches->size(), this->indexInstrumentOPL);
 
 		OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(
 			music->patches->at(this->indexInstrumentOPL));
@@ -441,7 +443,7 @@ void test_music::test_read()
 	}
 
 	if (this->indexInstrumentMIDI >= 0) {
-		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentMIDI);
+		BOOST_REQUIRE_GT(music->patches->size(), this->indexInstrumentMIDI);
 
 		MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>(
 			music->patches->at(this->indexInstrumentMIDI));
@@ -449,7 +451,7 @@ void test_music::test_read()
 	}
 
 	if (this->indexInstrumentPCM >= 0) {
-		BOOST_REQUIRE_GE(music->patches->size(), this->indexInstrumentPCM);
+		BOOST_REQUIRE_GT(music->patches->size(), this->indexInstrumentPCM);
 
 		PCMPatchPtr pcmPatch = boost::dynamic_pointer_cast<PCMPatch>(
 			music->patches->at(this->indexInstrumentPCM));
