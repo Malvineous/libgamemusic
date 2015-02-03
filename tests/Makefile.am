@@ -18,6 +18,7 @@ tests_SOURCES += test-mus-klm-wacky.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
 tests_SOURCES += test-mus-mus-dmx.cpp
 tests_SOURCES += test-mus-s3m-screamtracker.cpp
+tests_SOURCES += test-mus-tbsa-doofus.cpp
 tests_SOURCES += test-music.cpp
 tests_SOURCES += test-opl.cpp
 tests_SOURCES += test-opl-normalise.cpp
