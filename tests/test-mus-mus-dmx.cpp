@@ -28,7 +28,7 @@ class test_mus_dmx: public test_music
 			this->type = "mus-dmx";
 			this->numInstruments = 1;
 			this->indexInstrumentOPL = -1;
-			this->indexInstrumentMIDI = 1;
+			this->indexInstrumentMIDI = 0;
 			this->indexInstrumentPCM = -1;
 			this->skipInstDetect.push_back("mus-dmx-raptor");
 		}
