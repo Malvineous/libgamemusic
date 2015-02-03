@@ -32,6 +32,7 @@ class test_cdfm_zone66_gus: public test_music
 			this->indexInstrumentOPL = -1;
 			this->indexInstrumentMIDI = -1;
 			this->indexInstrumentPCM = 0;
+			this->writingSupported = false;
 		}
 
 		void addTests()

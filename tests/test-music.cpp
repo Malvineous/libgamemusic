@@ -19,6 +19,7 @@
  */
 
 #include <iomanip>
+#include <iostream>
 #include <boost/bind.hpp>
 #include <camoto/util.hpp>
 #include "test-music.hpp"
@@ -199,6 +200,8 @@ test_music::test_music()
 	this->metadataContent[Metadata::Version] = "123";
 	this->metadataContent[Metadata::Title] = "Test title";
 	this->metadataContent[Metadata::Author] = "Test author";
+
+	this->writingSupported = true;
 }
 
 void test_music::addTests()
@@ -207,7 +210,13 @@ void test_music::addTests()
 
 	ADD_MUSIC_TEST(&test_music::test_isinstance_others);
 	ADD_MUSIC_TEST(&test_music::test_read);
-	ADD_MUSIC_TEST(&test_music::test_write);
+
+	if (this->writingSupported) {
+		ADD_MUSIC_TEST(&test_music::test_write);
+	} else {
+		std::cerr << "WARNING: Format " << this->type
+			<< " does not support writing, skipping write test." << std::endl;
+	}
 
 	// Only perform the metadata tests if supported by the music format
 	if (this->hasMetadata[Metadata::Description]) {
@@ -515,12 +524,14 @@ void test_music::test_metadata_generic(const std::string& name,
 
 	BOOST_REQUIRE_EQUAL(music->metadata[item], this->metadataContent[item]);
 
-	music->metadata[item] = "Replaced";
+	if (this->writingSupported) {
+		music->metadata[item] = "Replaced";
 
-	this->base.reset(new stream::string());
-	this->pType->write(this->base, this->suppData, music, this->writeFlags);
+		this->base.reset(new stream::string());
+		this->pType->write(this->base, this->suppData, music, this->writeFlags);
 
-	BOOST_REQUIRE(this->is_content_equal(expected));
+		BOOST_REQUIRE(this->is_content_equal(expected));
+	}
 }
 
 std::string test_music::metadata_desc_replaced()

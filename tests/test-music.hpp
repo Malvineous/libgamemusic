@@ -225,6 +225,9 @@ class test_music: public test_main
 		/// Link between supplementary items and the class containing the expected
 		/// content for each test case.
 		std::map<camoto::SuppItem::Type, boost::shared_ptr<test_music> > suppResult;
+
+		/// Set to false if the format cannot be written yet (development use only)
+		bool writingSupported;
 };
 
 /// Add a test_music member function to the test suite
