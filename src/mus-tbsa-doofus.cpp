@@ -20,6 +20,7 @@
 
 #include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/stream_string.hpp>
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp> // midiToFreq
 #include <camoto/gamemusic/patch-opl.hpp>
@@ -45,6 +46,59 @@ using namespace camoto::gamemusic;
 #define TBSA_MAX_PATTS  4096
 #define TBSA_MAX_ORD_LEN 256
 #define TBSA_MAX_PATSEG_LEN 4096
+
+
+class EventConverter_TBSA: virtual public EventHandler
+{
+	public:
+		/// Prepare to convert events into TBSA data sent to a stream.
+		/**
+		 * @param output
+		 *   Output stream the TBSA data will be written to.
+		 *
+		 * @param music
+		 *   Song parameters (patches, initial tempo, etc.)  Events are not read
+		 *   from here, the EventHandler is used for that.
+		 */
+		EventConverter_TBSA(stream::output_sptr output, ConstMusicPtr music);
+
+		/// Destructor.
+		virtual ~EventConverter_TBSA();
+
+		// EventHandler overrides
+		virtual void endOfTrack(unsigned long delay);
+		virtual void endOfPattern(unsigned long delay);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const TempoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOnEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const NoteOffEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const EffectEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const GotoEvent *ev);
+		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const ConfigurationEvent *ev);
+
+		std::vector<stream::pos> offPatSeg; ///< Offset of each pattern
+
+	protected:
+		stream::output_sptr output;  ///< Where to write data
+		ConstMusicPtr music;         ///< Song being written
+		stream::string_sptr cachedEvent;  ///< Event to be written out later
+		unsigned int cachedDelay;    ///< Delay to write before next cachedEvent flush
+		unsigned int curAdvance;     ///< Current advancement amount (rows incremented per event)
+		uint8_t curVolume;           ///< Current volume on this track/channel
+		uint8_t curPatch;            ///< Current instrument on this track/channel
+
+		/// Write out the current delay
+		void flushEvent(bool final);
+
+		/// Write out a volume-change event
+		void setVolume(uint8_t newVolume);
+};
+
 
 std::string MusicType_TBSA::getCode() const
 {
@@ -415,6 +469,25 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 						break;
 				}
 			} // for each byte in the pattern segment data
+
+			// If there's a trailing delay, include it in the calculation of the
+			// longest pattern length.  We don't need to add a dummy event because
+			// the format is fixed at 64 rows per pattern.
+			if (delay) {
+				patsegLength += delay;
+				delay = 0;
+				/*
+				// Put a final placeholder to ensure the track is the correct length
+				TrackEvent te;
+				te.delay = delay;
+				patsegLength += delay;
+				delay = 0;
+				ConfigurationEvent *ev = new ConfigurationEvent();
+				te.event.reset(ev);
+				t->push_back(te);
+				*/
+			}
+
 			if (patsegLength > patternLength) patternLength = patsegLength;
 		} // for each pattern segment
 
@@ -449,15 +522,171 @@ MusicPtr MusicType_TBSA::read(stream::input_sptr input, SuppData& suppData) cons
 		}
 	} // for each entry in the order list
 	oplDenormalisePerc(music, OPLPerc_CarFromMod);
+
 	return music;
 }
 
 void MusicType_TBSA::write(stream::output_sptr output, SuppData& suppData,
 	MusicPtr music, unsigned int flags) const
 {
-	#warning Doofus TBSA writing still needs to be implemented
-	throw stream::error("Writing Doofus TBSA files is not "
-		"yet implemented.  Please ask for it if you need it.");
+	requirePatches<OPLPatch>(music->patches);
+	if (music->patches->size() >= 31) {
+		throw bad_patch("TBSA files have a maximum of 31 instruments.");
+	}
+
+	// Swap operators for required percussive patches
+	PatchBankPtr normPatches = oplNormalisePerc(music, OPLPerc_CarFromMod);
+
+	output
+		<< nullPadded("TBSA0.01", 8)
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xabcd) // placeholder
+	;
+
+	// Order list
+	stream::pos offOrderPtrs = output->tellp();
+	output
+		<< u16le(0xabcd) // placeholder
+		<< u16le(0xFFFF) // end-of-list
+	;
+
+	// Unknown list 1
+	stream::pos offUnknown1 = output->tellp();
+	output << u16le(0xFFFF); // end-of-list
+
+	// Unknown list 2
+	stream::pos offUnknown2 = output->tellp();
+	output << u16le(0xFFFF); // end-of-list
+
+	// Unknown list 3
+	stream::pos offUnknown3 = output->tellp();
+	output << u16le(0xFFFF); // end-of-list
+
+	// Instrument pointers
+	stream::pos offInstPtrs = output->tellp();
+	for (PatchBank::const_iterator i = music->patches->begin(); i != music->patches->end(); i++) {
+		output << u16le(0xaaaa); // placeholder
+	}
+	output << u16le(0xFFFF); // end-of-list
+
+	unsigned int numPatterns = music->patterns.size();
+	unsigned int numTracks = music->patterns[0]->size();
+
+	// Pattern segment pointers
+	stream::pos offPattPtrs = output->tellp();
+	unsigned long numPatternSegments = numPatterns * numTracks;
+	for (unsigned int i = 0; i < numPatternSegments; i++) {
+		output << u16le(0xbbbb); // placeholder
+	}
+	output << u16le(0xFFFF); // end-of-list
+
+	// Order pointers (which patsegs to play for each track)
+	stream::pos offOrderList = output->tellp();
+	output
+		<< u8(numTracks)
+		<< u8(0)           // unknown
+	;
+	for (unsigned int i = 0; i < numTracks; i++) {
+		output << u16le(0xcccc); // placeholder
+	}
+
+	// Instruments
+	std::vector<stream::pos> offInsts;
+	for (PatchBank::const_iterator
+		i = normPatches->begin(); i != normPatches->end(); i++
+	) {
+		const OPLPatch *oplPatch = dynamic_cast<const OPLPatch *>(i->get());
+		if (!oplPatch) continue;
+
+		offInsts.push_back(output->tellp());
+		uint8_t inst[20];
+		inst[0] = (oplPatch->m.attackRate << 4) | oplPatch->m.decayRate;
+		inst[1] = (oplPatch->m.sustainRate << 4) | oplPatch->m.releaseRate;
+		inst[2] = oplPatch->m.enableSustain ? 1 : 0;
+		inst[3] = oplPatch->m.enableKSR ? 1 : 0;
+		inst[4] = oplPatch->m.freqMult;
+		inst[5] = oplPatch->feedback;
+		inst[6] = oplPatch->m.enableVibrato;
+		inst[7] = (oplPatch->m.outputLevel > 2) ? oplPatch->m.outputLevel - 2 : 0;
+		inst[8] = oplPatch->m.scaleLevel;
+		inst[9] = oplPatch->m.enableTremolo ? 1 : 0;
+		inst[10] = oplPatch->connection;
+		inst[11] = oplPatch->m.waveSelect;
+		inst[12] = (oplPatch->c.attackRate << 4) | oplPatch->c.decayRate;
+		inst[13] = (oplPatch->c.sustainRate << 4) | oplPatch->c.releaseRate;
+		inst[14] = oplPatch->c.enableSustain ? 1 : 0;
+		inst[15] = oplPatch->c.enableKSR ? 1 : 0;
+		inst[16] = oplPatch->c.freqMult;
+		inst[17] = (oplPatch->c.outputLevel > 2) ? oplPatch->c.outputLevel - 2 : 0;
+		inst[18] = oplPatch->c.scaleLevel;
+		inst[19] = oplPatch->c.waveSelect;
+		output->write(inst, 20);
+	}
+
+	// Track order numbers
+	std::vector<stream::pos> orderPointers;
+	for (unsigned int trackIndex = 0; trackIndex < numTracks; trackIndex++) {
+		// Write all the order index numbers for this track
+
+		orderPointers.push_back(output->tellp());
+
+		for (std::vector<unsigned int>::const_iterator
+			o = music->patternOrder.begin(); o != music->patternOrder.end(); o++
+		) {
+			const unsigned int& patternIndex = *o;
+			unsigned int targetPatSeg = patternIndex * numTracks + trackIndex;
+			output << u8(targetPatSeg);
+		}
+		output << u8(0xFE);
+	}
+
+	// Write out all the pattern segments
+	EventConverter_TBSA conv(output, music);
+	conv.offPatSeg.push_back(output->tellp());
+	conv.handleAllEvents(EventHandler::Pattern_Track_Row, music);
+	// Remove last element (it will point to EOF and we don't need to write it)
+	conv.offPatSeg.pop_back();
+
+	output->truncate_here();
+
+	// Go back and write out all the file pointers
+	output->seekp(8, stream::start);
+	output
+		<< u16le(offOrderPtrs)
+		<< u16le(offUnknown1)
+		<< u16le(offUnknown2)
+		<< u16le(offUnknown3)
+		<< u16le(offInstPtrs)
+		<< u16le(offPattPtrs)
+	;
+
+	output->seekp(offOrderPtrs, stream::start);
+	output << u16le(offOrderList);
+
+	output->seekp(offInstPtrs, stream::start);
+	for (std::vector<stream::pos>::const_iterator
+		i = offInsts.begin(); i != offInsts.end(); i++
+	) {
+		output << u16le(*i);
+	}
+
+	output->seekp(offOrderList + 2, stream::start);
+	for (std::vector<stream::pos>::const_iterator
+		i = orderPointers.begin(); i != orderPointers.end(); i++
+	) {
+		output << u16le(*i);
+	}
+
+	output->seekp(offPattPtrs, stream::start);
+	for (std::vector<stream::pos>::const_iterator
+		i = conv.offPatSeg.begin(); i != conv.offPatSeg.end(); i++
+	) {
+		output << u16le(*i);
+	}
 	return;
 }
 
@@ -472,4 +701,183 @@ Metadata::MetadataTypes MusicType_TBSA::getMetadataList() const
 {
 	// No supported metadata
 	return Metadata::MetadataTypes();
+}
+
+
+EventConverter_TBSA::EventConverter_TBSA(stream::output_sptr output,
+	ConstMusicPtr music)
+	:	output(output),
+		music(music),
+		cachedEvent(new stream::string),
+		cachedDelay(0),
+		curAdvance(255), // These values are all out of range
+		curVolume(255),  // so that they'll get set/written
+		curPatch(255)    // on the first note in the track
+{
+}
+
+EventConverter_TBSA::~EventConverter_TBSA()
+{
+}
+
+void EventConverter_TBSA::endOfTrack(unsigned long delay)
+{
+	this->cachedDelay += delay;
+	this->flushEvent(false);
+
+	this->output << u8(0xFF);
+	this->offPatSeg.push_back(this->output->tellp());
+
+	this->cachedDelay = 0;
+
+	// Reset for next track.  These values are all out of range so the first
+	// note in the next track will cause the values to be written out to the file.
+	this->curAdvance = 255;
+	this->curVolume = 255;
+	this->curPatch = 255;
+	return;
+}
+
+void EventConverter_TBSA::endOfPattern(unsigned long delay)
+{
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
+{
+	this->cachedDelay += delay;
+	std::cerr << "TBSA: Does not support tempo changes\n";
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
+{
+	this->cachedDelay += delay;
+	this->flushEvent(false);
+
+	unsigned int midiNote = round(freqToMIDI(ev->milliHertz));
+
+	if (midiNote < 12) midiNote = 0;
+	else if (midiNote > 127) midiNote = 127;
+	else midiNote -= 12;
+
+	if (this->curPatch != ev->instrument) {
+		// Set patch
+		this->output << u8(0x80 | ev->instrument);
+		this->curPatch = ev->instrument;
+	}
+
+	assert(ev->velocity < 256);
+	this->setVolume(ev->velocity); // no-op if there's no change
+
+	this->cachedEvent
+		<< u8(midiNote)
+	;
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
+{
+	this->cachedDelay += delay;
+	this->flushEvent(false);
+
+	this->cachedEvent
+		<< u8(0xFE)
+	;
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
+{
+	this->cachedDelay += delay;
+
+	switch (ev->type) {
+		case EffectEvent::PitchbendNote:
+			std::cerr << "TBSA: Pitch bends not supported, ignoring event\n";
+			break;
+		case EffectEvent::Volume:
+			this->setVolume(ev->data);
+			break;
+	}
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
+{
+	this->cachedDelay += delay;
+	// Not supported by this format?
+	return;
+}
+
+void EventConverter_TBSA::handleEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex,
+	const ConfigurationEvent *ev)
+{
+	this->cachedDelay += delay;
+	switch (ev->configType) {
+		case ConfigurationEvent::EmptyEvent:
+			break;
+		case ConfigurationEvent::EnableOPL3:
+			if (ev->value != 0) std::cerr << "TBSA: OPL3 cannot be enabled, ignoring event.\n";
+			break;
+		case ConfigurationEvent::EnableDeepTremolo:
+			if (ev->value != 0) std::cerr << "TBSA: Deep tremolo cannot be enabled, ignoring event.\n";
+			break;
+		case ConfigurationEvent::EnableDeepVibrato:
+			if (ev->value != 0) std::cerr << "TBSA: Deep vibrato cannot be enabled, ignoring event.\n";
+			break;
+		case ConfigurationEvent::EnableRhythm:
+			if (ev->value != 0) std::cerr << "TBSA: Rhythm mode cannot be enabled, ignoring event.\n";
+			break;
+		case ConfigurationEvent::EnableWaveSel:
+			if (ev->value != 1) std::cerr << "TBSA: Wave selection registers cannot be disabled, ignoring event.\n";
+			break;
+	}
+	return;
+}
+
+void EventConverter_TBSA::flushEvent(bool final)
+{
+	if (this->cachedDelay || final) {
+		uint8_t steps;
+		if (this->cachedDelay) steps = this->cachedDelay - 1; else steps = 0;
+		if (steps > 63) {
+			throw format_limitation(createString("TBSA: Cannot handle delays of "
+				"more than 64 rows (tried to write delay of " << this->cachedDelay
+				<< " rows)."));
+		}
+		if (steps != this->curAdvance) {
+			// Write the new delay before the cached event
+			if (steps < 32) {
+				this->output << u8(0xA0 | steps);
+			} else if (steps < 64) {
+				this->output << u8(0xC0 | (steps - 32));
+			}
+			this->curAdvance = steps;
+		}
+		this->cachedDelay = 0;
+
+		this->output << *this->cachedEvent->str();
+		this->cachedEvent->seekp(0, stream::start);
+		this->cachedEvent->str()->clear();
+	}
+	return;
+}
+
+void EventConverter_TBSA::setVolume(uint8_t newVolume)
+{
+	newVolume >>= 1;  // 0..255 -> 0..127
+	if (newVolume != this->curVolume) {
+		this->output
+			<< u8(0xFD)
+			<< u8(newVolume)
+		;
+		this->curVolume = newVolume;
+	}
+	return;
 }

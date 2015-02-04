@@ -26,7 +26,7 @@ File formats from the following games are supported:
   * Commander Keen (.imf)
   * Cosmo's Cosmic Adventures (.imf)
   * Dark Ages (.mid, with OPL patches in sysex events) [read only]
-  * Doofus (.bsa) [read only]
+  * Doofus (.bsa)
   * Doom (.mus)
   * Drum Blaster (early .cmf)
   * Duke Nukem II (.imf)
