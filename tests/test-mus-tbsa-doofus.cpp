@@ -192,6 +192,7 @@ class test_tbsa_doofus: public test_music
 				"\xFE" // cause 32 row jump
 				"\xBA" // set small increment to 1A (27 rows)
 				"\xFE"
+				"\xFA" // pitchbend down by 3
 				"\x80" // set inst 0
 				"\xFD\x7F" // full volume
 				"\xA0" // set small increment to 0 (one row)

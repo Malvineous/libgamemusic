@@ -91,6 +91,7 @@ class EventConverter_TBSA: virtual public EventHandler
 		unsigned int curAdvance;     ///< Current advancement amount (rows incremented per event)
 		uint8_t curVolume;           ///< Current volume on this track/channel
 		uint8_t curPatch;            ///< Current instrument on this track/channel
+		int curFinetune;             ///< Current finetune value
 
 		/// Write out the current delay
 		void flushEvent(bool final);
@@ -712,7 +713,8 @@ EventConverter_TBSA::EventConverter_TBSA(stream::output_sptr output,
 		cachedDelay(0),
 		curAdvance(255), // These values are all out of range
 		curVolume(255),  // so that they'll get set/written
-		curPatch(255)    // on the first note in the track
+		curPatch(255),   // on the first note in the track
+		curFinetune(0)
 {
 }
 
@@ -735,6 +737,7 @@ void EventConverter_TBSA::endOfTrack(unsigned long delay)
 	this->curAdvance = 255;
 	this->curVolume = 255;
 	this->curPatch = 255;
+	this->curFinetune = 0;
 	return;
 }
 
@@ -757,14 +760,25 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 	this->cachedDelay += delay;
 	this->flushEvent(false);
 
-	unsigned int midiNote = round(freqToMIDI(ev->milliHertz));
+	double midiNote = freqToMIDI(ev->milliHertz);
 
 	if (midiNote < 12) midiNote = 0;
 	else if (midiNote > 127) midiNote = 127;
 	else midiNote -= 12;
 
+	// Handle any pitchbend
+	unsigned int midiNoteMain = ceil(midiNote);
+	double midiFrac = midiNote - midiNoteMain; // negative
+	midiFrac *= 40;
+	int step = round(midiFrac);
+	assert(step <= 0);
+	if ((step > -10) && (step < 0) && (step != this->curFinetune)) {
+		this->output << u8(0xFD + step);
+		this->curFinetune = step;
+	}
+
+	// Set patch
 	if (this->curPatch != ev->instrument) {
-		// Set patch
 		this->output << u8(0x80 | ev->instrument);
 		this->curPatch = ev->instrument;
 	}
@@ -773,7 +787,7 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 	this->setVolume(ev->velocity); // no-op if there's no change
 
 	this->cachedEvent
-		<< u8(midiNote)
+		<< u8(midiNoteMain)
 	;
 	return;
 }
