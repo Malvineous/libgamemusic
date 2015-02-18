@@ -70,7 +70,7 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 		bool complete = false;
 		uint8_t *data = sample.patch->data.get();
 		unsigned long lenInput = sample.patch->loopEnd ? sample.patch->loopEnd : sample.patch->lenData;
-		unsigned long numOutputSamples = lenInput * this->outputSampleRate / sample.sampleRate;
+		unsigned long numOutputSamples = lenInput * ((double)this->outputSampleRate / (double)sample.sampleRate);
 		for (unsigned long j = 0; j < len; j++) {
 
 			// Check if we have reached the end of the sample
@@ -202,7 +202,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 
 	Sample n;
 	n.track = trackIndex;
-	n.sampleRate = inst->sampleRate * ev->milliHertz / FREQ_MIDDLE_C;
+	n.sampleRate = inst->sampleRate * ((double)ev->milliHertz / (double)FREQ_MIDDLE_C);
 	n.patch = inst;
 	n.pos = 0;
 	if (ev->velocity < 0) {
