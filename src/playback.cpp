@@ -95,7 +95,7 @@ void Playback::setSong(ConstMusicPtr music)
 	this->end = false;
 	this->loop = 0;
 	this->order = 0;
-	this->nextOrder = 0; // incremented to 1 at end of pattern
+	this->nextOrder = this->order; // incremented to 1 at end of pattern
 	if (music->patternOrder.size() == 0) {
 		this->pattern = 0;
 		std::cerr << "Warning: Song has no pattern order numbers!" << std::endl;
@@ -364,16 +364,15 @@ void Playback::nextFrame()
 							this->order = 0; // loop back to start by default
 						}
 						this->loop++;
+						this->nextOrder = this->order; // incremented at end of pattern
 					} else {
 						this->end = true;
-						this->frame = 0;
 					}
 					this->allNotesOff();
 				}
 				if (this->order >= this->music->patternOrder.size()) {
 					// order points past end of patterns
 					this->end = true;
-					this->frame = 0;
 				} else {
 					this->pattern = this->music->patternOrder[this->order];
 				}
