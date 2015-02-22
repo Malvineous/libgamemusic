@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.63])
-AC_INIT([libgamemusic], [1.2],
+AC_INIT([libgamemusic], [2.0],
 	[https://github.com/Malvineous/libgamemusic/issues],
 	[], [http://www.shikadi.net/camoto])
 AM_INIT_AUTOMAKE([foreign dist-bzip2 no-dist-gzip])
@@ -12,10 +12,12 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_LANG(C++)
 
 # Overarching version of all libraries (used for installation dir)
-AC_SUBST(camoto_release, camoto-1.0)
+AC_SUBST(camoto_release, camoto-2.0)
 
 AC_PROG_CXX
 AC_PROG_LIBTOOL
+
+AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 
 PKG_PROG_PKG_CONFIG
 
