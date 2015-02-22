@@ -706,7 +706,7 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 	this->output
 		<< u8(channel)
 		<< u8((oct << 4) | note)
-			<< u8((inst << 4) | (velocity >> 4))
+		<< u8((inst << 4) | (velocity >> 4))
 	;
 	return;
 }
