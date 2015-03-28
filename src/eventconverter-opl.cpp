@@ -392,8 +392,11 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			break;
 		case ConfigurationEvent::EnableOPL3:
 			if (
-				(this->modeOPL3 && (ev->value == 0)) // on, switching off
-				|| (!this->modeOPL3 && (ev->value == 1)) // off, switching on
+				(
+					(this->modeOPL3 && (ev->value == 0)) // on, switching off
+					|| (!this->modeOPL3 && (ev->value == 1)) // off, switching on
+				) &&
+				!(this->flags & OPLWriteFlags::OPL2Only)
 			) {
 				this->processNextPair(1, 0x05, ev->value ? 0x01 : 0x00);
 				this->modeOPL3 = ev->value;
