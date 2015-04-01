@@ -186,12 +186,14 @@ void Playback::seekByTime(unsigned long ms)
 void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *pos)
 {
 	assert(this->music);
+	assert(this->frameBuffer.size() > 0);
 
 	while (samples > 0) {
 		if (this->frameBufferPos >= this->frameBuffer.size()) {
 			this->nextFrame();
 		}
 		unsigned long left = std::min(samples, (unsigned long)(this->frameBuffer.size() - this->frameBufferPos));
+		assert(left > 0); // if fails, infinite loop results
 		int16_t *in = &this->frameBuffer[this->frameBufferPos];
 		int16_t *out_end = output + left;
 		while (output < out_end) {
@@ -390,6 +392,9 @@ void Playback::tempoChange(const Tempo& tempo)
 
 	unsigned long samplesPerTick = this->outputSampleRate
 		* tempo.usPerTick / US_PER_SEC;
+	if (samplesPerTick == 0) {
+		throw stream::error("Tempo too high (less than one PCM sample per song tick)");
+	}
 	this->samplesPerFrame = samplesPerTick / tempo.framesPerTick;
 	this->frameBuffer.assign(this->samplesPerFrame * 2, 0); // *2 == stereo
 	this->frameBufferPos = this->frameBuffer.size();
