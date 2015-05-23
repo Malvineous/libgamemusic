@@ -68,8 +68,7 @@ EXTRA_libgamemusic_la_SOURCES += track-split.hpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 
-AM_CPPFLAGS  = $(BOOST_CPPFLAGS)
-AM_CPPFLAGS += -I $(top_srcdir)/include
+AM_CPPFLAGS  = -I $(top_srcdir)/include
 AM_CPPFLAGS += $(libgamecommon_CPPFLAGS)
 AM_CPPFLAGS += $(WARNINGS)
 
@@ -79,6 +78,4 @@ AM_CXXFLAGS += $(libgamecommon_CFLAGS)
 libgamemusic_la_LDFLAGS  = $(AM_LDFLAGS)
 libgamemusic_la_LDFLAGS += -version-info 2:0:0
 
-libgamemusic_la_LIBADD  = $(BOOST_SYSTEM_LIBS)
-libgamemusic_la_LIBADD += $(BOOST_FILESYSTEM_LIBS)
-libgamemusic_la_LIBADD += $(libgamecommon_LIBS)
+libgamemusic_la_LIBADD  = $(libgamecommon_LIBS)

@@ -30,5 +30,11 @@ EXTRA_tests_SOURCES += test-music.hpp
 
 TESTS = tests
 
-AM_CPPFLAGS = $(BOOST_CPPFLAGS) -I $(top_srcdir)/include $(libgamecommon_CFLAGS)
-AM_LDFLAGS = $(BOOST_SYSTEM_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIBS) $(libgamecommon_LIBS) $(top_builddir)/src/libgamemusic.la
+AM_CPPFLAGS  = -I $(top_srcdir)/include
+AM_CPPFLAGS += $(BOOST_CPPFLAGS)
+AM_CPPFLAGS += $(libgamecommon_CFLAGS)
+
+AM_LDFLAGS  = $(top_builddir)/src/libgamemusic.la
+AM_LDFLAGS += $(BOOST_LDFLAGS)
+AM_LDFLAGS += $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+AM_LDFLAGS += $(libgamecommon_LIBS)
