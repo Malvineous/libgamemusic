@@ -467,6 +467,8 @@ void test_music::test_read()
 		BOOST_REQUIRE(pcmPatch);
 	}
 
+#warning TODO: Put a delay at the start and end and ensure it is read and saved correctly.
+
 	BOOST_REQUIRE_EQUAL(music->patches->size(), this->numInstruments);
 }
 

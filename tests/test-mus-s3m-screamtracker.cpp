@@ -38,6 +38,8 @@ class test_s3m_screamtracker: public test_music
 		{
 			this->test_music::addTests();
 
+			ADD_MUSIC_TEST(&test_s3m_screamtracker::test_event_combining);
+
 			// c00: Normal
 			this->isInstance(MusicType::DefinitelyYes, this->standard());
 
@@ -376,6 +378,23 @@ class test_s3m_screamtracker: public test_music
 				"\x00\x00\x00\x00\x00\x00\x00\x00"
 				"\0\0\0\0\0\0\0\0\0\0\0\0\0\0" // padding
 			);
+		}
+
+		/// Make sure notes and effects on the same row are combined into one event
+		void test_event_combining()
+		{
+			MusicPtr music(new Music());
+#warning TODO: Need to implement this event-combining test
+			// Add trackinfo
+			// Add pattern, track, events
+			// Put note on and event and volume on same row
+			// Put note on, event and volume on consecutive rows
+			// Compare to standard data
+			/*
+			this->base.reset(new stream::string());
+			this->pType->write(this->base, this->suppData, music, this->writeFlags);
+			*/
+			BOOST_REQUIRE(this->is_content_equal(this->standard()));
 		}
 };
 

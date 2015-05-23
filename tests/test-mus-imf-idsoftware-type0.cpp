@@ -39,6 +39,7 @@ class test_imf_idsoftware_type0: public test_music
 			this->test_music::addTests();
 
 			ADD_MUSIC_TEST(&test_imf_idsoftware_type0::test_opl_volume);
+#warning TODO: need a tempo change with postdata to ensure the old/new tempo is supplied in the correct order
 
 			// c00: Normal
 			this->isInstance(MusicType::DefinitelyYes, this->standard());
