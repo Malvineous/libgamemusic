@@ -26,7 +26,7 @@ AX_BOOST_SYSTEM
 AX_BOOST_PROGRAM_OPTIONS
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
-PKG_CHECK_MODULES([libgamecommon], [libgamecommon])
+PKG_CHECK_MODULES([libgamecommon], [libgamecommon >= 2])
 
 AC_ARG_WITH([portaudio],
 	[AS_HELP_STRING([--with-portaudio],
