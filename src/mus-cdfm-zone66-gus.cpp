@@ -297,7 +297,7 @@ std::unique_ptr<Music> MusicType_CDFM_GUS::read(stream::input& content,
 					unsigned int pan = data >> 4;
 
 					if (vol == 0) {
-						auto ev = std::shared_ptr<NoteOffEvent>();
+						auto ev = std::make_shared<NoteOffEvent>();
 
 						TrackEvent te;
 						te.delay = lastDelay[channel];
@@ -305,7 +305,7 @@ std::unique_ptr<Music> MusicType_CDFM_GUS::read(stream::input& content,
 						te.event = ev;
 						track.push_back(te);
 					} else {
-						auto ev = std::shared_ptr<EffectEvent>();
+						auto ev = std::make_shared<EffectEvent>();
 						ev->type = EffectEvent::Type::Volume;
 						ev->data = z66_volume_to_velocity(vol);
 

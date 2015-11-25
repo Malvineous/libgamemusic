@@ -326,7 +326,7 @@ std::unique_ptr<Music> MusicType_CDFM::read(stream::input& content,
 		auto& pattern = music->patterns.back();
 		for (unsigned int track = 0; track < CDFM_CHANNEL_COUNT; track++) {
 			pattern.emplace_back();
-			auto t = pattern.back();
+			auto& t = pattern.back();
 			if (
 				firstPattern
 				&& (patternIndex == firstOrder)
