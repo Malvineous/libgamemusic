@@ -38,16 +38,16 @@ class test_mus_dmx: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"MUS\x1A"
 				"\x11\x00"
 			));
 
 			// c02: Invalid signature bytes
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"BUS\x1A"
 				"\x11\x00" "\x12\x00" "\x01\x00" "\x00\x00" "\x01\x00" "\x00\x00"
 				"\x02\x00"

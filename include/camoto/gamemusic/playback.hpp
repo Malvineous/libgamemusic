@@ -30,10 +30,10 @@ namespace camoto {
 namespace gamemusic {
 
 /// Helper class to assist with song playback.
-class DLL_EXPORT Playback: virtual public SynthPCMCallback
+class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 {
 	public:
-		struct DLL_EXPORT Position
+		struct CAMOTO_GAMEMUSIC_API Position
 		{
 			Position();
 
@@ -68,7 +68,7 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 			}
 		};
 
-		class DLL_EXPORT OPLHandler : virtual public OPLWriterCallback
+		class CAMOTO_GAMEMUSIC_API OPLHandler : virtual public OPLWriterCallback
 		{
 			public:
 				OPLHandler(Playback *playback, bool midi);
@@ -92,7 +92,7 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		 *   bank as the point is to translate the MIDI patches to something
 		 *   audible.
 		 */
-		void setBankMIDI(PatchBankPtr bankMIDI);
+		void setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI);
 
 		/// Set the song to play.
 		/**
@@ -101,7 +101,7 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		 * @param music
 		 *   The song to play.
 		 */
-		void setSong(ConstMusicPtr music);
+		void setSong(std::shared_ptr<const Music> music);
 
 		/// Set the number of times the song should loop.
 		/**
@@ -158,7 +158,7 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		unsigned int outputChannels;    ///< e.g. 2 for stereo
 		unsigned int outputBits;        ///< e.g. 16 for 16-bit output
 
-		ConstMusicPtr music;
+		std::shared_ptr<const Music> music;
 		unsigned int loopCount; ///< 0=loop forever, 1=no loop, 2=loop once, etc.
 
 	private:
@@ -180,15 +180,17 @@ class DLL_EXPORT Playback: virtual public SynthPCMCallback
 		std::vector<int16_t> frameBuffer;
 		unsigned int frameBufferPos;
 
-		PatchBankPtr bankMIDI;            ///< Optional patch bank for MIDI notes
+		/// Optional patch bank for MIDI notes
+		std::shared_ptr<const PatchBank> bankMIDI;
+
 		SynthPCM pcm;
 		SynthPCM pcmMIDI;
 		SynthOPL opl;
 		SynthOPL oplMIDI;
 		OPLHandler oplHandler;
 		OPLHandler oplHandlerMIDI;
-		boost::shared_ptr<EventConverter_OPL> oplConverter;
-		boost::shared_ptr<EventConverter_OPL> oplConvMIDI;
+		std::shared_ptr<EventConverter_OPL> oplConverter;
+		std::shared_ptr<EventConverter_OPL> oplConvMIDI;
 
 		/// Populate frameBuffer with the next frame
 		void nextFrame();

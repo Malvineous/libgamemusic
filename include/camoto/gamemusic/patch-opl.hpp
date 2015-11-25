@@ -30,8 +30,8 @@ namespace camoto {
 namespace gamemusic {
 
 /// Descendent of Patch for storing OPL instrument settings.
-struct OPLOperator {
-
+struct OPLOperator
+{
 	/// Default constructor sets everything to zero/defaults.
 	OPLOperator();
 
@@ -70,12 +70,11 @@ struct OPLOperator {
 
 	/// The waveform select.  0-7 inclusive.
 	uint8_t waveSelect;
-
 };
 
 /// Descendent of Patch for storing OPL instrument settings.
-struct DLL_EXPORT OPLPatch: public Patch {
-
+struct CAMOTO_GAMEMUSIC_API OPLPatch: public Patch
+{
 	/// Default constructor sets everything to zero/defaults.
 	OPLPatch();
 
@@ -110,7 +109,7 @@ struct DLL_EXPORT OPLPatch: public Patch {
 	 * 4 == snare drum (c only)
 	 * 5 == bass drum (c and m)
 	 */
-	enum Rhythm {
+	enum class Rhythm {
 		Unknown   = -1,
 		Melodic   =  0,
 		HiHat     =  1,
@@ -124,12 +123,12 @@ struct DLL_EXPORT OPLPatch: public Patch {
 
 /// True if OPLPatch::rhythm parameter is a carrier-only percussion instrument
 inline bool oplCarOnly(OPLPatch::Rhythm c) {
-	return (c == OPLPatch::TopCymbal) || (c == OPLPatch::SnareDrum);
+	return (c == OPLPatch::Rhythm::TopCymbal) || (c == OPLPatch::Rhythm::SnareDrum);
 }
 
 /// True if OPLPatch::rhythm parameter is a modulator-only percussion instrument
 inline bool oplModOnly(OPLPatch::Rhythm c) {
-	return (c == OPLPatch::HiHat) || (c == OPLPatch::TomTom);
+	return (c == OPLPatch::Rhythm::HiHat) || (c == OPLPatch::Rhythm::TomTom);
 }
 
 inline bool operator== (const OPLOperator& a, const OPLOperator& b)
@@ -171,9 +170,9 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 	)) return false;  // modulator used and didn't match
 
 	if ((
-		(a.rhythm == -1) ||
-		(a.rhythm == 0) ||
-		(a.rhythm == 5)
+		(a.rhythm == OPLPatch::Rhythm::Unknown) ||
+		(a.rhythm == OPLPatch::Rhythm::Melodic) ||
+		(a.rhythm == OPLPatch::Rhythm::BassDrum)
 	) && (
 		!(a.m.outputLevel == b.m.outputLevel)
 	)) return false;  // mod output level different on a 2-op patch
@@ -184,19 +183,18 @@ inline bool operator== (const OPLPatch& a, const OPLPatch& b)
 	;
 }
 
-/// Shared pointer to a Patch.
-typedef boost::shared_ptr<OPLPatch> OPLPatchPtr;
-
 /// Convert the OPLPatch::rhythm value into text for error messages.
-const char DLL_EXPORT *rhythmToText(OPLPatch::Rhythm rhythm);
+CAMOTO_GAMEMUSIC_API const char *rhythmToText(OPLPatch::Rhythm rhythm);
+
+/// ostream handler for printing patches as ASCII
+CAMOTO_GAMEMUSIC_API std::ostream& operator << (std::ostream& s,
+	const OPLPatch& p);
+
+/// ostream handler for printing Rhythm instrument types in test-case errors
+CAMOTO_GAMEMUSIC_API std::ostream& operator << (std::ostream& s,
+	const OPLPatch::Rhythm& r);
 
 } // namespace gamemusic
 } // namespace camoto
-
-/// ostream handler for printing patches as ASCII
-DLL_EXPORT std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatch& p);
-
-/// ostream handler for printing patches as ASCII
-DLL_EXPORT std::ostream& operator << (std::ostream& s, const camoto::gamemusic::OPLPatchPtr p);
 
 #endif // _CAMOTO_GAMEMUSIC_PATCH_OPL_HPP_

@@ -37,10 +37,10 @@ class test_mid_type0: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Wrong signature
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"MThf\x00\x00\x00\x06"
 				"\x00\x00"
 				"\x00\x01"
@@ -54,7 +54,7 @@ class test_mid_type0: public test_music
 			));
 
 			// c02: Wrong type
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"MThd\x00\x00\x00\x06"
 				"\x00\x02"
 				"\x00\x01"

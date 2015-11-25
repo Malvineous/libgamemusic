@@ -39,76 +39,49 @@
 #include "mus-s3m-screamtracker.hpp"
 #include "mus-tbsa-doofus.hpp"
 
+using namespace camoto::gamemusic;
+
 namespace camoto {
+
+template <>
+const std::vector<std::shared_ptr<const MusicType> > CAMOTO_GAMEMUSIC_API
+	FormatEnumerator<MusicType>::formats()
+{
+	std::vector<std::shared_ptr<const MusicType> > list;
+	FormatEnumerator<MusicType>::addFormat<
+		// Instruments/instrument banks
+		MusicType_INS_AdLib,
+
+		// Songs
+		MusicType_CMF,
+		MusicType_CDFM,
+		MusicType_CDFM_GUS,
+		MusicType_DRO_v1,
+		MusicType_DRO_v2,
+		MusicType_DSM,
+		MusicType_GOT,
+		MusicType_IBK,
+		MusicType_IMF_Type0,
+		MusicType_IMF_Type1,
+		MusicType_WLF_Type0,
+		MusicType_WLF_Type1,
+		MusicType_IMF_Duke2,
+		MusicType_KLM,
+		MusicType_MID_Type0,
+		MusicType_MUS,
+		MusicType_MUS_Raptor,
+		MusicType_MUS_Vinyl,
+		MusicType_RAW,
+		MusicType_S3M,
+		MusicType_TBSA
+	>(list);
+	return list;
+}
+
 namespace gamemusic {
 
-class ActualManager: virtual public Manager
-{
-	public:
-		ActualManager();
-		~ActualManager();
+constexpr CAMOTO_GAMEMUSIC_API const char* const MusicType::obj_t_name;
 
-		const MusicTypePtr getMusicType(unsigned int index) const;
-		const MusicTypePtr getMusicTypeByCode(const std::string& code) const;
+} // namespace gamemusic
 
-	private:
-		MusicTypeVector musicTypes;  ///< List of available music types
-};
-
-const ManagerPtr getManager()
-{
-	return ManagerPtr(new ActualManager());
-}
-
-ActualManager::ActualManager()
-{
-	// Instruments/instrument banks
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_INS_AdLib()));
-
-	// Songs
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_CMF()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_CDFM_GUS()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v1()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_DRO_v2()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_DSM()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_GOT()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_IBK()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type0()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Type1()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_WLF_Type0()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_WLF_Type1()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_IMF_Duke2()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_KLM()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_MID_Type0()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_MUS()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_MUS_Raptor()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_MUS_Vinyl()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_RAW()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_S3M()));
-	this->musicTypes.push_back(MusicTypePtr(new MusicType_TBSA()));
-}
-
-ActualManager::~ActualManager()
-{
-}
-
-const MusicTypePtr ActualManager::getMusicType(unsigned int index) const
-{
-	if (index >= this->musicTypes.size()) return MusicTypePtr();
-	return this->musicTypes[index];
-}
-
-const MusicTypePtr ActualManager::getMusicTypeByCode(const std::string& code)
-	const
-{
-	for (MusicTypeVector::const_iterator
-		i = this->musicTypes.begin(); i != this->musicTypes.end(); i++
-	) {
-		if ((*i)->getCode().compare(code) == 0) return *i;
-	}
-	return MusicTypePtr();
-}
-
-} // namespace gamegraphics
 } // namespace camoto

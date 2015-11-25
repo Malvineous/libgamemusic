@@ -21,7 +21,7 @@
 #ifndef _CAMOTO_GAMEMUSIC_ENCODE_MIDI_HPP_
 #define _CAMOTO_GAMEMUSIC_ENCODE_MIDI_HPP_
 
-#include <boost/function.hpp>
+#include <functional>
 #include <camoto/gamemusic/music.hpp>
 #include <camoto/gamemusic/musictype.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
@@ -59,9 +59,9 @@ namespace gamemusic {
  * @param cbEndOfTrack
  *   Callback notified at the end of each track.  May be NULL.
  */
-void DLL_EXPORT midiEncode(stream::output_sptr output, ConstMusicPtr music,
-	unsigned int midiFlags, bool *channelsUsed,
-	EventHandler::EventOrder eventOrder, boost::function<void()> cbEndOfTrack
+void CAMOTO_GAMEMUSIC_API midiEncode(stream::output& output, const Music& music,
+	MIDIFlags midiFlags, bool *channelsUsed,
+	EventHandler::EventOrder eventOrder, std::function<void()> cbEndOfTrack
 );
 
 } // namespace gamemusic

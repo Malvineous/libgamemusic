@@ -30,7 +30,15 @@ class test_ins_adlib: public test_music
 			this->indexInstrumentOPL = 0;
 			this->indexInstrumentMIDI = -1;
 			this->indexInstrumentPCM = -1;
-			this->hasMetadata[camoto::Metadata::Title] = true;
+
+			{
+				Attribute a;
+				a.type = Attribute::Type::Text;
+				a.name = CAMOTO_ATTRIBUTE_TITLE;
+				a.textValue = "Test title";
+				a.textMaxLength = 20;
+				this->attributes.push_back(a);
+			}
 		}
 
 		void addTests()
@@ -38,10 +46,10 @@ class test_ins_adlib: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::PossiblyYes, this->standard());
+			this->isInstance(MusicType::Certainty::PossiblyYes, this->standard());
 
 			// c01: Unknown length
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00"
 				// Operator 0
 				"\x03\x00"
@@ -60,7 +68,7 @@ class test_ins_adlib: public test_music
 			));
 
 			// c02: Out of range value
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00"
 				// Operator 0
 				"\x03\x00"
@@ -91,6 +99,45 @@ class test_ins_adlib: public test_music
 				"\x00\x00"
 				"\x01\x00" // always overwritten with op0 value
 				"Test title\0\0\0\0\0\0\0\0\0\0"
+				// Wave select 0 and 1
+				"\x07\x00"
+				"\x06\x00"
+				// Unknown padding
+				"\x01\x00"
+			));
+
+			// a01: Change title
+			this->changeAttribute(0, "Hello", STRING_WITH_NULLS(
+				"\x00\x00"
+				// Operator 0
+				"\x03\x00"
+				"\x0F\x00"
+				"\x07\x00"
+				"\x0F\x00"
+				"\x0F\x00"
+				"\x01\x00"
+				"\x0F\x00"
+				"\x0F\x00"
+				"\x3F\x00"
+				"\x01\x00"
+				"\x01\x00"
+				"\x01\x00"
+				"\x00\x00"
+				// Operator 1
+				"\x02\x00"
+				"\x0E\x00"
+				"\x07\x00" // always overwritten with op0 value
+				"\x0E\x00"
+				"\x0E\x00"
+				"\x00\x00"
+				"\x0E\x00"
+				"\x0E\x00"
+				"\x3E\x00"
+				"\x00\x00"
+				"\x00\x00"
+				"\x00\x00"
+				"\x00\x00" // always overwritten with op0 value
+				"Hello\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 				// Wave select 0 and 1
 				"\x07\x00"
 				"\x06\x00"
@@ -132,47 +179,6 @@ class test_ins_adlib: public test_music
 				"\x00\x00"
 				"\x00\x00" // always overwritten with op0 value
 				"Test title\0\0\0\0\0\0\0\0\0\0"
-				// Wave select 0 and 1
-				"\x07\x00"
-				"\x06\x00"
-				// Unknown padding
-				"\x01\x00"
-			);
-		}
-
-		virtual std::string metadata_title_replaced()
-		{
-			return STRING_WITH_NULLS(
-				"\x00\x00"
-				// Operator 0
-				"\x03\x00"
-				"\x0F\x00"
-				"\x07\x00"
-				"\x0F\x00"
-				"\x0F\x00"
-				"\x01\x00"
-				"\x0F\x00"
-				"\x0F\x00"
-				"\x3F\x00"
-				"\x01\x00"
-				"\x01\x00"
-				"\x01\x00"
-				"\x00\x00"
-				// Operator 1
-				"\x02\x00"
-				"\x0E\x00"
-				"\x07\x00" // always overwritten with op0 value
-				"\x0E\x00"
-				"\x0E\x00"
-				"\x00\x00"
-				"\x0E\x00"
-				"\x0E\x00"
-				"\x3E\x00"
-				"\x00\x00"
-				"\x00\x00"
-				"\x00\x00"
-				"\x00\x00" // always overwritten with op0 value
-				"Replaced\0\0\0\0\0\0\0\0\0\0\0\0"
 				// Wave select 0 and 1
 				"\x07\x00"
 				"\x06\x00"

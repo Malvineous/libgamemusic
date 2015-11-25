@@ -21,11 +21,17 @@
 #ifndef _CAMOTO_GAMEMUSIC_TESTS_HPP_
 #define _CAMOTO_GAMEMUSIC_TESTS_HPP_
 
+#include <memory>
 #include <boost/test/unit_test.hpp>
 #include <camoto/util.hpp>
+#include <camoto/stream_sub.hpp>
 
 /// Allow a string constant to be passed around with embedded nulls
 #define STRING_WITH_NULLS(x)  std::string((x), sizeof((x)) - 1)
+
+/// Wrap a shared stream in a unique substream so it can be shared without
+/// violating unique_ptr requirements.
+std::unique_ptr<camoto::stream::sub> stream_wrap(std::shared_ptr<camoto::stream::inout> base);
 
 /// Base class for all tests
 class test_main

@@ -18,6 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <iostream>
+#include <camoto/util.hpp> // make_unique
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
@@ -36,7 +38,7 @@ class MUSEncoder: virtual private MIDIEventCallback
 	public:
 		/// Set encoding parameters.
 		/**
-		 * @param output
+		 * @param content
 		 *   Data stream to write the MIDI data to.
 		 *
 		 * @param music
@@ -45,7 +47,7 @@ class MUSEncoder: virtual private MIDIEventCallback
 		 * @param musClock
 		 *   MUS clock speed in Hertz (e.g. 140).
 		 */
-		MUSEncoder(stream::output_sptr output, ConstMusicPtr music,
+		MUSEncoder(stream::output& content, const Music& music,
 			unsigned int musClock);
 
 		/// Destructor.
@@ -53,11 +55,11 @@ class MUSEncoder: virtual private MIDIEventCallback
 
 		/// Process the events, and write out data in the target format.
 		/**
-		 * This function will data to the output stream, until all the events in
+		 * This function will data to the content stream, until all the events in
 		 * the song have been written out.
 		 *
 		 * @throw stream:error
-		 *   If the output data could not be written for some reason.
+		 *   If the content data could not be written for some reason.
 		 *
 		 * @throw format_limitation
 		 *   If the song could not be converted to MIDI for some reason (e.g. it has
@@ -81,12 +83,12 @@ class MUSEncoder: virtual private MIDIEventCallback
 		virtual void endOfSong(uint32_t delay);
 
 	protected:
-		stream::output_sptr output;        ///< Target stream for SMF MIDI data
-		ConstMusicPtr music;               ///< Song to convert
-		unsigned int musClock;             ///< MUS clock speed in Hertz
-		unsigned int lastVelocity;         ///< Last velocity value set
-		unsigned long usPerTick;           ///< Current tempo
-		std::vector<uint8_t> nextEvent;    ///< Next event to write
+		stream::output& content;        ///< Target stream for SMF MIDI data
+		const Music& music;             ///< Song to convert
+		unsigned int musClock;          ///< MUS clock speed in Hertz
+		unsigned int lastVelocity;      ///< Last velocity value set
+		unsigned long usPerTick;        ///< Current tempo
+		std::vector<uint8_t> nextEvent; ///< Next event to write
 
 		/// Write delay bytes and the previous event.
 		void writeDelay(unsigned int delay);
@@ -98,12 +100,12 @@ MusicType_MUS_Raptor::MusicType_MUS_Raptor()
 	this->tempo = 70;
 }
 
-std::string MusicType_MUS_Raptor::getCode() const
+std::string MusicType_MUS_Raptor::code() const
 {
 	return "mus-dmx-raptor";
 }
 
-std::string MusicType_MUS_Raptor::getFriendlyName() const
+std::string MusicType_MUS_Raptor::friendlyName() const
 {
 	return "DMX audio library MIDI File (Raptor tempo)";
 }
@@ -114,43 +116,43 @@ MusicType_MUS::MusicType_MUS()
 {
 }
 
-std::string MusicType_MUS::getCode() const
+std::string MusicType_MUS::code() const
 {
 	return "mus-dmx";
 }
 
-std::string MusicType_MUS::getFriendlyName() const
+std::string MusicType_MUS::friendlyName() const
 {
 	return "DMX audio library MIDI File (normal tempo)";
 }
 
-std::vector<std::string> MusicType_MUS::getFileExtensions() const
+std::vector<std::string> MusicType_MUS::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("mus");
-	return vcExtensions;
+	return {
+		"mus",
+	};
 }
 
-unsigned long MusicType_MUS::getCaps() const
+MusicType::Caps MusicType_MUS::caps() const
 {
 	return
-		InstMIDI
-		| HasEvents
+		Caps::InstMIDI
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_MUS::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_MUS::isInstance(stream::input& content) const
 {
 	// Too short
 	// TESTED BY: mus_mus_dmx_isinstance_c01
-	if (input->size() < 4 + 2 * 6) return MusicType::DefinitelyNo;
+	if (content.size() < 4 + 2 * 6) return Certainty::DefinitelyNo;
 
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 	uint8_t sig[4];
 	try {
-		input->read(sig, 4);
+		content.read(sig, 4);
 	} catch (...) {
-		return DefinitelyNo;
+		return Certainty::DefinitelyNo;
 	}
 	if (
 		(sig[0] != 'M') ||
@@ -159,22 +161,22 @@ MusicType::Certainty MusicType_MUS::isInstance(stream::input_sptr input) const
 		(sig[3] != 0x1A)
 	) {
 		// TESTED BY: mus_mus_dmx_isinstance_c02
-		return DefinitelyNo;
+		return Certainty::DefinitelyNo;
 	}
 
 	// TESTED BY: mus_mus_dmx_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
-	MusicPtr music(new Music());
-	PatchBankPtr patches(new PatchBank());
-	music->patches = patches;
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_unique<PatchBank>();
 	music->initialTempo.hertz(this->tempo);
 	music->initialTempo.ticksPerQuarterNote(64); // some random value in the ballpark
 
@@ -187,24 +189,25 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 	memset(volMap, 0, sizeof(volMap));
 	memset(instMap, 0xFF, sizeof(instMap));
 
-	PatternPtr pattern(new Pattern());
-	for (unsigned int c = 0; c < MUS_CHANNEL_COUNT; c++) {
-		TrackInfo t;
-		t.channelType = TrackInfo::MIDIChannel;
-		t.channelIndex = c;
-		music->trackInfo.push_back(t);
+	music->patterns.emplace_back();
+	auto& pattern = music->patterns.back();
 
-		TrackPtr track(new Track());
-		pattern->push_back(track);
+	for (unsigned int c = 0; c < MUS_CHANNEL_COUNT; c++) {
+		music->trackInfo.emplace_back();
+		auto& t = music->trackInfo.back();
+
+		t.channelType = TrackInfo::ChannelType::MIDI;
+		t.channelIndex = c;
+
+		pattern.emplace_back();
 		lastDelay[c] = 0;
 	}
-	music->patterns.push_back(pattern);
 	music->patternOrder.push_back(0);
 
-	input->seekg(4, stream::start);
+	content.seekg(4, stream::start);
 
 	uint16_t lenSong, offSong, priChan, secChan, numInst, reserved;
-	input
+	content
 		>> u16le(lenSong)
 		>> u16le(offSong)
 		>> u16le(priChan)
@@ -214,23 +217,23 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 	;
 
 	// Read the instruments
-	patches->reserve(numInst);
+	music->patches->reserve(numInst);
 	for (int i = 0; i < numInst; i++) {
-		MIDIPatchPtr patch(new MIDIPatch());
-		input >> u16le(patch->midiPatch);
+		auto patch = std::make_shared<MIDIPatch>();
+		content >> u16le(patch->midiPatch);
 		patch->percussion = false;
-		patches->push_back(patch);
+		music->patches->push_back(patch);
 		instMap[patch->midiPatch] = i;
 	}
 
-	input->seekg(offSong, stream::start);
+	content.seekg(offSong, stream::start);
 
 	unsigned long totalDelay = 0; // full delay for entire song
 	bool eof = false;
 	while (!eof) {
 		uint8_t code;
 		try {
-			input >> u8(code);
+			content >> u8(code);
 		} catch (const stream::incomplete_read&) {
 			// no point setting eof=true here
 			break;
@@ -243,32 +246,34 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 			case 0x0: { // note off
 				unsigned int& track = channel;
 				uint8_t n;
-				input >> u8(n);
+				content >> u8(n);
+
+				auto ev = std::make_shared<SpecificNoteOffEvent>();
+				ev->milliHertz = midiToFreq(n);
+
 				TrackEvent te;
 				te.delay = lastDelay[track];
 				lastDelay[track] = 0;
-				SpecificNoteOffEvent *ev = new SpecificNoteOffEvent();
-				te.event.reset(ev);
-				ev->milliHertz = midiToFreq(n);
-				pattern->at(track)->push_back(te);
+				te.event = ev;
+				pattern.at(track).push_back(te);
 				break;
 			}
 			case 0x1: { // note on
 				uint8_t n;
-				input >> u8(n);
+				content >> u8(n);
 				if (n & 0x80) {
-					input >> u8(volMap[channel]);
+					content >> u8(volMap[channel]);
 				} // else reuse last value
 				n &= 0x7F;
 				unsigned int libPatch;
 				if (channel == 15) {
 					// percussion
 					if (instMap[128 + n] < 0) {
-						MIDIPatchPtr patch(new MIDIPatch());
+						auto patch = std::make_shared<MIDIPatch>();
 						patch->midiPatch = n;
 						patch->percussion = true;
-						instMap[128 + n] = patches->size();
-						patches->push_back(patch);
+						instMap[128 + n] = music->patches->size();
+						music->patches->push_back(patch);
 					}
 					libPatch = instMap[128 + n];
 				} else {
@@ -276,46 +281,49 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 						std::cout << "mus-dmx: Instrument " << musActivePatch[channel]
 							<< " was selected but not listed in the file's instrument list!"
 							<< std::endl;
-						MIDIPatchPtr patch(new MIDIPatch());
+						auto patch = std::make_shared<MIDIPatch>();
 						patch->midiPatch = musActivePatch[channel];
 						patch->percussion = false;
-						instMap[patch->midiPatch] = patches->size();
-						patches->push_back(patch);
+						instMap[patch->midiPatch] = music->patches->size();
+						music->patches->push_back(patch);
 					}
 					libPatch = instMap[musActivePatch[channel]];
 				}
 				unsigned int& track = channel;
-				TrackEvent te;
-				te.delay = lastDelay[track];
-				lastDelay[track] = 0;
-				NoteOnEvent *ev = new NoteOnEvent();
-				te.event.reset(ev);
+
+				auto ev = std::make_shared<NoteOnEvent>();
 				ev->instrument = libPatch;
 				ev->milliHertz = midiToFreq(n);
 				ev->velocity = (volMap[channel] << 1) | (volMap[channel] >> 6);
-				pattern->at(track)->push_back(te);
+
+				TrackEvent te;
+				te.delay = lastDelay[track];
+				lastDelay[track] = 0;
+				te.event = ev;
+				pattern.at(track).push_back(te);
 				break;
 			}
 			case 0x2: { // pitchbend
 				uint8_t bend;
-				input >> u8(bend);
+				content >> u8(bend);
 
 				double bendSemitones = (bend - 128.0) / 128.0;
+
+				auto ev = std::make_shared<PolyphonicEffectEvent>();
+				ev->type = (EffectEvent::Type)PolyphonicEffectEvent::Type::PitchbendChannel;
+				ev->data = midiSemitonesToPitchbend(bendSemitones);
 
 				const unsigned int& track = channel;
 				TrackEvent te;
 				te.delay = lastDelay[track];
 				lastDelay[track] = 0;
-				PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
-				te.event.reset(ev);
-				ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
-				ev->data = midiSemitonesToPitchbend(bendSemitones);
-				pattern->at(track)->push_back(te);
+				te.event = ev;
+				pattern.at(track).push_back(te);
 				break;
 			}
 			case 0x3: { // system event
 				uint8_t controller;
-				input >> u8(controller);
+				content >> u8(controller);
 				switch (controller) {
 					case 0x0A:
 					case 0x0B:
@@ -333,7 +341,7 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 			}
 			case 0x4: { // controller
 				uint8_t controller, value;
-				input >> u8(controller) >> u8(value);
+				content >> u8(controller) >> u8(value);
 				switch (controller) {
 					case 0: // patch change
 						musActivePatch[channel] = value & 0x7F;
@@ -362,7 +370,7 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 			unsigned long finalDelay = 0;
 			uint8_t delayVal;
 			do {
-				input >> u8(delayVal);
+				content >> u8(delayVal);
 				finalDelay <<= 7;
 				finalDelay |= delayVal & 0x7F;
 			} while (delayVal & 0x80);
@@ -379,104 +387,98 @@ MusicPtr MusicType_MUS::read(stream::input_sptr input, SuppData& suppData) const
 		if (lastDelay[track] == totalDelay) {
 			// This track is unused
 			music->trackInfo.erase(music->trackInfo.begin() + track);
-			music->patterns.at(0)->erase(music->patterns.at(0)->begin() + track);
+			auto& p = music->patterns.at(0);
+			p.erase(p.begin() + track);
 		} else if (lastDelay[track]) {
 			// This track has a trailing delay
+			auto ev = std::make_shared<ConfigurationEvent>();
+			ev->configType = ConfigurationEvent::Type::EmptyEvent;
+			ev->value = 0;
+
 			TrackEvent te;
 			te.delay = lastDelay[track];
 			lastDelay[track] = 0;
-			ConfigurationEvent *ev = new ConfigurationEvent();
-			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::EmptyEvent;
-			ev->value = 0;
-			pattern->at(track)->push_back(te);
+			te.event = ev;
+			pattern.at(track).push_back(te);
 		}
 	}
 
 	music->ticksPerTrack = totalDelay;
 
-	splitPolyphonicTracks(music);
+	splitPolyphonicTracks(*music);
 	return music;
 }
 
-void MusicType_MUS::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_MUS::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<MIDIPatch>(music->patches);
+	requirePatches<MIDIPatch>(*music.patches);
 
 	// Count the number of unique MIDI channels in use
 	std::map<unsigned int, bool> activeChannels;
-	for (TrackInfoVector::const_iterator
-		i = music->trackInfo.begin(); i != music->trackInfo.end(); i++
-	) {
-		if (i->channelType != TrackInfo::MIDIChannel) continue;
-		activeChannels[i->channelIndex] = true;
-	}
 	unsigned int channelCount = 0;
-	for (std::map<unsigned int, bool>::const_iterator
-		i = activeChannels.begin(); i != activeChannels.end(); i++
-	) {
+	for (auto& i : music.trackInfo) {
+		if (i.channelType != TrackInfo::ChannelType::MIDI) continue;
+		activeChannels[i.channelIndex] = true;
 		channelCount++;
 	}
 
-	stream::pos offSong = 4 + 2*6 + 2*music->patches->size();
-	output
+	stream::pos offSong = 4 + 2*6 + 2*music.patches->size();
+	content
 		<< nullPadded("MUS\x1A", 4)
 		<< u16le(0xFFFF) // song length placeholder
 		<< u16le(offSong)
 		<< u16le(channelCount) // primary channel count
 		<< u16le(0) // secondary channel count
-		<< u16le(music->patches->size())
+		<< u16le(music.patches->size())
 		<< u16le(0) // reserved
 	;
 
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
-		MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>(*i);
+	for (auto& i : *music.patches) {
+		auto midiPatch = dynamic_cast<const MIDIPatch*>(i.get());
 		assert(midiPatch);
 		unsigned int patch = midiPatch->midiPatch;
 		if (midiPatch->percussion) patch += 128;
-		output << u16le(patch);
+		content << u16le(patch);
 	}
 
-	MUSEncoder conv(output, music, this->tempo);
+	MUSEncoder conv(content, music, this->tempo);
 	conv.encode();
 
 	// Go back and write the song length
-	stream::pos posEnd = output->tellp();
-	output->seekp(4, stream::start);
-	output << u16le(posEnd - offSong);
-	output->seekp(posEnd, stream::start);
+	stream::pos posEnd = content.tellp();
+	content.seekp(4, stream::start);
+	content << u16le(posEnd - offSong);
+	content.seekp(posEnd, stream::start);
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_MUS::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_MUS::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_MUS::getMetadataList() const
+std::vector<Attribute> MusicType_MUS::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
+	std::vector<Attribute> types;
 	return types;
 }
 
 
-MUSEncoder::MUSEncoder(stream::output_sptr output, ConstMusicPtr music,
+MUSEncoder::MUSEncoder(stream::output& content, const Music& music,
 	unsigned int musClock)
-	:	output(output),
+	:	content(content),
 		music(music),
 		musClock(HERTZ_TO_uS(musClock)),
 		lastVelocity(-1)
 {
-	this->usPerTick = music->initialTempo.usPerTick;
+	this->usPerTick = this->music.initialTempo.usPerTick;
 }
 
 MUSEncoder::~MUSEncoder()
@@ -485,7 +487,14 @@ MUSEncoder::~MUSEncoder()
 
 void MUSEncoder::encode()
 {
-	EventConverter_MIDI conv(this, this->music, MIDIFlags::Default);
+	// Create a dummy shared_ptr to pass to EventConverter_MIDI, which takes the
+	// reference to the Music instance and converts it into a fake smart_ptr
+	// (which will never try to delete the reference.)
+	// This is safe because the EventConverter_MIDI instance holding this fake
+	// smart_ptr does not outlive the current function.
+	std::shared_ptr<const Music> music_ptr(&this->music, [](const Music *p){ return; });
+
+	EventConverter_MIDI conv(this, music_ptr, MIDIFlags::Default);
 	conv.handleAllEvents(EventHandler::Order_Row_Track);
 	return;
 }
@@ -496,10 +505,8 @@ void MUSEncoder::writeDelay(unsigned int delay)
 		this->nextEvent[0] |= 0x80;
 	}
 
-	for (std::vector<uint8_t>::iterator
-		i = this->nextEvent.begin(); i != this->nextEvent.end(); i++
-	) {
-		this->output << u8(*i);
+	for (auto& i : this->nextEvent) {
+		this->content << u8(i);
 	}
 	this->nextEvent.clear();
 
@@ -508,11 +515,11 @@ void MUSEncoder::writeDelay(unsigned int delay)
 	// Write the three most-significant bytes as 7-bit bytes, with the most
 	// significant bit set.
 	uint8_t next;
-	if (delay >= (1 << 28)) { next = 0x80 | ((delay >> 28) & 0x7F); this->output << u8(next); }
-	if (delay >= (1 << 21)) { next = 0x80 | ((delay >> 21) & 0x7F); this->output << u8(next); }
-	if (delay >= (1 << 14)) { next = 0x80 | ((delay >> 14) & 0x7F); this->output << u8(next); }
-	if (delay >= (1 <<  7)) { next = 0x80 | ((delay >>  7) & 0x7F); this->output << u8(next); }
-	if (delay >= (1 <<  0)) { next =        ((delay >>  0) & 0x7F); this->output << u8(next); }
+	if (delay >= (1 << 28)) { next = 0x80 | ((delay >> 28) & 0x7F); this->content << u8(next); }
+	if (delay >= (1 << 21)) { next = 0x80 | ((delay >> 21) & 0x7F); this->content << u8(next); }
+	if (delay >= (1 << 14)) { next = 0x80 | ((delay >> 14) & 0x7F); this->content << u8(next); }
+	if (delay >= (1 <<  7)) { next = 0x80 | ((delay >>  7) & 0x7F); this->content << u8(next); }
+	if (delay >= (1 <<  0)) { next =        ((delay >>  0) & 0x7F); this->content << u8(next); }
 
 	return;
 }
@@ -623,6 +630,6 @@ void MUSEncoder::endOfSong(uint32_t delay)
 {
 	// Write an end-of-song event
 	this->writeDelay(delay);
-	this->output->write("\x60", 1);
+	this->content.write("\x60", 1);
 	return;
 }

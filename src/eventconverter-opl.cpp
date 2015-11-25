@@ -19,9 +19,7 @@
  */
 
 #include <iostream>
-#include <sstream>
 #include <math.h>
-#include <boost/pointer_cast.hpp>
 #include <camoto/error.hpp>
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
@@ -32,8 +30,17 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
+CAMOTO_GAMEMUSIC_API OPLWriteFlags camoto::gamemusic::toOPLFlags(MusicType::WriteFlags wf)
+{
+	OPLWriteFlags of = OPLWriteFlags::Default;
+	if (wf & MusicType::WriteFlags::IntegerNotesOnly) {
+		of |= OPLWriteFlags::IntegerNotesOnly;
+	}
+	return of;
+}
+
 EventConverter_OPL::EventConverter_OPL(OPLWriterCallback *cb,
-	ConstMusicPtr music, double fnumConversion, OPLWriteFlags::type flags)
+	std::shared_ptr<const Music> music, double fnumConversion, OPLWriteFlags flags)
 	:	cb(cb),
 		music(music),
 		fnumConversion(fnumConversion),
@@ -53,7 +60,7 @@ EventConverter_OPL::~EventConverter_OPL()
 {
 }
 
-void EventConverter_OPL::setBankMIDI(PatchBankPtr bankMIDI)
+void EventConverter_OPL::setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI)
 {
 	this->bankMIDI = bankMIDI;
 	return;
@@ -61,7 +68,7 @@ void EventConverter_OPL::setBankMIDI(PatchBankPtr bankMIDI)
 
 void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
 {
-	this->EventHandler::handleAllEvents(eventOrder, this->music);
+	this->EventHandler::handleAllEvents(eventOrder, *this->music);
 
 	// Write out any trailing delay
 	OPLEvent oplev;
@@ -116,18 +123,18 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			<< " but patch bank only has " << this->music->patches->size()
 			<< " instruments."));
 	}
-	PatchPtr patch = this->music->patches->at(ev->instrument);
-	const TrackInfo& ti = this->music->trackInfo[trackIndex];
+	auto& patch = this->music->patches->at(ev->instrument);
+	auto& ti = this->music->trackInfo[trackIndex];
 	if (this->bankMIDI) {
 		// We are handling MIDI events
 		if (
-			(ti.channelType != TrackInfo::MIDIChannel)
-			&& (ti.channelType != TrackInfo::AnyChannel)
+			(ti.channelType != TrackInfo::ChannelType::MIDI)
+			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a MIDI track
 			return;
 		}
-		MIDIPatchPtr instMIDI = boost::dynamic_pointer_cast<MIDIPatch>(patch);
+		auto instMIDI = dynamic_cast<MIDIPatch*>(patch.get());
 		if (!instMIDI) return; // non-MIDI instrument on a MIDI channel, ignore
 		unsigned long target = instMIDI->midiPatch;
 		if (instMIDI->percussion) {
@@ -145,16 +152,16 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	} else {
 		// We are handling OPL events
 		if (
-			(ti.channelType != TrackInfo::OPLChannel)
-			&& (ti.channelType != TrackInfo::OPLPercChannel)
-			&& (ti.channelType != TrackInfo::AnyChannel)
+			(ti.channelType != TrackInfo::ChannelType::OPL)
+			&& (ti.channelType != TrackInfo::ChannelType::OPLPerc)
+			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not an OPL track
 			return;
 		}
 
 		if (
-			(ti.channelType == TrackInfo::OPLPercChannel)
+			(ti.channelType == TrackInfo::ChannelType::OPLPerc)
 			&& (!this->modeRhythm)
 		) {
 			std::cerr << "OPL: Ignoring rhythm channel in non-rhythm mode" << std::endl;
@@ -162,7 +169,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		}
 
 		if (
-			(ti.channelType == TrackInfo::OPLChannel)
+			(ti.channelType == TrackInfo::ChannelType::OPL)
 			&& (!this->modeOPL3)
 			&& (ti.channelIndex >= 9)
 		) {
@@ -170,7 +177,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			return;
 		}
 	}
-	OPLPatchPtr inst = boost::dynamic_pointer_cast<OPLPatch>(patch);
+	auto inst = dynamic_cast<OPLPatch*>(patch.get());
 
 	// Don't play this note if there's no patch for it
 	if (!inst) return;
@@ -185,7 +192,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	// If the note is already playing, turn it off first before we update the
 	// instrument parameters.  This makes a clean note and prevents it from
 	// audibly morphing into the new patch.
-	if (ti.channelType == TrackInfo::OPLPercChannel) {
+	if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 		int keyBit = 1 << ti.channelIndex;
 		if (this->oplState[chipIndex][0xBD] & keyBit) {
 			// Note is already playing, disable
@@ -207,11 +214,11 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	// Write modulator settings
 	if (mod) {
-		this->writeOpSettings(chipIndex, oplChannel, 0, inst, ev->velocity);
+		this->writeOpSettings(chipIndex, oplChannel, 0, *inst, ev->velocity);
 	}
 	// Write carrier settings
 	if (car) {
-		this->writeOpSettings(chipIndex, oplChannel, 1, inst, ev->velocity);
+		this->writeOpSettings(chipIndex, oplChannel, 1, *inst, ev->velocity);
 	}
 
 	unsigned int fnum, block;
@@ -219,7 +226,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	assert(block <= 7);
 
 	// Write the rest of the (global) instrument settings.
-	if (ti.channelType != TrackInfo::OPLPercChannel) {
+	if (ti.channelType != TrackInfo::ChannelType::OPLPerc) {
 		// This register is only used on melodic channels.  It is ignored on
 		// percussive channels, so don't bother setting it.
 		this->processNextPair(chipIndex, BASE_FEED_CONN | oplChannel,
@@ -233,12 +240,12 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 	// Write 0xB0 w/ keyon bit
 	this->processNextPair(chipIndex, 0xB0 | oplChannel,
-		(ti.channelType != TrackInfo::OPLPercChannel ? OPLBIT_KEYON : 0) // keyon enabled
+		(ti.channelType != TrackInfo::ChannelType::OPLPerc ? OPLBIT_KEYON : 0) // keyon enabled
 		| (block << 2) // and the octave
 		| ((fnum >> 8) & 0x03) // plus the upper two bits of fnum
 	);
 
-	if (ti.channelType == TrackInfo::OPLPercChannel) {
+	if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 		// Write keyon for correct instrument
 		int keyBit = 1 << ti.channelIndex;
 		this->processNextPair(chipIndex, 0xBD,
@@ -257,19 +264,19 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
-		(ti.channelType != TrackInfo::OPLChannel)
-		&& (ti.channelType != TrackInfo::OPLPercChannel)
-		&& (ti.channelType != TrackInfo::AnyChannel)
+		(ti.channelType != TrackInfo::ChannelType::OPL)
+		&& (ti.channelType != TrackInfo::ChannelType::OPLPerc)
+		&& (ti.channelType != TrackInfo::ChannelType::Any)
 		&& (
 			!this->bankMIDI
-			|| (ti.channelType != TrackInfo::MIDIChannel)
+			|| (ti.channelType != TrackInfo::ChannelType::MIDI)
 		)
 	) {
 		// This isn't an OPL track, so ignore it
 		return;
 	}
 
-	if (ti.channelType == TrackInfo::OPLPercChannel) {
+	if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 		uint8_t keyBit = 1 << ti.channelIndex; // instrument-specific keyon
 		this->processNextPair(0, 0xBD,
 			(this->oplState[0][0xBD] & ~keyBit)
@@ -300,12 +307,12 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
-		(ti.channelType != TrackInfo::OPLChannel)
-		&& (ti.channelType != TrackInfo::OPLPercChannel)
-		&& (ti.channelType != TrackInfo::AnyChannel)
+		(ti.channelType != TrackInfo::ChannelType::OPL)
+		&& (ti.channelType != TrackInfo::ChannelType::OPLPerc)
+		&& (ti.channelType != TrackInfo::ChannelType::Any)
 		&& (
 			!this->bankMIDI
-			|| (ti.channelType != TrackInfo::MIDIChannel)
+			|| (ti.channelType != TrackInfo::ChannelType::MIDI)
 		)
 	) {
 		// This isn't an OPL track, so ignore it
@@ -320,7 +327,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 	if (chipIndex == OPL_INVALID_CHIP) return;
 
 	switch (ev->type) {
-		case EffectEvent::PitchbendNote: {
+		case EffectEvent::Type::PitchbendNote: {
 			// Just bend the whole channel because there will only be one note
 			// playing anyway, and the bend will be reset on the next note.
 			const unsigned int& milliHertz = ev->data;
@@ -340,7 +347,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 			);
 			break;
 		}
-		case EffectEvent::Volume:
+		case EffectEvent::Type::Volume:
 			// ev->data is new velocity/volume value
 			// Write carrier settings (modulator output level does not control volume)
 			if (car) {
@@ -375,12 +382,12 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	assert(trackIndex < this->music->trackInfo.size());
 	const TrackInfo& ti = this->music->trackInfo[trackIndex];
 	if (
-		(ti.channelType != TrackInfo::OPLChannel)
-		&& (ti.channelType != TrackInfo::OPLPercChannel)
-		&& (ti.channelType != TrackInfo::AnyChannel)
+		(ti.channelType != TrackInfo::ChannelType::OPL)
+		&& (ti.channelType != TrackInfo::ChannelType::OPLPerc)
+		&& (ti.channelType != TrackInfo::ChannelType::Any)
 		&& (
 			!this->bankMIDI
-			|| (ti.channelType != TrackInfo::MIDIChannel)
+			|| (ti.channelType != TrackInfo::ChannelType::MIDI)
 		)
 	) {
 		// This isn't an OPL track, so ignore it
@@ -388,9 +395,9 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	}
 
 	switch (ev->configType) {
-		case ConfigurationEvent::EmptyEvent:
+		case ConfigurationEvent::Type::EmptyEvent:
 			break;
-		case ConfigurationEvent::EnableOPL3:
+		case ConfigurationEvent::Type::EnableOPL3:
 			if (
 				(
 					(this->modeOPL3 && (ev->value == 0)) // on, switching off
@@ -402,7 +409,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 				this->modeOPL3 = ev->value;
 			}
 			break;
-		case ConfigurationEvent::EnableDeepTremolo: {
+		case ConfigurationEvent::Type::EnableDeepTremolo: {
 			unsigned int chipIndex = (ev->value >> 1) & 1;
 			uint8_t val;
 			if (ev->value & 1) val = this->oplState[chipIndex][0xBD] | 0x80;
@@ -410,7 +417,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			this->processNextPair(chipIndex, 0xBD, val);
 			break;
 		}
-		case ConfigurationEvent::EnableDeepVibrato: {
+		case ConfigurationEvent::Type::EnableDeepVibrato: {
 			unsigned int chipIndex = (ev->value >> 1) & 1;
 			uint8_t val;
 			if (ev->value & 1) val = this->oplState[chipIndex][0xBD] | 0x40;
@@ -418,7 +425,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			this->processNextPair(chipIndex, 0xBD, val);
 			break;
 		}
-		case ConfigurationEvent::EnableRhythm:
+		case ConfigurationEvent::Type::EnableRhythm:
 			// Nothing required, rhythm mode is enabled the first time a rhythm
 			// instrument is played.
 			if (this->modeRhythm && (ev->value == 0)) {
@@ -432,7 +439,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			}
 			this->modeRhythm = ev->value;
 			break;
-		case ConfigurationEvent::EnableWaveSel:
+		case ConfigurationEvent::Type::EnableWaveSel:
 			this->processNextPair(0, 0x01, ev->value ? 0x20 : 0x00);
 			break;
 	}
@@ -463,20 +470,20 @@ void EventConverter_OPL::processNextPair(uint8_t chipIndex, uint8_t reg,
 }
 
 void EventConverter_OPL::writeOpSettings(int chipIndex, int oplChannel,
-	int opNum, OPLPatchPtr i, int velocity)
+	int opNum, const OPLPatch& i, int velocity)
 {
 	uint8_t op;
-	OPLOperator *o;
+	const OPLOperator *o;
 	int outputLevel;
 	if (opNum == 0) {
 		op = OPLOFFSET_MOD(oplChannel);
-		o = &(i->m);
+		o = &(i.m);
 		outputLevel = o->outputLevel;
 		// Note that modulator-only percussive instruments cannot have their volume
 		// set, so we don't need to handle that here
 	} else {
 		op = OPLOFFSET_CAR(oplChannel);
-		o = &(i->c);
+		o = &(i.c);
 		outputLevel = o->outputLevel;
 		if (velocity != DefaultVelocity) {
 			// Not using default velocity
@@ -505,7 +512,7 @@ void EventConverter_OPL::getOPLChannel(const TrackInfo& ti,
 	bool *mod, bool *car)
 {
 	*oplChannel = 99;
-	if (ti.channelType == TrackInfo::OPLPercChannel) {
+	if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 		*chipIndex = 0;
 		switch (ti.channelIndex) {
 			case 4: *oplChannel = 6; *mod = true;  *car = true;  break; // bass drum (mod+car)
@@ -517,7 +524,7 @@ void EventConverter_OPL::getOPLChannel(const TrackInfo& ti,
 				throw error(createString("OPL percussion channel out of range: "
 					<< (int)ti.channelIndex << " is not in 0 <= x <= 4"));
 		}
-	} else if (ti.channelType == TrackInfo::OPLChannel) {
+	} else if (ti.channelType == TrackInfo::ChannelType::OPL) {
 		if ((ti.channelIndex == 0) && (this->flags & OPLWriteFlags::ReserveFirstChan)) {
 			throw format_limitation("OPL channel 0 cannot be used in this format.  "
 				"Please select a different channel.");
@@ -535,7 +542,7 @@ void EventConverter_OPL::getOPLChannel(const TrackInfo& ti,
 		}
 		*mod = true;
 		*car = true;
-	} else if (ti.channelType == TrackInfo::MIDIChannel) {
+	} else if (ti.channelType == TrackInfo::ChannelType::MIDI) {
 		*mod = true;
 		*car = true;
 		int rawChannel = -1;

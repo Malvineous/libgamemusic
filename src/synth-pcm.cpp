@@ -45,13 +45,14 @@ SynthPCM::~SynthPCM()
 {
 }
 
-void SynthPCM::setBankMIDI(PatchBankPtr bankMIDI)
+void SynthPCM::setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI)
 {
 	this->bankMIDI = bankMIDI;
 	return;
 }
 
-void SynthPCM::reset(const TrackInfoVector *trackInfo, PatchBankPtr patches)
+void SynthPCM::reset(const std::vector<TrackInfo>& trackInfo,
+	std::shared_ptr<const PatchBank> patches)
 {
 	this->trackInfo = trackInfo;
 	this->patches = patches;
@@ -62,15 +63,15 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 {
 	len /= 2; // stereo
 	// TODO: Lock mutex
-	for (SampleVector::iterator
+	for (auto
 		i = this->activeSamples.begin(); i != this->activeSamples.end(); /* i++ */
 	) {
-		Sample& sample = *i;
-		int16_t *output_cur = output;
+		auto& sample = *i;
+		auto *output_cur = output;
 		bool complete = false;
-		uint8_t *data = sample.patch->data.get();
-		if (!data) { i++; continue; }
-		unsigned long lenInput = sample.patch->loopEnd ? sample.patch->loopEnd : sample.patch->lenData;
+		auto& data = sample.patch->data;
+		if (data.size() == 0) { i++; continue; }
+		unsigned long lenInput = sample.patch->loopEnd ? sample.patch->loopEnd : data.size();
 		unsigned long numOutputSamples = lenInput * ((double)this->outputSampleRate / (double)sample.sampleRate);
 		for (unsigned long j = 0; j < len; j++) {
 
@@ -94,7 +95,7 @@ void SynthPCM::mix(int16_t *output, unsigned long len)
 			}
 			unsigned long posInput = lenInput * sample.pos / numOutputSamples;
 			assert(posInput < lenInput);
-			uint8_t *in = data + posInput;
+			uint8_t *in = &data[posInput];
 
 			int16_t s;
 			if (sample.patch->bitDepth == 8) {
@@ -151,7 +152,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	assert(this->patches);
-	assert(trackIndex < this->trackInfo->size());
+	assert(trackIndex < this->trackInfo.size());
 	assert(ev->velocity < 256);
 
 	if (ev->instrument >= this->patches->size()) {
@@ -160,19 +161,19 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			<< " but patch bank only has " << this->patches->size()
 			<< " instruments."));
 	}
-	PatchPtr patch = this->patches->at(ev->instrument);
+	auto patch = this->patches->at(ev->instrument);
 
-	const TrackInfo& ti = this->trackInfo->at(trackIndex);
+	auto& ti = this->trackInfo.at(trackIndex);
 	if (this->bankMIDI) {
 		// We are handling MIDI events
 		if (
-			(ti.channelType != TrackInfo::MIDIChannel)
-			&& (ti.channelType != TrackInfo::AnyChannel)
+			(ti.channelType != TrackInfo::ChannelType::MIDI)
+			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a MIDI track
 			return;
 		}
-		MIDIPatchPtr instMIDI = boost::dynamic_pointer_cast<MIDIPatch>(patch);
+		auto instMIDI = dynamic_cast<MIDIPatch*>(patch.get());
 		if (!instMIDI) return; // non-MIDI instrument on a MIDI channel, ignore
 		unsigned long target = instMIDI->midiPatch;
 		if (instMIDI->percussion) {
@@ -187,14 +188,14 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	} else {
 		// We are handling PCM events
 		if (
-			(ti.channelType != TrackInfo::PCMChannel)
-			&& (ti.channelType != TrackInfo::AnyChannel)
+			(ti.channelType != TrackInfo::ChannelType::PCM)
+			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a PCM track
 			return;
 		}
 	}
-	PCMPatchPtr inst = boost::dynamic_pointer_cast<PCMPatch>(patch);
+	auto inst = std::dynamic_pointer_cast<PCMPatch>(patch);
 
 	// Don't play this note if there's no patch for it
 	if (!inst) return;
@@ -229,10 +230,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 {
 	// TODO: Lock mutex
 	Sample *activeSample = NULL;
-	for (SampleVector::iterator
-		i = this->activeSamples.begin(); i != this->activeSamples.end(); i++
-	) {
-		Sample& sample = *i;
+	for (auto& sample : this->activeSamples) {
 		if (sample.track == trackIndex) {
 			activeSample = &sample;
 			break;
@@ -242,11 +240,11 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	if (!activeSample) return; // no note to affect
 
 	switch (ev->type) {
-		case EffectEvent::PitchbendNote:
+		case EffectEvent::Type::PitchbendNote:
 			activeSample->sampleRate =
 				activeSample->patch->sampleRate * ev->data / FREQ_MIDDLE_C;
 			break;
-		case EffectEvent::Volume:
+		case EffectEvent::Type::Volume:
 			activeSample->vol = ev->data;
 			break;
 	}
@@ -267,8 +265,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 
 void SynthPCM::noteOff(unsigned int trackIndex)
 {
-	for (SampleVector::iterator
-		i = this->activeSamples.begin(); i != this->activeSamples.end();
+	for (auto i = this->activeSamples.begin(); i != this->activeSamples.end(); /* i++ */
 	) {
 		Sample& sample = *i;
 		if (sample.track == trackIndex) {

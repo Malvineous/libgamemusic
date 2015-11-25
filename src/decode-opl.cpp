@@ -21,6 +21,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include <iostream>
+#include <camoto/util.hpp> // make_unique
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/util-opl.hpp>
 #include "decode-opl.hpp"
@@ -61,7 +62,7 @@ class OPLDecoder
 		 * @throw stream:error
 		 *   If the input data could not be read or converted for some reason.
 		 */
-		MusicPtr decode();
+		std::unique_ptr<Music> decode();
 
 	private:
 		OPLReaderCallback *cb;     ///< Callback to use to get more OPL data
@@ -71,9 +72,9 @@ class OPLDecoder
 
 		unsigned long lastDelay[OPL_TRACK_COUNT];   ///< Delay ticks accrued since last event
 		uint8_t oplState[OPL_NUM_CHIPS][256];  ///< Current register values
-		PatchBankPtr patches;      ///< Patch storage
+		//std::shared_ptr<PatchBank> patches;      ///< Patch storage
 
-		OPLPatchPtr getCurrentPatch(int chipIndex, int oplChannel);
+		std::shared_ptr<OPLPatch> getCurrentPatch(int chipIndex, int oplChannel);
 
 		/// Add the given patch to the patchbank.
 		/**
@@ -86,18 +87,18 @@ class OPLDecoder
 		 *
 		 * @return Index of this instrument in the patchbank.
 		 */
-		int savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch);
+		int savePatch(PatchBank& patches, std::shared_ptr<OPLPatch> curPatch);
 
-		void createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
+		void createNoteOn(Track& trackEvents, PatchBank& patches,
 			unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
 			OPLPatch::Rhythm rhythm, unsigned int b0val);
 
-		void createOrUpdatePitchbend(const TrackPtr& track,
+		void createOrUpdatePitchbend(Track& trackEvents,
 			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
 };
 
 
-MusicPtr camoto::gamemusic::oplDecode(OPLReaderCallback *cb,
+std::unique_ptr<Music> camoto::gamemusic::oplDecode(OPLReaderCallback *cb,
 	DelayType delayType, double fnumConversion, const Tempo& initialTempo)
 {
 	OPLDecoder decoder(cb, delayType, fnumConversion, initialTempo);
@@ -110,8 +111,7 @@ OPLDecoder::OPLDecoder(OPLReaderCallback *cb, DelayType delayType,
 	:	cb(cb),
 		delayType(delayType),
 		fnumConversion(fnumConversion),
-		initialTempo(initialTempo),
-		patches(new PatchBank())
+		initialTempo(initialTempo)
 {
 }
 
@@ -119,38 +119,36 @@ OPLDecoder::~OPLDecoder()
 {
 }
 
-MusicPtr OPLDecoder::decode()
+std::unique_ptr<Music> OPLDecoder::decode()
 {
-	MusicPtr music(new Music());
-	music->patches = this->patches;
-	// The patches inside the Music instance and inside our own instance are now
-	// the same, except of course the Music ones are generic, but our ones are
-	// typed as OPL instruments.
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 
 	music->initialTempo = this->initialTempo;
 	music->loopDest = -1; // no loop
 
 	for (unsigned int c = 0; c < OPL_TRACK_COUNT; c++) {
-		TrackInfo t;
+		music->trackInfo.emplace_back();
+		auto& t = music->trackInfo.back();
 		if (c < 9) {
-			t.channelType = TrackInfo::OPLChannel;
+			t.channelType = TrackInfo::ChannelType::OPL;
 			t.channelIndex = c;
 		} else if (c < 9+5) {
-			t.channelType = TrackInfo::OPLPercChannel;
+			t.channelType = TrackInfo::ChannelType::OPLPerc;
 			/// @todo: Make sure this correctly maps to the right perc instrument
 			t.channelIndex = c - 9;
 		} else {
-			t.channelType = TrackInfo::OPLChannel;
+			t.channelType = TrackInfo::ChannelType::OPL;
 			t.channelIndex = c - (9+5);
 		}
-		music->trackInfo.push_back(t);
 	}
 
-	PatternPtr pattern(new Pattern());
+	music->patterns.emplace_back();
+	auto& pattern = music->patterns.back();
 	for (unsigned int track = 0; track < OPL_TRACK_COUNT; track++) {
-		TrackPtr t(new Track());
-		pattern->push_back(t);
+		pattern.emplace_back();
 	}
+	music->patternOrder.push_back(0);
 
 	// Initialise all OPL registers to zero
 	memset(oplState, 0, sizeof(oplState));
@@ -178,7 +176,7 @@ MusicPtr OPLDecoder::decode()
 
 		if (oplev.valid & OPLEvent::Delay) {
 			totalDelay += oplev.delay;
-			if (this->delayType == DelayIsPreData) {
+			if (this->delayType == DelayType::DelayIsPreData) {
 				for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 					this->lastDelay[t] += oplev.delay;
 				}
@@ -186,13 +184,14 @@ MusicPtr OPLDecoder::decode()
 		}
 
 		if ((oplev.valid & OPLEvent::Tempo) && (oplev.tempo != lastTempo)) {
-			TrackEvent te;
+			auto& trackEvents = pattern.at(0);
+			trackEvents.emplace_back();
+			auto& te = trackEvents.back();
 			te.delay = this->lastDelay[0];
 			this->lastDelay[0] = 0;
-			TempoEvent *ev = new TempoEvent();
-			te.event.reset(ev);
+			auto ev = std::make_shared<TempoEvent>();
 			ev->tempo = oplev.tempo;
-			pattern->at(0)->push_back(te);
+			te.event = std::move(ev);
 			lastTempo = oplev.tempo;
 		}
 
@@ -245,7 +244,7 @@ MusicPtr OPLDecoder::decode()
 					std::cout << "decode-opl: Invalid OPL channel " << oplChannel
 						<< "\n";
 
-					if (this->delayType == DelayIsPostData) {
+					if (this->delayType == DelayType::DelayIsPostData) {
 						for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 							this->lastDelay[t] += oplev.delay;
 						}
@@ -272,14 +271,15 @@ MusicPtr OPLDecoder::decode()
 				case 0x00:
 					if (oplev.reg == 0x01) {
 						if (bitsChanged(0x20)) {
-							TrackEvent te;
+							auto& trackEvents = pattern.at(0);
+							trackEvents.emplace_back();
+							auto& te = trackEvents.back();
 							te.delay = this->lastDelay[track];
 							this->lastDelay[track] = 0;
-							ConfigurationEvent *ev = new ConfigurationEvent();
-							te.event.reset(ev);
-							ev->configType = ConfigurationEvent::EnableWaveSel;
+							auto ev = std::make_shared<ConfigurationEvent>();
+							ev->configType = ConfigurationEvent::Type::EnableWaveSel;
 							ev->value = (oplev.val & 0x20) ? 1 : 0;
-							pattern->at(0)->push_back(te);
+							te.event = std::move(ev);
 						}
 					} else if (oplev.reg == 0x05) {
 						if (bitsChanged(0x01)) {
@@ -288,14 +288,15 @@ MusicPtr OPLDecoder::decode()
 								((opl3) && (newState == 0))
 								|| ((!opl3) && (newState == 1))
 							) {
-								TrackEvent te;
+								auto& trackEvents = pattern.at(0);
+								trackEvents.emplace_back();
+								auto& te = trackEvents.back();
 								te.delay = this->lastDelay[track];
 								this->lastDelay[track] = 0;
-								ConfigurationEvent *ev = new ConfigurationEvent();
-								te.event.reset(ev);
-								ev->configType = ConfigurationEvent::EnableOPL3;
+								auto ev = std::make_shared<ConfigurationEvent>();
+								ev->configType = ConfigurationEvent::Type::EnableOPL3;
 								ev->value = newState;
-								pattern->at(0)->push_back(te);
+								te.event = std::move(ev);
 								opl3 = newState == 1;
 							}
 						}
@@ -313,7 +314,7 @@ MusicPtr OPLDecoder::decode()
 				case 0xA0: {
 					if (noteon && bitsChanged(0xFF)) {
 						// The pitch has changed while a note was playing
-						this->createOrUpdatePitchbend(pattern->at(track),
+						this->createOrUpdatePitchbend(pattern.at(track),
 							&this->lastDelay[track], oplev.val,
 							oplState[oplev.chipIndex][0xB0 | oplChannel]);
 					}
@@ -325,14 +326,15 @@ MusicPtr OPLDecoder::decode()
 						if (bitsChanged(0x20)) {
 							// Rhythm was off, now it's on
 							track = 0;
-							TrackEvent te;
+							auto& trackEvents = pattern.at(track);
+							trackEvents.emplace_back();
+							auto& te = trackEvents.back();
 							te.delay = this->lastDelay[track];
 							this->lastDelay[track] = 0;
-							ConfigurationEvent *ev = new ConfigurationEvent();
-							te.event.reset(ev);
-							ev->configType = ConfigurationEvent::EnableRhythm;
+							auto ev = std::make_shared<ConfigurationEvent>();
+							ev->configType = ConfigurationEvent::Type::EnableRhythm;
 							ev->value = 1;
-							pattern->at(track)->push_back(te);
+							te.event = std::move(ev);
 						}
 						for (int rhythm = 0; rhythm < 5; rhythm++) {
 							int keyonBit = 1 << rhythm;
@@ -354,15 +356,17 @@ MusicPtr OPLDecoder::decode()
 								noteon = this->oplState[0][0xBD] & keyonBit;
 
 								if (oplev.val & keyonBit) {
-									this->createNoteOn(pattern->at(track), patches, &this->lastDelay[track],
-										oplev.chipIndex, oplChannel, (OPLPatch::Rhythm)(rhythm + 1),
+									this->createNoteOn(pattern.at(track), *music->patches,
+										&this->lastDelay[track], oplev.chipIndex, oplChannel,
+										(OPLPatch::Rhythm)(rhythm + 1),
 										oplState[oplev.chipIndex][0xB0 | oplChannel]);
 								} else {
-									TrackEvent te;
+									auto& trackEvents = pattern.at(track);
+									trackEvents.emplace_back();
+									auto& te = trackEvents.back();
 									te.delay = this->lastDelay[track];
 									this->lastDelay[track] = 0;
-									te.event.reset(new NoteOffEvent());
-									pattern->at(track)->push_back(te);
+									te.event = std::make_shared<NoteOffEvent>();
 								}
 							}
 						}
@@ -372,47 +376,51 @@ MusicPtr OPLDecoder::decode()
 							track = 9 + rhythm;
 							noteon = this->oplState[0][0xBD] & (1 << rhythm);
 							if (noteon) {
-								TrackEvent te;
+								auto& trackEvents = pattern.at(track);
+								trackEvents.emplace_back();
+								auto& te = trackEvents.back();
 								te.delay = this->lastDelay[track];
 								this->lastDelay[track] = 0;
-								te.event.reset(new NoteOffEvent());
-								pattern->at(track)->push_back(te);
+								te.event = std::make_shared<NoteOffEvent>();
 							}
 						}
 						// Rhythm was on, now it's off
 						track = 0;
-						TrackEvent te;
+						auto& trackEvents = pattern.at(track);
+						trackEvents.emplace_back();
+						auto& te = trackEvents.back();
 						te.delay = this->lastDelay[track];
 						this->lastDelay[track] = 0;
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						te.event.reset(ev);
-						ev->configType = ConfigurationEvent::EnableRhythm;
+						auto ev = std::make_shared<ConfigurationEvent>();
+						ev->configType = ConfigurationEvent::Type::EnableRhythm;
 						ev->value = 0;
-						pattern->at(track)->push_back(te);
+						te.event = std::move(ev);
 					}
 					if (bitsChanged(0x80)) {
 						track = 0;
-						TrackEvent te;
+						auto& trackEvents = pattern.at(track);
+						trackEvents.emplace_back();
+						auto& te = trackEvents.back();
 						te.delay = this->lastDelay[track];
 						this->lastDelay[track] = 0;
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						te.event.reset(ev);
-						ev->configType = ConfigurationEvent::EnableDeepTremolo;
+						auto ev = std::make_shared<ConfigurationEvent>();
+						ev->configType = ConfigurationEvent::Type::EnableDeepTremolo;
 						ev->value = (oplev.val & 0x80) ? 1 : 0; // bit0 is enable/disable
 						if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
-						pattern->at(track)->push_back(te);
+						te.event = std::move(ev);
 					}
 					if (bitsChanged(0x40)) {
 						track = 0;
-						TrackEvent te;
+						auto& trackEvents = pattern.at(track);
+						trackEvents.emplace_back();
+						auto& te = trackEvents.back();
 						te.delay = this->lastDelay[track];
 						this->lastDelay[track] = 0;
-						ConfigurationEvent *ev = new ConfigurationEvent();
-						te.event.reset(ev);
-						ev->configType = ConfigurationEvent::EnableDeepVibrato;
+						auto ev = std::make_shared<ConfigurationEvent>();
+						ev->configType = ConfigurationEvent::Type::EnableDeepVibrato;
 						ev->value = (oplev.val & 0x40) ? 1 : 0; // bit0 is enable/disable
 						if (oplev.chipIndex) ev->value |= 2;    // bit1 is chip index
-						pattern->at(track)->push_back(te);
+						te.event = std::move(ev);
 					}
 					break;
 
@@ -426,7 +434,7 @@ MusicPtr OPLDecoder::decode()
 					if (OPL_IS_RHYTHM_ON && (oplev.chipIndex == 0) && (oplChannel > 5)) {
 						if (noteon && bitsChanged(0x1F)) {
 							// Rhythm-mode instrument (incl. bass drum) has changed pitch
-							this->createOrUpdatePitchbend(pattern->at(track),
+							this->createOrUpdatePitchbend(pattern.at(track),
 								&this->lastDelay[track],
 								oplState[oplev.chipIndex][0xA0 | oplChannel], oplev.val);
 						}
@@ -434,21 +442,21 @@ MusicPtr OPLDecoder::decode()
 						if (bitsChanged(OPLBIT_KEYON)) {
 							if (oplev.val & OPLBIT_KEYON) {
 								// Note is now on
-								this->createNoteOn(pattern->at(track), patches,
+								this->createNoteOn(pattern.at(track), *music->patches,
 									&this->lastDelay[track], oplev.chipIndex, oplChannel,
-									OPLPatch::Melodic, oplev.val);
+									OPLPatch::Rhythm::Melodic, oplev.val);
 							} else {
 								// Note is now off
-								TrackEvent te;
+								auto& trackEvents = pattern.at(track);
+								trackEvents.emplace_back();
+								auto& te = trackEvents.back();
 								te.delay = this->lastDelay[track];
 								this->lastDelay[track] = 0;
-								NoteOffEvent *ev = new NoteOffEvent();
-								te.event.reset(ev);
-								pattern->at(track)->push_back(te);
+								te.event = std::make_shared<NoteOffEvent>();
 							}
 						} else if (noteon && bitsChanged(0x1F)) {
 							// The note is already on and the pitch has changed.
-							this->createOrUpdatePitchbend(pattern->at(track), &this->lastDelay[track],
+							this->createOrUpdatePitchbend(pattern.at(track), &this->lastDelay[track],
 								oplState[oplev.chipIndex][0xA0 | oplChannel], oplev.val);
 						}
 					}
@@ -460,7 +468,7 @@ MusicPtr OPLDecoder::decode()
 		// Will have to combine with previous patch change event if there has been no delay.
 
 		if (oplev.valid & OPLEvent::Delay) {
-			if (this->delayType == DelayIsPostData) {
+			if (this->delayType == DelayType::DelayIsPostData) {
 				for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 					this->lastDelay[t] += oplev.delay;
 				}
@@ -470,29 +478,28 @@ MusicPtr OPLDecoder::decode()
 	} // while (all events)
 
 	// Put dummy events if necessary to preserve trailing delays
-	for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
-		if (this->lastDelay[t] && pattern->at(t)->size()) {
-			TrackEvent te;
-			te.delay = this->lastDelay[t];
-			this->lastDelay[t] = 0;
-			ConfigurationEvent *ev = new ConfigurationEvent();
-			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::EmptyEvent;
+	for (unsigned int track = 0; track < OPL_TRACK_COUNT; track++) {
+		auto& trackEvents = pattern.at(track);
+		if (this->lastDelay[track] && trackEvents.size()) {
+			trackEvents.emplace_back();
+			auto& te = trackEvents.back();
+			te.delay = this->lastDelay[track];
+			this->lastDelay[track] = 0;
+			auto ev = std::make_shared<ConfigurationEvent>();
+			ev->configType = ConfigurationEvent::Type::EmptyEvent;
 			ev->value = 0;
-			pattern->at(t)->push_back(te);
+			te.event = std::move(ev);
 		}
 	}
 
-	music->patterns.push_back(pattern);
-	music->patternOrder.push_back(0);
 	music->ticksPerTrack = totalDelay;
 
-	return music;
+	return std::move(music);
 }
 
-OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
+std::shared_ptr<OPLPatch> OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 {
-	OPLPatchPtr curPatch(new OPLPatch());
+	auto curPatch = std::make_shared<OPLPatch>();
 
 	OPLOperator *o = &curPatch->m;
 	uint8_t op = OPLOFFSET_MOD(oplChannel);
@@ -516,40 +523,41 @@ OPLPatchPtr OPLDecoder::getCurrentPatch(int chipIndex, int oplChannel)
 
 	curPatch->feedback   = (this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] >> 1) & 0x07;
 	curPatch->connection =  this->oplState[chipIndex][BASE_FEED_CONN | oplChannel] & 1;
-	curPatch->rhythm     = OPLPatch::Melodic; // will be overridden later if needed
+	curPatch->rhythm     = OPLPatch::Rhythm::Melodic; // will be overridden later if needed
 	return curPatch;
 }
 
-int OPLDecoder::savePatch(PatchBankPtr& patches, OPLPatchPtr curPatch)
+int OPLDecoder::savePatch(PatchBank& patches, std::shared_ptr<OPLPatch> curPatch)
 {
 	// See if the patch has already been saved
 	unsigned int j = 0;
-	for (PatchBank::const_iterator i = patches->begin(); i != patches->end(); i++, j++) {
-		OPLPatchPtr p = boost::dynamic_pointer_cast<OPLPatch>(*i);
+	for (auto& p : patches) {
+		auto oplPatch = dynamic_cast<OPLPatch*>(p.get());
 		if (
-			(p)
-			&& (*p == *curPatch)
-			&& (p->rhythm == curPatch->rhythm)
+			(oplPatch)
+			&& (*oplPatch == *curPatch)
+			&& (oplPatch->rhythm == curPatch->rhythm)
 		) return j; // patch already saved
+		j++;
 	}
 
 	// Save the patch
-	unsigned int numPatches = patches->size();
-	patches->push_back(curPatch);
+	unsigned int numPatches = patches.size();
+	patches.push_back(curPatch);
 	return numPatches;
 }
 
-void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
+void OPLDecoder::createNoteOn(Track& trackEvents, PatchBank& patches,
 	unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
 	OPLPatch::Rhythm rhythm, unsigned int b0val)
 {
-	TrackEvent te;
+	trackEvents.emplace_back();
+	auto& te = trackEvents.back();
 	te.delay = *lastDelay;
 	*lastDelay = 0;
-	NoteOnEvent *ev = new NoteOnEvent();
-	te.event.reset(ev);
+	auto ev = std::make_shared<NoteOnEvent>();
 
-	OPLPatchPtr curPatch = this->getCurrentPatch(chipIndex, oplChannel);
+	auto curPatch = this->getCurrentPatch(chipIndex, oplChannel);
 	curPatch->rhythm = rhythm;
 
 	/// Make sure the patch has been added to the patchbank
@@ -569,11 +577,12 @@ void OPLDecoder::createNoteOn(const TrackPtr& track, PatchBankPtr& patches,
 			this->oplState[chipIndex][BASE_SCAL_LEVL | OPLOFFSET_CAR(oplChannel)];
 		ev->velocity = log_volume_to_lin_velocity(63 - curVol, 63);
 	}
-	track->push_back(te);
+
+	te.event = std::move(ev);
 	return;
 }
 
-void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
+void OPLDecoder::createOrUpdatePitchbend(Track& trackEvents,
 	unsigned long *lastDelay, unsigned int a0val, unsigned int b0val)
 {
 	// Get the OPL frequency number for this channel
@@ -594,12 +603,12 @@ void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
 		// (like an instrument effect) in between the two pitch events then
 		// they won't be combined into a single pitchbend event.
 		for (Track::reverse_iterator
-			i = track->rbegin(); i != track->rend(); i++
+			i = trackEvents.rbegin(); i != trackEvents.rend(); i++
 		) {
 			const TrackEvent& te = *i;
 			if (te.delay != 0) break; // no more events at this time
-			EffectEvent *pbev = dynamic_cast<EffectEvent *>(i->event.get());
-			if (pbev && (pbev->type == EffectEvent::PitchbendNote)) {
+			auto pbev = dynamic_cast<EffectEvent *>(i->event.get());
+			if (pbev && (pbev->type == EffectEvent::Type::PitchbendNote)) {
 				// There is an existing pitchbend event at the same time, so edit
 				// that one.
 				pbev->data = freq;
@@ -611,14 +620,14 @@ void OPLDecoder::createOrUpdatePitchbend(const TrackPtr& track,
 
 	if (addNew) {
 		// Last event was unrelated, create a new pitchbend event.
-		TrackEvent te;
+		trackEvents.emplace_back();
+		auto& te = trackEvents.back();
 		te.delay = *lastDelay;
 		*lastDelay = 0;
-		EffectEvent *ev = new EffectEvent();
-		te.event.reset(ev);
-		ev->type = EffectEvent::PitchbendNote;
+		auto ev = std::make_shared<EffectEvent>();
+		ev->type = EffectEvent::Type::PitchbendNote;
 		ev->data = freq;
-		track->push_back(te);
+		te.event = std::move(ev);
 	}
 	return;
 }

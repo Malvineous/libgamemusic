@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <camoto/util.hpp> // make_unique
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-opl.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
@@ -37,10 +38,10 @@ class EventConverter_KLM: virtual public EventHandler
 	public:
 		/// Prepare to convert events into KLM data sent to a stream.
 		/**
-		 * @param output
+		 * @param content
 		 *   Output stream the KLM data will be written to.
 		 */
-		EventConverter_KLM(stream::output_sptr output);
+		EventConverter_KLM(stream::output& content);
 
 		/// Destructor.
 		virtual ~EventConverter_KLM();
@@ -62,7 +63,7 @@ class EventConverter_KLM: virtual public EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
-		stream::output_sptr output;          ///< Where to write KLM file
+		stream::output& content;             ///< Where to write KLM file
 		unsigned long lastDelay;             ///< Tick value from previous event
 		uint8_t patchMap[KLM_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
 		uint8_t volMap[KLM_CHANNEL_COUNT];   ///< Volume set on each channel
@@ -72,80 +73,80 @@ class EventConverter_KLM: virtual public EventHandler
 		void writeDelay();
 };
 
-std::string MusicType_KLM::getCode() const
+std::string MusicType_KLM::code() const
 {
 	return "klm-wacky";
 }
 
-std::string MusicType_KLM::getFriendlyName() const
+std::string MusicType_KLM::friendlyName() const
 {
 	return "Wacky Wheels Adlib Music File";
 }
 
-std::vector<std::string> MusicType_KLM::getFileExtensions() const
+std::vector<std::string> MusicType_KLM::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("klm");
-	return vcExtensions;
+	return {
+		"klm",
+	};
 }
 
-unsigned long MusicType_KLM::getCaps() const
+MusicType::Caps MusicType_KLM::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
+		Caps::InstOPL
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_KLM::isInstance(stream::input& content) const
 {
-	stream::pos lenFile = input->size();
+	stream::pos lenFile = content.size();
 	// Too short
 	// TESTED BY: mus_klm_wacky_isinstance_c09
-	if (lenFile < 5) return MusicType::DefinitelyNo;
+	if (lenFile < 5) return Certainty::DefinitelyNo;
 
 	uint16_t offMusic;
-	input->seekg(3, stream::start);
-	input >> u16le(offMusic);
+	content.seekg(3, stream::start);
+	content >> u16le(offMusic);
 
 	// Make sure the instruments are of the correct length
 	// TESTED BY: mus_klm_wacky_isinstance_c01
-	if ((offMusic - 5) % 11 != 0) return MusicType::DefinitelyNo;
+	if ((offMusic - 5) % 11 != 0) return Certainty::DefinitelyNo;
 
 	// Make sure the song data offset is contained within the file
 	// TESTED BY: mus_klm_wacky_isinstance_c02
-	if (offMusic >= lenFile) return MusicType::DefinitelyNo;
+	if (offMusic >= lenFile) return Certainty::DefinitelyNo;
 
 	// Read each instrument and pick out invalid values
 	int instRead = 5;
 	while (instRead < offMusic) {
 		assert(lenFile > 11);  // if this fails, the logic above is wrong
 		uint8_t instrument[11];
-		input->read((char *)instrument, 11);
+		content.read((char *)instrument, 11);
 		instRead += 11;
 
 		// Upper five bits of base register 0xE0 are not used
 		// TESTED BY: mus_klm_wacky_isinstance_c06
-		if (instrument[8] & 0xF8) return MusicType::DefinitelyNo;
+		if (instrument[8] & 0xF8) return Certainty::DefinitelyNo;
 		// TESTED BY: mus_klm_wacky_isinstance_c07
-		if (instrument[9] & 0xF8) return MusicType::DefinitelyNo;
+		if (instrument[9] & 0xF8) return Certainty::DefinitelyNo;
 
 		// Upper two bits of base register 0xC0 are not used
-//		if (instrument[10] & 0xC0) return MusicType::DefinitelyNo;
+//		if (instrument[10] & 0xC0) return Certainty::DefinitelyNo;
 
 		// If we're here, no invalid bits were set
 		// TESTED BY: mus_klm_wacky_isinstance_c08
 	}
 
 	// This should always work unless there was an obscure I/O error
-	assert(input->tellg() == offMusic);
+	assert(content.tellg() == offMusic);
 	lenFile -= instRead;
 
 	// Skim-read data until EOF
 	while (lenFile) {
 		uint8_t code;
 		uint8_t lenEvent;
-		input >> u8(code);
+		content >> u8(code);
 		lenFile--;
 		switch (code & 0xF0) {
 			case 0x00: lenEvent = 0; break;
@@ -164,35 +165,35 @@ MusicType::Certainty MusicType_KLM::isInstance(stream::input_sptr input) const
 					default:
 						// Invalid 0xF0 event type
 						// TESTED BY: mus_klm_wacky_isinstance_c03
-						return MusicType::DefinitelyNo;
+						return Certainty::DefinitelyNo;
 				}
 				break;
 			default:
 				// Invalid event type
 				// TESTED BY: mus_klm_wacky_isinstance_c04
-				return MusicType::DefinitelyNo;
+				return Certainty::DefinitelyNo;
 		}
 		// Truncated event
 		// TESTED BY: mus_klm_wacky_isinstance_c05
-		if (lenFile < lenEvent) return MusicType::DefinitelyNo;
+		if (lenFile < lenEvent) return Certainty::DefinitelyNo;
 		if (code == 0xFF) break;
-		input->seekg(lenEvent, stream::cur);
+		content.seekg(lenEvent, stream::cur);
 		lenFile -= lenEvent;
 	}
 
 	// TESTED BY: mus_klm_wacky_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_KLM::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
-	MusicPtr music(new Music());
-	PatchBankPtr patches(new PatchBank());
-	music->patches = patches;
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 
 	uint8_t patchMap[KLM_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
 	int freqMap[KLM_CHANNEL_COUNT];      ///< Frequency set on each channel
@@ -210,7 +211,7 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 	uint16_t tempo;
 	uint8_t unk1;
 	uint16_t offSong;
-	input
+	content
 		>> u16le(tempo)
 		>> u8(unk1)
 		>> u16le(offSong)
@@ -220,11 +221,11 @@ MusicPtr MusicType_KLM::read(stream::input_sptr input, SuppData& suppData) const
 
 	// Read the instruments
 	int numInstruments = (offSong - 5) / 11;
-	patches->reserve(numInstruments);
+	music->patches->reserve(numInstruments);
 	for (int i = 0; i < numInstruments; i++) {
-		OPLPatchPtr patch(new OPLPatch());
+		auto patch = std::make_shared<OPLPatch>();
 		uint8_t inst[11];
-		input->read((char *)inst, 11);
+		content.read((char *)inst, 11);
 
 		OPLOperator *o = &patch->m;
 /*
@@ -271,7 +272,7 @@ off klm
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Melodic;
+		patch->rhythm      = OPLPatch::Rhythm::Melodic;
 
 ///TEMP
 		switch (i) {
@@ -288,56 +289,57 @@ off klm
 				break;*/
 		}
 ///ENDTEMP
-		patches->push_back(patch);
+		music->patches->push_back(patch);
 	}
 
 	// Make sure we've reached the start of the song data
-	assert(input->tellg() == offSong);
+	assert(content.tellg() == offSong);
 
 	unsigned long lastDelay[KLM_CHANNEL_COUNT];
-	PatternPtr pattern(new Pattern());
+	music->patterns.emplace_back();
+	auto& pattern = music->patterns.back();
 	for (unsigned int c = 0; c < KLM_CHANNEL_COUNT; c++) {
 		TrackInfo t;
 		if (c < 6) {
-			t.channelType = TrackInfo::OPLChannel;
+			t.channelType = TrackInfo::ChannelType::OPL;
 			t.channelIndex = c;
 		} else if (c < 11) {
-			t.channelType = TrackInfo::OPLPercChannel;
+			t.channelType = TrackInfo::ChannelType::OPLPerc;
 			t.channelIndex = 4 - (c - 6);
 		} else {
-			t.channelType = TrackInfo::UnusedChannel;
+			t.channelType = TrackInfo::ChannelType::Unused;
 			t.channelIndex = c - 11;
 		}
 		music->trackInfo.push_back(t);
 
-		TrackPtr track(new Track());
-		pattern->push_back(track);
+		pattern.emplace_back();
 		lastDelay[c] = 0;
 	}
-	music->patterns.push_back(pattern);
 	music->patternOrder.push_back(0);
 
-	TrackPtr configTrack = pattern->at(0);
+	auto& configTrack = pattern.at(0);
 	// Set rhythm mode
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableRhythm;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableRhythm;
-		ev->value = 1;
-		configTrack->push_back(te);
+		te.event = ev;
+		configTrack.push_back(te);
 	}
 
 	// Set wavesel
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableWaveSel;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableWaveSel;
-		ev->value = 1;
-		configTrack->push_back(te);
+		te.event = ev;
+		configTrack.push_back(te);
 	}
 
 	unsigned long totalTicks = 0;
@@ -345,7 +347,7 @@ off klm
 	while (!eof) {
 		uint8_t code;
 		try {
-			input >> u8(code);
+			content >> u8(code);
 		} catch (const stream::incomplete_read&) {
 			// no point setting eof=true here
 			break;
@@ -376,12 +378,14 @@ off klm
 */
 		switch (code & 0xF0) {
 			case 0x00: { // note off
+				auto ev = std::make_shared<NoteOffEvent>();
+
 				TrackEvent te;
 				te.delay = lastDelay[channel];
 				lastDelay[channel] = 0;
-				NoteOffEvent *ev = new NoteOffEvent();
-				te.event.reset(ev);
-				pattern->at(channel)->push_back(te);
+				te.event = ev;
+				pattern.at(channel).push_back(te);
+
 				noteOn[channel] = false;
 				break;
 			}
@@ -389,7 +393,7 @@ off klm
 				uint8_t a0, b0;
 				bool doNoteOn = true;
 				if (code < 0x17) { // Chans 0-5 + bass drum 6
-					input >> u8(a0) >> u8(b0);
+					content >> u8(a0) >> u8(b0);
 					int fnum = ((b0 & 0x03) << 8) | a0;
 					int block = (b0 >> 2) & 0x07;
 					freqMap[channel] = fnumToMilliHertz(fnum, block, KLM_FNUM_CONVERSION);
@@ -398,34 +402,39 @@ off klm
 				if (doNoteOn) {
 					if (noteOn[channel]) {
 						// Note is already playing, do a pitchbend
+						auto ev = std::make_shared<EffectEvent>();
+						ev->type = EffectEvent::Type::PitchbendNote;
+						ev->data = freqMap[channel];
+
 						TrackEvent te;
 						te.delay = lastDelay[channel];
 						lastDelay[channel] = 0;
-						EffectEvent *ev = new EffectEvent();
-						te.event.reset(ev);
-						ev->type = EffectEvent::PitchbendNote;
-						ev->data = freqMap[channel];
-						pattern->at(channel)->push_back(te);
+						te.event = ev;
+						pattern.at(channel).push_back(te);
 					} else {
 						// Note is not playing, do a note-on
-						TrackEvent te;
-						te.delay = lastDelay[channel];
-						lastDelay[channel] = 0;
-						NoteOnEvent *ev = new NoteOnEvent();
-						te.event.reset(ev);
+						auto ev = std::make_shared<NoteOnEvent>();
 						ev->instrument = patchMap[channel];
 						ev->milliHertz = freqMap[channel];
 						ev->velocity = volMap[channel];
-						pattern->at(channel)->push_back(te);
+
+						TrackEvent te;
+						te.delay = lastDelay[channel];
+						lastDelay[channel] = 0;
+						te.event = ev;
+						pattern.at(channel).push_back(te);
+
 						noteOn[channel] = true;
 					}
 				} else {
+					auto ev = std::make_shared<NoteOffEvent>();
+
 					TrackEvent te;
 					te.delay = lastDelay[channel];
 					lastDelay[channel] = 0;
-					NoteOffEvent *ev = new NoteOffEvent();
-					te.event.reset(ev);
-					pattern->at(channel)->push_back(te);
+					te.event = ev;
+					pattern.at(channel).push_back(te);
+
 					noteOn[channel] = false;
 					break;
 				}
@@ -433,37 +442,40 @@ off klm
 			}
 			case 0x20: { // set volume
 				uint8_t newVol;
-				input >> u8(newVol);
+				content >> u8(newVol);
 				if (newVol > 127) throw stream::error("Velocity out of range");
 				newVol = log_volume_to_lin_velocity(newVol, 127);
 				volMap[channel] = newVol;
 // TODO: Figure out which operator this affects on the percussive channels
+
+				auto ev = std::make_shared<EffectEvent>();
+				ev->type = EffectEvent::Type::Volume;
+				ev->data = newVol;
+
 				TrackEvent te;
 				te.delay = lastDelay[channel];
 				lastDelay[channel] = 0;
-				EffectEvent *ev = new EffectEvent();
-				te.event.reset(ev);
-				ev->type = EffectEvent::Volume;
-				ev->data = newVol;
-				pattern->at(channel)->push_back(te);
+				te.event = ev;
+				pattern.at(channel).push_back(te);
 				break;
 			}
 			case 0x30: { // set instrument
 				uint8_t data;
-				input >> u8(data);
+				content >> u8(data);
 				patchMap[channel] = data;
 				break;
 			}
 			case 0x40: { // note on
-				TrackEvent te;
-				te.delay = lastDelay[channel];
-				lastDelay[channel] = 0;
-				NoteOnEvent *ev = new NoteOnEvent();
-				te.event.reset(ev);
+				auto ev = std::make_shared<NoteOnEvent>();
 				ev->instrument = patchMap[channel];
 				ev->milliHertz = freqMap[channel];
 				ev->velocity = volMap[channel];
-				pattern->at(channel)->push_back(te);
+
+				TrackEvent te;
+				te.delay = lastDelay[channel];
+				lastDelay[channel] = 0;
+				te.event = ev;
+				pattern.at(channel).push_back(te);
 				noteOn[channel] = true;
 				break;
 			}
@@ -471,7 +483,7 @@ off klm
 				switch (code) {
 					case 0xFD: { // normal delay (0..255)
 						uint8_t data;
-						input >> u8(data);
+						content >> u8(data);
 						for (unsigned int c = 0; c < KLM_CHANNEL_COUNT; c++) {
 							lastDelay[c] += data;
 						}
@@ -480,7 +492,7 @@ off klm
 					}
 					case 0xFE: { // large delay (0..65535)
 						uint16_t data;
-						input >> u16le(data);
+						content >> u16le(data);
 						for (unsigned int c = 0; c < KLM_CHANNEL_COUNT; c++) {
 							lastDelay[c] += data;
 						}
@@ -507,16 +519,17 @@ off klm
 	// Put dummy events at the end of each track so we don't lose any final delays
 	for (unsigned int channel = 0; channel < KLM_CHANNEL_COUNT; channel++) {
 		if (lastDelay[channel]) {
-			TrackPtr t = pattern->at(channel);
-			if (t->size() == 0) continue; // unused channel
+			auto& t = pattern.at(channel);
+			if (t.size() == 0) continue; // unused channel
+			auto ev = std::make_shared<ConfigurationEvent>();
+			ev->configType = ConfigurationEvent::Type::EmptyEvent;
+			ev->value = 0;
+
 			TrackEvent te;
 			te.delay = lastDelay[channel];
 			lastDelay[channel] = 0;
-			ConfigurationEvent *ev = new ConfigurationEvent();
-			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::EmptyEvent;
-			ev->value = 0;
-			t->push_back(te);
+			te.event = ev;
+			t.push_back(te);
 		}
 	}
 
@@ -525,27 +538,25 @@ off klm
 	return music;
 }
 
-void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_KLM::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->size() > 256) {
+	requirePatches<OPLPatch>(*music.patches);
+	if (music.patches->size() > 256) {
 		throw format_limitation("KLM files have a maximum of 256 instruments.");
 	}
 
-	uint16_t musOffset = 5 + music->patches->size() * 11;
-	output
-		<< u16le(music->initialTempo.hertz())
+	uint16_t musOffset = 5 + music.patches->size() * 11;
+	content
+		<< u16le(music.initialTempo.hertz())
 		<< u8(1)    // unknown
 		<< u16le(musOffset)
 	;
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
+	for (auto& i : *music.patches) {
 		uint8_t inst[11];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(*i);
+		auto patch = dynamic_cast<OPLPatch*>(i.get());
 		assert(patch);
-		OPLOperator *o = &patch->m;
+		auto o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[6 + op] =
 				((o->enableTremolo & 1) << 7) |
@@ -568,7 +579,7 @@ void MusicType_KLM::write(stream::output_sptr output, SuppData& suppData,
 		//patch->deepTremolo = false;
 		//patch->deepVibrato = false;
 
-		output->write((char *)inst, 11);
+		content.write((char *)inst, 11);
 	}
 /*
 off cmf klmoff
@@ -597,33 +608,33 @@ off klm
 9   E3
 10  C0
  */
-	EventConverter_KLM conv(output);
+	EventConverter_KLM conv(content);
 	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
 
-	output << u8(0xFF); // end of song
+	content << u8(0xFF); // end of song
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_KLM::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_KLM::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_KLM::getMetadataList() const
+std::vector<Attribute> MusicType_KLM::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	return types;
+	// No metadata
+	return {};
 }
 
 
-EventConverter_KLM::EventConverter_KLM(stream::output_sptr output)
-	:	output(output),
+EventConverter_KLM::EventConverter_KLM(stream::output& content)
+	:	content(content),
 		lastDelay(0),
 		atStart(true)
 {
@@ -653,10 +664,10 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	if (this->atStart) {
 		int ticksPerSecond = 1000000 / ev->tempo.usPerTick;
 		// First tempo event, update the header
-		unsigned int pos = this->output->tellp(); // should nearly always be musOffset from the header
-		this->output->seekp(0, stream::start);
-		this->output << u16le(ticksPerSecond);
-		this->output->seekp(pos, stream::start);
+		unsigned int pos = this->content.tellp(); // should nearly always be musOffset from the header
+		this->content.seekp(0, stream::start);
+		this->content << u16le(ticksPerSecond);
+		this->content.seekp(pos, stream::start);
 		//this->tempoMultiplier = 1;
 		// Don't set this->atStart to false just in case we get multiple initial
 		// tempo events
@@ -699,7 +710,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	if (ev->instrument != this->patchMap[trackIndex]) {
 		// Change the instrument first
 		event = 0x30 | trackIndex;
-		this->output
+		this->content
 			<< u8(event)
 			<< u8(ev->instrument)
 		;
@@ -709,7 +720,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	if (ev->velocity != this->volMap[trackIndex]) {
 		// Change the volume
 		event = 0x20 | trackIndex;
-		this->output
+		this->content
 			<< u8(event)
 			<< u8(ev->velocity >> 1)
 		;
@@ -728,7 +739,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	;
 
 	// Write lower eight bits of note freq
-	this->output
+	this->content
 		<< u8(event)
 		<< u8(a0)
 		<< u8(b0)
@@ -745,7 +756,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	this->writeDelay();
 
 	uint8_t code = 0x00 | trackIndex;
-	this->output << u8(code);
+	this->content << u8(code);
 
 	return;
 }
@@ -794,13 +805,13 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 {
 	this->lastDelay += delay;
 	switch (ev->configType) {
-		case ConfigurationEvent::EnableRhythm:
+		case ConfigurationEvent::Type::EnableRhythm:
 			// Ignored, will set when rhythm channels are played
 			break;
-		case ConfigurationEvent::EnableDeepTremolo:
+		case ConfigurationEvent::Type::EnableDeepTremolo:
 			if (ev->value != 1) std::cerr << "Deep tremolo cannot be disabled in this format, ignoring event.\n";
 			break;
-		case ConfigurationEvent::EnableDeepVibrato:
+		case ConfigurationEvent::Type::EnableDeepVibrato:
 			if (ev->value != 1) std::cerr << "Deep vibrato cannot be disabled in this format, ignoring event.\n";
 			break;
 		default:
@@ -815,7 +826,7 @@ void EventConverter_KLM::writeDelay()
 	while (this->lastDelay) {
 		uint8_t d;
 		if (this->lastDelay > 255) d = 255; else d = this->lastDelay;
-		this->output << u8(0xFD) << u8(this->lastDelay);
+		this->content << u8(0xFD) << u8(this->lastDelay);
 		this->lastDelay -= d;
 	}
 	assert(this->lastDelay == 0);

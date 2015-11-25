@@ -29,7 +29,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Descendent of Patch for storing PCM instruments.
-struct DLL_EXPORT PCMPatch: public Patch
+struct CAMOTO_GAMEMUSIC_API PCMPatch: public Patch
 {
 	/// Default constructor sets everything to zero/defaults.
 	PCMPatch();
@@ -41,8 +41,6 @@ struct DLL_EXPORT PCMPatch: public Patch
 	unsigned long loopStart;  ///< Beginning of loop (offset of first sample)
 	unsigned long loopEnd;    ///< End of loop, 0=no loop (offset of last sample+1)
 
-	unsigned long lenData;    ///< Size of data in bytes
-
 	/// Actual sample data.
 	/**
 	 * If bitDepth is 8, this is unsigned 8-bit PCM data, one byte per sample.  If
@@ -51,7 +49,7 @@ struct DLL_EXPORT PCMPatch: public Patch
 	 * will need to be converted to host-byte order when it is loaded into this
 	 * buffer.
 	 */
-	boost::shared_array<uint8_t> data;
+	std::vector<uint8_t> data;
 };
 
 /// Shared pointer to a Patch.

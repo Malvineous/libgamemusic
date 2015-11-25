@@ -19,6 +19,7 @@
  */
 
 #include <math.h> // pow
+#include <iostream>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
@@ -79,7 +80,7 @@ void camoto::gamemusic::freqToMIDI(unsigned long milliHertz, uint8_t *note,
 
 
 EventConverter_MIDI::EventConverter_MIDI(MIDIEventCallback *cb,
-	ConstMusicPtr music, unsigned int midiFlags)
+	std::shared_ptr<const Music> music, MIDIFlags midiFlags)
 	:	cb(cb),
 		music(music),
 		midiFlags(midiFlags),
@@ -135,12 +136,12 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 {
 	assert(ev->velocity < 256);
 
-	const TrackInfo& trackInfo = this->music->trackInfo[trackIndex];
+	auto& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
-		(trackInfo.channelType != TrackInfo::MIDIChannel)
+		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
 	) return;
-	const unsigned int& midiChannel = trackInfo.channelIndex;
+	auto& midiChannel = trackInfo.channelIndex;
 	this->cachedDelay += delay;
 
 	// Figure out which MIDI instrument number to use
@@ -149,8 +150,8 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	if (this->midiFlags & MIDIFlags::UsePatchIndex) {
 		targetPatch = ev->instrument;
 	} else {
-		MIDIPatchPtr patch =
-			boost::dynamic_pointer_cast<MIDIPatch>(this->music->patches->at(ev->instrument));
+		auto patch =
+			dynamic_cast<MIDIPatch*>(this->music->patches->at(ev->instrument).get());
 		if (!patch) return;
 		targetPatch = patch->midiPatch;
 	}
@@ -215,10 +216,10 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 void EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
-	const TrackInfo& trackInfo = this->music->trackInfo[trackIndex];
+	auto& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
-		(trackInfo.channelType != TrackInfo::MIDIChannel)
+		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
 	) return;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
 	this->cachedDelay += delay;
@@ -229,8 +230,8 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 			<< " but there was no note playing!\n";
 		return;
 	}
-	this->cb->midiNoteOff(this->cachedDelay, midiChannel, this->activeNote[trackIndex],
-		MIDI_DEFAULT_RELEASE_VELOCITY);
+	this->cb->midiNoteOff(this->cachedDelay, midiChannel,
+		this->activeNote[trackIndex], MIDI_DEFAULT_RELEASE_VELOCITY);
 	this->cachedDelay = 0;
 	this->activeNote[trackIndex] = ACTIVE_NOTE_NONE;
 
@@ -240,17 +241,17 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 void EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
-	const TrackInfo& trackInfo = this->music->trackInfo[trackIndex];
+	auto& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
-		(trackInfo.channelType != TrackInfo::MIDIChannel)
+		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
 	) return;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
 	assert(midiChannel < MIDI_CHANNEL_COUNT);
 	this->cachedDelay += delay;
 
 	switch (ev->type) {
-		case EffectEvent::PitchbendNote: {
+		case EffectEvent::Type::PitchbendNote: {
 			if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
 			// If there's no note playing, don't do a pitchbend because it'll get done
 			// when the next note-on happens.
@@ -290,24 +291,24 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 {
 	this->cachedDelay += delay;
 	switch (ev->configType) {
-		case ConfigurationEvent::EmptyEvent:
+		case ConfigurationEvent::Type::EmptyEvent:
 			// cached delay is updated
 			break;
-		case ConfigurationEvent::EnableRhythm:
+		case ConfigurationEvent::Type::EnableRhythm:
 			// Controller 0x67 (CMF rhythm)
 			if (this->midiFlags & MIDIFlags::CMFExtensions) {
 				this->cb->midiController(this->cachedDelay, 0, 0x67, ev->value);
 			}
 			this->cachedDelay = 0;
 			break;
-		case ConfigurationEvent::EnableDeepTremolo: {
+		case ConfigurationEvent::Type::EnableDeepTremolo: {
 			if (this->deepTremolo != (ev->value != 0)) {
 				this->deepTremolo = ev->value;
 				this->updateDeep = true;
 			}
 			break;
 		}
-		case ConfigurationEvent::EnableDeepVibrato: {
+		case ConfigurationEvent::Type::EnableDeepVibrato: {
 			if (this->deepVibrato != (ev->value != 0)) {
 				this->deepVibrato = ev->value;
 				this->updateDeep = true;
@@ -322,7 +323,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 
 void EventConverter_MIDI::handleAllEvents(EventHandler::EventOrder eventOrder)
 {
-	this->EventHandler::handleAllEvents(eventOrder, this->music);
+	this->EventHandler::handleAllEvents(eventOrder, *this->music);
 	this->cb->endOfSong(this->cachedDelay);
 	this->cachedDelay = 0;
 }

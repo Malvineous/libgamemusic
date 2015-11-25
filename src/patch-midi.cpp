@@ -23,12 +23,6 @@
 
 using namespace camoto::gamemusic;
 
-std::ostream& operator << (std::ostream& s, const MIDIPatchPtr p)
-{
-	s << *(p.get());
-	return s;
-}
-
 std::ostream& operator << (std::ostream& s, const MIDIPatch& p)
 {
 	s << '[' << (p.percussion ? 'P' : 'N') << std::hex << p.midiPatch

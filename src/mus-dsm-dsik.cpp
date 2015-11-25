@@ -21,7 +21,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/util.hpp>
 #include <camoto/iff.hpp>
@@ -42,6 +41,9 @@ using namespace camoto::gamemusic;
 /// Number of rows in every pattern
 #define DSM_ROWS_PER_PATTERN 64
 
+/// Length of title field, in bytes
+#define DSMF_TITLE_LEN 28
+
 /// Calculate number of bytes to add to len to bring it up to a parapointer
 /// boundary (multiple of 16.)
 #define PP_PAD(len) ((16 - (len % 16)) % 16)
@@ -52,19 +54,19 @@ using namespace camoto::gamemusic;
 class EventConverter_DSM: virtual public EventHandler
 {
 	public:
-		/// Prepare to convert events into KLM data sent to a stream.
+		/// Prepare to convert events into DSM data sent to a stream.
 		/**
 		 * @param iff
-		 *   IFF interface to output.
+		 *   IFF interface to content.
 		 *
-		 * @param output
+		 * @param content
 		 *   Output stream the DSM data will be written to.
 		 *
 		 * @param patches
 		 *   Patch bank to write.
 		 */
-		EventConverter_DSM(IFFWriter *iff, stream::output_sptr output,
-			const PatchBankPtr& patches);
+		EventConverter_DSM(IFFWriter *iff, stream::output& content,
+			const PatchBank& patches);
 
 		/// Destructor.
 		virtual ~EventConverter_DSM();
@@ -90,49 +92,48 @@ class EventConverter_DSM: virtual public EventHandler
 
 	protected:
 		IFFWriter *iff;              ///< IFF helper class
-		stream::output_sptr output;  ///< Where to write data
+		stream::output& content;     ///< Where to write data
 		uint8_t patternBuffer[DSM_MAX_PACKED_PATTERN_SIZE]; ///< Store pattern before writing to file
 		uint8_t *patBufPos;          ///< Current position in patternBuffer
 		unsigned int curRow;         ///< Current row in pattern (0-63 inclusive)
-		const PatchBankPtr patches;  ///< Copy of the patches for the song
+		const PatchBank& patches;  ///< Copy of the patches for the song
 
 		/// Write out the current delay
 		void writeDelay(unsigned long curTick);
 };
 
-std::string MusicType_DSM::getCode() const
+std::string MusicType_DSM::code() const
 {
 	return "dsm-dsik";
 }
 
-std::string MusicType_DSM::getFriendlyName() const
+std::string MusicType_DSM::friendlyName() const
 {
 	return "Digital Sound Interface Kit Module";
 }
 
-std::vector<std::string> MusicType_DSM::getFileExtensions() const
+std::vector<std::string> MusicType_DSM::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("dsm");
-	return vcExtensions;
+	return {
+		"dsm",
+	};
 }
 
-unsigned long MusicType_DSM::getCaps() const
+MusicType::Caps MusicType_DSM::caps() const
 {
 	return
-		InstEmpty
-		| InstPCM
-		| HasEvents
-		| HasPatterns
+		Caps::InstPCM
+		| Caps::HasEvents
+		| Caps::HasPatterns
 	;
 }
 
-MusicType::Certainty MusicType_DSM::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_DSM::isInstance(stream::input& content) const
 {
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 	IFF::fourcc sig1, sig2;
 	uint32_t len1;
-	input
+	content
 		>> fixedLength(sig1, 4)
 		>> u32le(len1)
 		>> fixedLength(sig2, 4)
@@ -140,24 +141,25 @@ MusicType::Certainty MusicType_DSM::isInstance(stream::input_sptr input) const
 
 	// Invalid RIFF signature
 	// TESTED BY: mus_dsm_dsik_isinstance_c01
-	if (sig1.compare(FOURCC_RIFF) != 0) return MusicType::DefinitelyNo;
+	if (sig1.compare(FOURCC_RIFF) != 0) return Certainty::DefinitelyNo;
 
 	// Invalid DSMF signature
 	// TESTED BY: mus_dsm_dsik_isinstance_c02
-	if (sig2.compare(FOURCC_DSMF) != 0) return MusicType::DefinitelyNo;
+	if (sig2.compare(FOURCC_DSMF) != 0) return Certainty::DefinitelyNo;
 
 	// File truncated
 	// TESTED BY: mus_dsm_dsik_isinstance_c03
-	if (len1 + 8 != input->size()) return MusicType::DefinitelyNo;
+	if (len1 + 8 != content.size()) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_dsm_dsik_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_DSM::read(stream::input& content,
+	SuppData& suppData) const
 {
-	MusicPtr music(new Music());
-	music->patches.reset(new PatchBank());
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 
 	// All DSM files seem to be in 4/4 time?
 	music->initialTempo.beatsPerBar = 4;
@@ -166,34 +168,41 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 	music->ticksPerTrack = 64;
 	music->loopDest = -1; // no loop
 
-	IFFReader iff(input, IFF::Filetype_RIFF_Unpadded);
+	IFFReader iff(content, IFF::Filetype_RIFF_Unpadded);
 	IFF::fourcc type;
 	iff.open(FOURCC_RIFF, &type);
-	if (type.compare(FOURCC_DSMF) != 0) throw stream::error("This is not a DSMF file.");
+	if (type.compare(FOURCC_DSMF) != 0) {
+		throw camoto::error("This is not a DSMF file.");
+	}
 
 	for (unsigned int i = 0; i < DSM_CHANNEL_COUNT; i++) {
 		TrackInfo t;
-		t.channelType = TrackInfo::PCMChannel;
+		t.channelType = TrackInfo::ChannelType::PCM;
 		t.channelIndex = i;
 		music->trackInfo.push_back(t);
 	}
 
 	Tempo lastTempo = music->initialTempo;
 
+	auto& attrTitle = music->addAttribute();
+	attrTitle.changed = false;
+	attrTitle.type = Attribute::Type::Text;
+	attrTitle.name = CAMOTO_ATTRIBUTE_TITLE;
+	attrTitle.desc = "Song title";
+	attrTitle.textMaxLength = DSMF_TITLE_LEN;
+
 	std::vector<IFF::fourcc> chunks = iff.list();
 	int j = 0;
-	for (std::vector<IFF::fourcc>::const_iterator
-		i = chunks.begin(); i != chunks.end(); i++, j++
-	) {
+	for (auto& i : chunks) {
 		stream::len lenChunk = iff.seek(j);
-		if (i->compare("SONG") == 0) {
+		if (i.compare("SONG") == 0) {
 			// Load song
 			uint8_t volGlobal, volMaster, initialSpeed, initialBPM;
 			uint16_t version, flags, orderCount, instrumentCount, patternCount;
 			uint16_t channelCount;
 			uint32_t pad;
-			input
-				>> nullPadded(music->metadata[Metadata::Title], 28)
+			content
+				>> nullPadded(attrTitle.textValue, DSMF_TITLE_LEN)
 				>> u16le(version)
 				>> u16le(flags)
 				>> u32le(pad)
@@ -212,8 +221,8 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 			music->patterns.reserve(patternCount);
 
 			uint8_t channelMap[16], orders[128];
-			input->read(channelMap, 16);
-			input->read(orders, 128);
+			content.read(channelMap, 16);
+			content.read(orders, 128);
 
 			/// @todo: Process pan values from channel map
 
@@ -229,17 +238,18 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 				order++;
 			}
 
-		} else if (i->compare("INST") == 0) {
-			PCMPatchPtr p(new PCMPatch());
+		} else if (i.compare("INST") == 0) {
+			auto p = std::make_shared<PCMPatch>();
 			uint8_t volDefault;
 			uint16_t flags, period;
 			uint32_t address;
 			std::string filename;
-			input
+			unsigned long lenData;
+			content
 				>> nullPadded(filename, 13)
 				>> u16le(flags)
 				>> u8(volDefault)
-				>> u32le(p->lenData)
+				>> u32le(lenData)
 				>> u32le(p->loopStart)
 				>> u32le(p->loopEnd)
 				>> u32le(address)
@@ -263,32 +273,33 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 			else p->defaultVolume = (volDefault << 2) | (volDefault >> 4);
 
 			// Read the PCM data
-			p->data.reset(new uint8_t[p->lenData]);
-			input->read(p->data.get(), p->lenData);
+			p->data = std::vector<uint8_t>(lenData);
+			content.read(p->data.data(), p->data.size());
 
 			// Convert from signed 8-bit to unsigned
 			if (flags & 2) {
-				uint8_t *data = p->data.get();
-				for (unsigned long i = 0; i < p->lenData; i++) {
-					*data = ((int8_t *)data)[0] + 128;
-					data++;
+				for (auto& i : p->data) {
+					i = static_cast<uint8_t>(
+						(int8_t)(i) + 128
+					);
 				}
 			}
 			music->patches->push_back(p);
 
-		} else if (i->compare("PATT") == 0) {
+		} else if (i.compare("PATT") == 0) {
 			// Skip redundant length field
-			input->seekg(2, stream::cur);
+			content.seekg(2, stream::cur);
 
-			PatternPtr pattern(new Pattern());
+			music->patterns.emplace_back();
+			auto& pattern = music->patterns.back();
+
 			unsigned int lastRow[DSM_CHANNEL_COUNT];
 			unsigned int lastInstrument[DSM_CHANNEL_COUNT];
 			for (unsigned int track = 0; track < DSM_CHANNEL_COUNT; track++) {
 				lastRow[track] = 0;
 				lastInstrument[track] = 0;
 
-				TrackPtr t(new Track());
-				pattern->push_back(t);
+				pattern.emplace_back();
 			}
 
 			stream::len lenRead = 0;
@@ -300,25 +311,25 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 				}
 				uint8_t what;
 				do {
-					input >> u8(what);
+					content >> u8(what);
 					lenRead++;
 					unsigned int channel = what & 0x0F;
-					TrackPtr& track = pattern->at(channel);
+					auto& track = pattern.at(channel);
 					uint8_t note = 0, instrument = 0, volume = 255, command = 0, info = 0;
 					if (what & 0x80) {
-						input >> u8(note);
+						content >> u8(note);
 						lenRead++;
 					}
 					if (what & 0x40) {
-						input >> u8(instrument);
+						content >> u8(instrument);
 						lenRead++;
 					}
 					if (what & 0x20) {
-						input >> u8(volume);
+						content >> u8(volume);
 						lenRead++;
 					}
 					if (what & 0x10) {
-						input
+						content
 							>> u8(command)
 							>> u8(info)
 						;
@@ -329,17 +340,16 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 							// No note?
 						} else if (note == 254) {
 							// Note off
+							auto ev = std::make_shared<NoteOffEvent>();
+
 							TrackEvent te;
 							te.delay = row - lastRow[channel];
-							NoteOffEvent *ev = new NoteOffEvent();
-							te.event.reset(ev);
-							track->push_back(te);
+							te.event = ev;
+							track.push_back(te);
+
 							lastRow[channel] = row;
 						} else {
-							TrackEvent te;
-							te.delay = row - lastRow[channel];
-							NoteOnEvent *ev = new NoteOnEvent();
-							te.event.reset(ev);
+							auto ev = std::make_shared<NoteOnEvent>();
 
 							if (instrument == 0) instrument = lastInstrument[channel];
 							else {
@@ -356,49 +366,60 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 							} else { // missing or =255
 								ev->velocity = DefaultVelocity; // instrument default
 							}
-							track->push_back(te);
+
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							te.event = ev;
+							track.push_back(te);
+
 							lastRow[channel] = row;
 						}
 					} else if (what & 0x20) { // 0x80 unset because of 'else'
 						// Volume change
-						TrackEvent te;
-						te.delay = row - lastRow[channel];
-						EffectEvent *ev = new EffectEvent();
-						te.event.reset(ev);
-						ev->type = EffectEvent::Volume;
+						auto ev = std::make_shared<EffectEvent>();
+						ev->type = EffectEvent::Type::Volume;
 						if (volume == 64) ev->data = 255;
 						else ev->data = (volume << 2) | (volume >> 4);
-						track->push_back(te);
+
+						TrackEvent te;
+						te.delay = row - lastRow[channel];
+						te.event = ev;
+						track.push_back(te);
+
 						lastRow[channel] = row;
 					}
 					if (what & 0x10) {
 						switch (command) {
 							case 0x0c: { // volume change
 								// Volume change
-								TrackEvent te;
-								te.delay = row - lastRow[channel];
-								EffectEvent *ev = new EffectEvent();
-								te.event.reset(ev);
-								ev->type = EffectEvent::Volume;
+								auto ev = std::make_shared<EffectEvent>();
+								ev->type = EffectEvent::Type::Volume;
 								if (info >= 64) ev->data = 255;
 								else ev->data = (info << 2) | (info >> 4);
-								track->push_back(te);
+
+								TrackEvent te;
+								te.delay = row - lastRow[channel];
+								te.event = ev;
+								track.push_back(te);
+
 								lastRow[channel] = row;
 								break;
 							}
 							case 0x0f: { // set speed
 								if (info == 0) break; // ignore
-								TrackEvent te;
-								te.delay = row - lastRow[channel];
-								TempoEvent *ev = new TempoEvent();
-								te.event.reset(ev);
+								auto ev = std::make_shared<TempoEvent>();
 								ev->tempo = lastTempo;
 								if (info < 32) {
 									ev->tempo.module(info, lastTempo.module_tempo());
 								} else {
 									ev->tempo.module(lastTempo.module_speed(), info);
 								}
-								track->push_back(te);
+
+								TrackEvent te;
+								te.delay = row - lastRow[channel];
+								te.event = ev;
+								track.push_back(te);
+
 								lastRow[channel] = row;
 								lastTempo = ev->tempo;
 								break;
@@ -411,59 +432,48 @@ MusicPtr MusicType_DSM::read(stream::input_sptr input, SuppData& suppData) const
 					}
 				} while (what);
 			}
-			music->patterns.push_back(pattern);
 
 		} else {
-			std::cout << "DSM: Skipping unknown chunk type " << *i << "\n";
+			std::cout << "DSM: Skipping unknown chunk type " << i << "\n";
 		}
+		j++;
 	}
 
 	return music;
 }
 
-void MusicType_DSM::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_DSM::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	std::string strTitle;
-	Metadata::TypeMap::const_iterator itTitle
-		= music->metadata.find(Metadata::Title);
-	if (itTitle != music->metadata.end()) {
-		if (itTitle->second.length() > 28) {
-			throw format_limitation("The metadata element 'Title' is longer than "
-				"the maximum 28 character length.");
-		}
-		strTitle = itTitle->second;
-	}
-
-	if (music->trackInfo.size() > DSM_CHANNEL_COUNT) {
+	if (music.trackInfo.size() > DSM_CHANNEL_COUNT) {
 		throw format_limitation("This format has a maximum of 16 channels.");
 	}
 
-	if (music->patternOrder.size() > 128) {
+	if (music.patternOrder.size() > 128) {
 		throw format_limitation("This format has a maximum of 128 entries in the "
 			"order list.");
 	}
 
-	unsigned long tempo = music->initialTempo.module_tempo();
+	unsigned long tempo = music.initialTempo.module_tempo();
 	if (tempo > 255) {
 		throw stream::error(createString("Tempo is too fast for DSM file!  "
 			"Calculated value is " << tempo << " but max permitted value is 255."));
 	}
 
-	IFFWriter iff(output, IFF::Filetype_RIFF_Unpadded);
+	IFFWriter iff(content, IFF::Filetype_RIFF_Unpadded);
 	iff.begin(FOURCC_RIFF, FOURCC_DSMF);
 
-	uint8_t speed = music->initialTempo.module_speed();
+	uint8_t speed = music.initialTempo.module_speed();
 	iff.begin("SONG");
-	output
-		<< nullPadded(strTitle, 28)
+	content
+		<< nullPadded(music.attributes().at(0).textValue, 28)
 		<< u16le(0) // version
 		<< u16le(0) // flags
 		<< u32le(0) // pad
-		<< u16le(music->patternOrder.size())
-		<< u16le(music->patches->size())
-		<< u16le(music->patterns.size())
-		<< u16le(music->trackInfo.size())
+		<< u16le(music.patternOrder.size())
+		<< u16le(music.patches->size())
+		<< u16le(music.patterns.size())
+		<< u16le(music.trackInfo.size())
 		<< u8(63) // global volume
 		<< u8(63) // master volume
 		<< u8(speed)
@@ -472,37 +482,33 @@ void MusicType_DSM::write(stream::output_sptr output, SuppData& suppData,
 	// Default panning
 	for (unsigned int i = 0; i < DSM_CHANNEL_COUNT; i++) {
 		if (i % 2) {
-			output << u8(0x80);
+			content << u8(0x80);
 		} else {
-			output << u8(0);
+			content << u8(0);
 		}
 	}
 	uint8_t orders[128];
 	memset(orders, 0xFF, sizeof(orders));
 	unsigned int j = 0;
-	for (std::vector<unsigned int>::const_iterator
-		i = music->patternOrder.begin(); i != music->patternOrder.end(); i++, j++
-	) {
-		orders[j] = *i;
+	for (auto& i : music.patternOrder) {
+		orders[j++] = i;
 	}
-	output->write(orders, 128);
+	content.write(orders, 128);
 	iff.end(); // SONG
 
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
+	for (auto& i : *music.patches) {
 		iff.begin("INST");
 
-		PCMPatchPtr p = boost::dynamic_pointer_cast<PCMPatch>(*i);
+		auto p = dynamic_cast<PCMPatch*>(i.get());
 		unsigned int flags = 0;
 		if (p->loopEnd != 0) flags |= 1;
 		unsigned int period = 8363 * 428 / p->sampleRate;
 		uint8_t defVolume = p->defaultVolume >> 2; // 0..255 -> 0..63
-		output
+		content
 			<< nullPadded(std::string(), 13)
 			<< u16le(flags)
 			<< u8(defVolume)
-			<< u32le(p->lenData)
+			<< u32le(p->data.size())
 			<< u32le(p->loopStart)
 			<< u32le(p->loopEnd)
 			<< u32le(0) // address pointer
@@ -510,42 +516,50 @@ void MusicType_DSM::write(stream::output_sptr output, SuppData& suppData,
 			<< u16le(period)
 			<< nullPadded(p->name, 28)
 		;
-		output->write(p->data.get(), p->lenData);
+		content.write(p->data.data(), p->data.size());
 
 		iff.end(); // INST
 	}
 
 	// Write out the patterns
-	EventConverter_DSM conv(&iff, output, music->patches);
-	conv.lastTempo = music->initialTempo;
+	EventConverter_DSM conv(&iff, content, *music.patches);
+	conv.lastTempo = music.initialTempo;
 	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
 
 	iff.end(); // RIFF
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 	return;
 }
 
-SuppFilenames MusicType_DSM::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_DSM::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_DSM::getMetadataList() const
+std::vector<Attribute> MusicType_DSM::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	return types;
+	std::vector<Attribute> items;
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = DSMF_TITLE_LEN;
+	}
+	return items;
 }
 
 
-EventConverter_DSM::EventConverter_DSM(IFFWriter *iff,
-	stream::output_sptr output, const PatchBankPtr& patches)
+EventConverter_DSM::EventConverter_DSM(IFFWriter *iff, stream::output& content,
+	const PatchBank& patches)
 	:	iff(iff),
-		output(output),
+		content(content),
 		patBufPos(patternBuffer),
 		curRow(0),
 		patches(patches)
@@ -575,8 +589,8 @@ void EventConverter_DSM::endOfPattern(unsigned long delay)
 	unsigned int lenUsed = this->patBufPos - this->patternBuffer;
 	uint16_t valLengthField = lenUsed + 2; // include size of length field itself
 	this->iff->begin("PATT");
-	this->output << u16le(valLengthField);
-	this->output->write(this->patternBuffer, lenUsed);
+	this->content << u16le(valLengthField);
+	this->content.write(this->patternBuffer, lenUsed);
 	this->iff->end(); // PATT
 	this->patBufPos = this->patternBuffer;
 	this->curRow = 0;
@@ -613,7 +627,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 		return;
 	}
 
-	if (ev->instrument >= this->patches->size()) {
+	if (ev->instrument >= this->patches.size()) {
 		std::cerr << "DSM: Dropping note with out-of-range instrument #"
 			<< ev->instrument << "\n";
 		return;
@@ -621,7 +635,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 	uint8_t velFlag = 0;
 	if (
 		(ev->velocity >= 0) &&
-		((unsigned int)ev->velocity != this->patches->at(ev->instrument)->defaultVolume)
+		((unsigned int)ev->velocity != this->patches.at(ev->instrument)->defaultVolume)
 	) velFlag = 0x20;
 	*this->patBufPos++ = (trackIndex & 0x1F) | 0xC0 | velFlag; // event with note+inst
 	*this->patBufPos++ = midiNote - 11;
@@ -646,11 +660,11 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case EffectEvent::PitchbendNote:
+		case EffectEvent::Type::PitchbendNote:
 			//if (this->flags & IntegerNotesOnly) return;
 			std::cout << "DSM: TODO - implement pitch bends\n";
 			break;
-		case EffectEvent::Volume:
+		case EffectEvent::Type::Volume:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x20; // event with volume only
 			*this->patBufPos++ = ev->data >> 2; // volume value
 			break;
@@ -663,7 +677,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case GotoEvent::CurrentPattern:
+		case GotoEvent::Type::CurrentPattern:
 			std::cout << "DSM: TODO - implement pattern breaks\n";
 			break;
 	}
@@ -676,13 +690,13 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
-		case ConfigurationEvent::EmptyEvent:
+		case ConfigurationEvent::Type::EmptyEvent:
 			break;
-		case ConfigurationEvent::EnableOPL3:
-		case ConfigurationEvent::EnableDeepTremolo:
-		case ConfigurationEvent::EnableDeepVibrato:
-		case ConfigurationEvent::EnableRhythm:
-		case ConfigurationEvent::EnableWaveSel:
+		case ConfigurationEvent::Type::EnableOPL3:
+		case ConfigurationEvent::Type::EnableDeepTremolo:
+		case ConfigurationEvent::Type::EnableDeepVibrato:
+		case ConfigurationEvent::Type::EnableRhythm:
+		case ConfigurationEvent::Type::EnableWaveSel:
 			throw format_limitation("This format cannot store OPL events.");
 	}
 	return;

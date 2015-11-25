@@ -21,12 +21,11 @@
 #ifndef _CAMOTO_GAMEMUSIC_EVENTCONVERTER_MIDI_HPP_
 #define _CAMOTO_GAMEMUSIC_EVENTCONVERTER_MIDI_HPP_
 
-#include <camoto/gamemusic/music.hpp>
-#include <camoto/gamemusic/events.hpp>
-#include <camoto/stream.hpp>
+#include <camoto/enum-ops.hpp>
+#include <camoto/gamemusic/eventhandler.hpp>
 
-#ifndef DLL_EXPORT
-#define DLL_EXPORT
+#ifndef CAMOTO_GAMEMUSIC_API
+#define CAMOTO_GAMEMUSIC_API
 #endif
 
 namespace camoto {
@@ -58,64 +57,64 @@ const unsigned int MIDI_DEFAULT_RELEASE_VELOCITY = 127;
 const unsigned int MIDI_DEFAULT_ATTACK_VELOCITY = 127;
 
 /// Flags indicating variations in the type of MIDI data.
-struct MIDIFlags {
-	enum Type {
-		/// Normal MIDI data.
-		Default = 0,
+enum class MIDIFlags {
+	/// Normal MIDI data.
+	Default = 0,
 
-		/// Note aftertouch events are one byte too short.  These will be handled
-		/// as channel aftertouch events (i.e. they will affect all notes on a
-		/// channel instead of just one note.)
-		ShortAftertouch = 1,
+	/// Note aftertouch events are one byte too short.  These will be handled
+	/// as channel aftertouch events (i.e. they will affect all notes on a
+	/// channel instead of just one note.)
+	ShortAftertouch = 1,
 
-		/// Channel 10 is just another channel (not percussion)
-		Channel10NoPerc = 2,
+	/// Channel 10 is just another channel (not percussion)
+	Channel10NoPerc = 2,
 
-		/// Use basic MIDI commands only (no sysex)
-		BasicMIDIOnly = 4,
+	/// Use basic MIDI commands only (no sysex)
+	BasicMIDIOnly = 4,
 
-		/// Disable pitchbends.
-		IntegerNotesOnly = 8,
+	/// Disable pitchbends.
+	IntegerNotesOnly = 8,
 
-		/// Use the instrument index instead of the MIDI program number.
-		/**
-		 * Normally an instrument will be MIDI, OPL or PCM, and the MIDI instrument
-		 * will include which MIDI Program Number to use.  For example for a song
-		 * with only one instrument that is a violin will have a single instrument,
-		 * its index will be 0, and it will be of type MIDI with a program number of
-		 * 40 (since 40 is a MIDI violin).
-		 *
-		 * Normally the program number is used, so when instrument #0 is used, a
-		 * MIDI patch change event will be issued setting the channel to patch #40.
-		 * However if UsePatchIndex is specified, then the instrument number will be
-		 * used instead, so instrument #0 will cause a patch change to patch #0,
-		 * regardless of whether the patch is OPL, MIDI or PCM.
-		 *
-		 * This flag is currently not implemented when reading MIDI data.
-		 *
-		 * This is useful for formats like CMF which use MIDI patch change events
-		 * but which don't use MIDI instruments.
-		 */
-		UsePatchIndex = 16,
+	/// Use the instrument index instead of the MIDI program number.
+	/**
+	 * Normally an instrument will be MIDI, OPL or PCM, and the MIDI instrument
+	 * will include which MIDI Program Number to use.  For example for a song
+	 * with only one instrument that is a violin will have a single instrument,
+	 * its index will be 0, and it will be of type MIDI with a program number of
+	 * 40 (since 40 is a MIDI violin).
+	 *
+	 * Normally the program number is used, so when instrument #0 is used, a
+	 * MIDI patch change event will be issued setting the channel to patch #40.
+	 * However if UsePatchIndex is specified, then the instrument number will be
+	 * used instead, so instrument #0 will cause a patch change to patch #0,
+	 * regardless of whether the patch is OPL, MIDI or PCM.
+	 *
+	 * This flag is currently not implemented when reading MIDI data.
+	 *
+	 * This is useful for formats like CMF which use MIDI patch change events
+	 * but which don't use MIDI instruments.
+	 */
+	UsePatchIndex = 16,
 
-		/// Set to embed the tempo as a meta (0xFF) event in the MIDI stream
-		EmbedTempo = 32,
+	/// Set to embed the tempo as a meta (0xFF) event in the MIDI stream
+	EmbedTempo = 32,
 
-		/// Use extensions for .cmf file format (cmf-creativelabs)
-		/**
-		 * This also preserves note order on MIDI channels 12-15 as they are used
-		 * for OPL percussion.
-		 */
-		CMFExtensions = 64,
+	/// Use extensions for .cmf file format (cmf-creativelabs)
+	/**
+	 * This also preserves note order on MIDI channels 12-15 as they are used
+	 * for OPL percussion.
+	 */
+	CMFExtensions = 64,
 
-		/// Use AdLib .mus format timing bytes.
-		/**
-		 * These use 0xF8 as an overflow byte (of value 240) rather than the high
-		 * bit to signify variable-length timing values.
-		 */
-		AdLibMUS = 128,
-	};
+	// Use AdLib .mus format timing bytes.
+	/**
+	 * These use 0xF8 as an overflow byte (of value 240) rather than the high
+	 * bit to signify variable-length timing values.
+	 */
+	AdLibMUS = 128,
 };
+
+IMPLEMENT_ENUM_OPERATORS(MIDIFlags);
 
 /// Callback used to do something with some MIDI events.
 class MIDIEventCallback
@@ -234,7 +233,7 @@ static const int midiMiddleC = 60;
  *
  * @return Frequency in milliHertz (440000 == 440Hz == A4)
  */
-unsigned long DLL_EXPORT midiToFreq(double midi);
+unsigned long CAMOTO_GAMEMUSIC_API midiToFreq(double midi);
 
 /// Convert milliHertz into a fractional MIDI note number.
 /**
@@ -243,7 +242,7 @@ unsigned long DLL_EXPORT midiToFreq(double midi);
  *
  * @return Fractional MIDI note number, e.g. 60.5
  */
-double DLL_EXPORT freqToMIDI(unsigned long milliHertz);
+double CAMOTO_GAMEMUSIC_API freqToMIDI(unsigned long milliHertz);
 
 /// Convert milliHertz into MIDI note number and pitchbend value.
 /**
@@ -261,7 +260,7 @@ double DLL_EXPORT freqToMIDI(unsigned long milliHertz);
  *   then *note is set to this value and the pitchbend is calculated so as to
  *   keep the note unchanged.
  */
-void DLL_EXPORT freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *bend,
+void CAMOTO_GAMEMUSIC_API freqToMIDI(unsigned long milliHertz, uint8_t *note, int16_t *bend,
 	uint8_t activeNote);
 
 /// Convert a MIDI pitchbend (0..16383) into semitones (-2..+1.9999)
@@ -285,7 +284,7 @@ inline double midiSemitonesToPitchbend(double semitones)
  *   we have to write events like 'end of track/song' and different formats store
  *   tracks differently, this can only really handle a single MIDI track.
  */
-class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
+class CAMOTO_GAMEMUSIC_API EventConverter_MIDI: virtual public EventHandler
 {
 	public:
 		/// Prepare for event conversion.
@@ -300,8 +299,8 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
 		 */
-		EventConverter_MIDI(MIDIEventCallback *cb, ConstMusicPtr music,
-			unsigned int midiFlags);
+		EventConverter_MIDI(MIDIEventCallback *cb,
+			std::shared_ptr<const Music> music, MIDIFlags midiFlags);
 
 		virtual ~EventConverter_MIDI();
 
@@ -330,11 +329,11 @@ class DLL_EXPORT EventConverter_MIDI: virtual public EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
-		MIDIEventCallback *cb;             ///< Callback to handle MIDI events
-		ConstMusicPtr music;               ///< Song being converted
-		unsigned int midiFlags;            ///< Flags supplied in constructor
-		tempo_t usPerTick;                 ///< Current song tempo
-		unsigned long cachedDelay;         ///< Number of ticks before next event
+		MIDIEventCallback *cb;              ///< Callback to handle MIDI events
+		std::shared_ptr<const Music> music; ///< Song being converted
+		MIDIFlags midiFlags;                ///< Flags supplied in constructor
+		double usPerTick;                   ///< Current song tempo
+		unsigned long cachedDelay;          ///< Number of ticks before next event
 
 		bool deepTremolo;   ///< MIDI controller 0x63 bit 0
 		bool deepVibrato;   ///< MIDI controller 0x63 bit 1

@@ -37,10 +37,10 @@ class test_klm_wacky: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Instrument block length is wrong multiple
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x0F\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x01\x0A"
 				"\x30\x00"
@@ -51,7 +51,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c02: Music offset past EOF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\xF0\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x01\x0A"
 				"\x30\x00"
@@ -62,7 +62,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c03: Invalid 0xF0 event type
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x01\x0A"
 				"\x30\x00"
@@ -73,7 +73,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c04: Invalid normal event type
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x01\x0A"
 				"\x30\x00"
@@ -84,7 +84,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c05: Truncated event
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x01\x0A"
 				"\x30\x00"
@@ -92,7 +92,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c06: Bad instrument in reg 0xE0
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x80\x01\x0A"
 				"\x30\x00"
@@ -103,7 +103,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c07: Bad instrument in 0xE3
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\x13\x00\x71\xF0\xAE\x8A\xE1\xE2\x00\x81\x0A"
 				"\x30\x00"
@@ -114,7 +114,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c08: All valid instrument bits enabled
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x10\x00"
 				"\xff\xff\xff\xff\xff\xff\xff\xff\x07\x07\x3f"
 				"\x30\x00"
@@ -125,7 +125,7 @@ class test_klm_wacky: public test_music
 			));
 
 			// c09: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x18\x01" "\x01" "\x0F"
 			));
 		}

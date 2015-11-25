@@ -21,7 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/pointer_cast.hpp>
+#include <iostream>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
@@ -41,157 +41,181 @@ const unsigned int SNARE_PERC_OFFSET = 7;
 /// Initial tom-tom note until changed.  Two octaves below middle-C.
 const unsigned int DEFAULT_TOM_FREQ = midiMiddleC - 24;
 
-std::string MusicType_MUS_Vinyl::getCode() const
+/// Length of the title field, in bytes.
+const unsigned int MUS_TITLE_LEN = 30;
+
+std::string MusicType_MUS_Vinyl::code() const
 {
 	return "mus-vinyl";
 }
 
-std::string MusicType_MUS_Vinyl::getFriendlyName() const
+std::string MusicType_MUS_Vinyl::friendlyName() const
 {
 	return "Vinyl Goddess From Mars Music File";
 }
 
-std::vector<std::string> MusicType_MUS_Vinyl::getFileExtensions() const
+std::vector<std::string> MusicType_MUS_Vinyl::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("mus");
-	return vcExtensions;
+	return {
+		"mus",
+	};
 }
 
-unsigned long MusicType_MUS_Vinyl::getCaps() const
+MusicType::Caps MusicType_MUS_Vinyl::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
+		Caps::InstOPL
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input& content)
+	const
 {
-	stream::len lenFile = psMusic->size();
+	stream::len lenFile = content.size();
 	// File too short
 	// TESTED BY: mus_mus_vinyl_isinstance_c02
-	if (lenFile < 0x2A + 4) return MusicType::DefinitelyNo;
+	if (lenFile < 0x2A + 4) return Certainty::DefinitelyNo;
 
 	uint8_t majorVersion, minorVersion;
-	psMusic->seekg(0, stream::start);
-	psMusic
+	content.seekg(0, stream::start);
+	content
 		>> u8(majorVersion)
 		>> u8(minorVersion)
 	;
 	// Unknown version
-	if ((majorVersion != 1) || (minorVersion != 0)) return MusicType::DefinitelyNo;
+	if ((majorVersion != 1) || (minorVersion != 0)) return Certainty::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_mus_vinyl_isinstance_c01
 	uint32_t lenNotes;
-	psMusic->seekg(0x2A, stream::start);
-	psMusic >> u32le(lenNotes);
-	if (lenNotes + 0x46 != lenFile) return MusicType::DefinitelyNo;
+	content.seekg(0x2A, stream::start);
+	content >> u32le(lenNotes);
+	if (lenNotes + 0x46 != lenFile) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_mus_vinyl_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_MUS_Vinyl::read(stream::input& content,
+	SuppData& suppData) const
 {
-	uint8_t majorVersion, minorVersion, tickBeat, beatMeasure, soundMode, pitchBRange;
+	uint8_t majorVersion, minorVersion, tickBeat, beatMeasure, soundMode;
+	uint8_t pitchBRange;
 	uint32_t tuneId, totalTick, dataSize, nrCommand;
 	uint16_t basicTempo;
 	std::string title;
-	input->seekg(0, stream::start);
-	input
+
+	content.seekg(0, stream::start);
+	content
 		>> u8(majorVersion)
 		>> u8(minorVersion)
 		>> u32le(tuneId)
-		>> nullPadded(title, 30)
+		>> nullPadded(title, MUS_TITLE_LEN)
 		>> u8(tickBeat)
 		>> u8(beatMeasure)
 		>> u32le(totalTick)
 		>> u32le(dataSize)
 		>> u32le(nrCommand)
 	;
-	input->seekg(8, stream::cur); // skip over filler
-	input
+	content.seekg(8, stream::cur); // skip over filler
+	content
 		>> u8(soundMode)
 		>> u8(pitchBRange)
 		>> u16le(basicTempo)
 	;
-	input->seekg(8, stream::cur); // skip over filler2
+	content.seekg(8, stream::cur); // skip over filler2
 
 	Tempo initialTempo;
 	initialTempo.beatsPerBar = beatMeasure;
 	initialTempo.ticksPerBeat = tickBeat;
 	initialTempo.bpm(basicTempo);
-	MusicPtr music = midiDecode(input,
+
+	auto music = midiDecode(content,
 		MIDIFlags::ShortAftertouch
 		| MIDIFlags::Channel10NoPerc
 		| MIDIFlags::AdLibMUS,
 		initialTempo);
 
+	// Populate metadata
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = MUS_TITLE_LEN;
+		a.textValue = title;
+	}
+
 	// Set standard settings
-	TrackPtr configTrack = music->patterns.at(0)->at(0);
+	auto& configTrack = music->patterns.at(0).at(0);
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableOPL3;
+		ev->value = 0;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableOPL3;
-		ev->value = 0;
-		configTrack->insert(configTrack->begin() + 0, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 0, te);
 	}
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableDeepTremolo;
+		ev->value = 0;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableDeepTremolo;
-		ev->value = 0;
-		configTrack->insert(configTrack->begin() + 1, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 1, te);
 	}
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableDeepVibrato;
+		ev->value = 0;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableDeepVibrato;
-		ev->value = 0;
-		configTrack->insert(configTrack->begin() + 2, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 2, te);
 	}
 	{
-		TrackEvent te;
-		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableWaveSel;
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableWaveSel;
 		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 3, te);
-	}
-	{
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableRhythm;
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 3, te);
+	}
+	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableRhythm;
 		ev->value = (soundMode == 0) ? 0 : 1;
-		configTrack->insert(configTrack->begin() + 4, te);
+
+		TrackEvent te;
+		te.delay = 0;
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 4, te);
 	}
 
 	uint16_t numInstruments, offInstData;
-	stream::input_sptr ins = suppData[SuppItem::Instruments];
+	auto& ins = suppData[SuppItem::Instruments];
 	ins->seekg(2, stream::start);
-	ins
+	*ins
 		>> u16le(numInstruments)
 		>> u16le(offInstData)
 	;
 
 	// Read the instruments
-	PatchBankPtr oplBank(new PatchBank());
+	auto oplBank = std::make_shared<PatchBank>();
 	oplBank->reserve(numInstruments);
 	ins->seekg(offInstData, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
-		OPLPatchPtr oplPatch(new OPLPatch());
-		readAdLibPatch<uint16_t>(ins, &*oplPatch);
+		auto oplPatch = std::make_shared<OPLPatch>();
+		*ins >> adlibPatch<uint16_t>(*oplPatch);
 
 		// The last five instruments are often percussion mode ones.  We'll set
 		// them like this here as defaults, and then if we are wrong, they will
@@ -204,42 +228,37 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 				std::swap(oplPatch->c, oplPatch->m);
 			}
 		} else {
-			oplPatch->rhythm = OPLPatch::Melodic;
+			oplPatch->rhythm = OPLPatch::Rhythm::Melodic;
 		}
 		oplBank->push_back(oplPatch);
 	}
 
 
-	PatternPtr& pattern = music->patterns[0];
+	auto& pattern = music->patterns[0];
 
 	double lastPercNote = DEFAULT_TOM_FREQ;
 	// For each track
 	unsigned int trackIndex = 0;
-	for (Pattern::iterator
-		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
-	) {
-		TrackInfo& ti = music->trackInfo[trackIndex];
+	for (auto& pt : pattern) {
+		auto& ti = music->trackInfo[trackIndex];
 		const unsigned int& oplChannel = ti.channelIndex;
 
-		OPLPatch::Rhythm rhythm = OPLPatch::Melodic;
+		OPLPatch::Rhythm rhythm = OPLPatch::Rhythm::Melodic;
 		if ((soundMode != 0) && (oplChannel > 5)) {
 			// Percussive mode
-			ti.channelType = TrackInfo::OPLPercChannel;
+			ti.channelType = TrackInfo::ChannelType::OPLPerc;
 			ti.channelIndex = 4 - (oplChannel - 6); // 4=bd, 3=snare, ...
 
 			// Convert 'rhythm' from channel index into perc instrument type
 			rhythm = (OPLPatch::Rhythm)(ti.channelIndex + 1);
 		} else {
 			// Melodic mode or melodic instruments in percussive mode
-			ti.channelType = TrackInfo::OPLChannel;
+			ti.channelType = TrackInfo::ChannelType::OPL;
 			// ti.channelIndex = unchanged, leave as source MIDI channel
 		}
 
 		// For each event in the track
-		for (Track::iterator
-			tev = (*pt)->begin(); tev != (*pt)->end(); tev++
-		) {
-			TrackEvent& te = *tev;
+		for (auto& te : pt) {
 			NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(te.event.get());
 			if (!ev) continue;
 
@@ -263,8 +282,8 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 			// the final MIDI patch, instead of an index into the MIDI bank.  Once
 			// that's done we can discard the MIDI bank.
 			if (ev->instrument > music->patches->size()) continue;
-			MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>
-				(music->patches->at(ev->instrument));
+			auto midiPatch = dynamic_cast<MIDIPatch*>(
+				music->patches->at(ev->instrument).get());
 			const uint8_t& oplInstrument = midiPatch->midiPatch;
 
 			if (oplInstrument >= oplBank->size()) {
@@ -273,7 +292,7 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 					<< " OPL patches" << std::endl;
 				continue;
 			}
-			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(oplBank->at(oplInstrument));
+			auto oplPatch = dynamic_cast<OPLPatch*>(oplBank->at(oplInstrument).get());
 			// This should never fail as we never add any other type to oplBank above.
 			assert(oplPatch);
 
@@ -305,59 +324,66 @@ MusicPtr MusicType_MUS_Vinyl::read(stream::input_sptr input, SuppData& suppData)
 				}
 
 				switch (rhythm) {
-					case OPLPatch::TomTom:
+					case OPLPatch::Rhythm::TomTom:
 						// When a note is played on the tom-tom channel, it changes the
 						// frequency of all single-operator percussion notes.
 						lastPercNote = freqToMIDI(ev->milliHertz);
 						// TODO: We need to immediately update the pitch of any other
 						// percussive notes currently playing.
 						break;
-					case OPLPatch::TopCymbal:
+					case OPLPatch::Rhythm::TopCymbal:
 						ev->milliHertz = midiToFreq(lastPercNote);
 						break;
-					case OPLPatch::SnareDrum:
-					case OPLPatch::HiHat:
+					case OPLPatch::Rhythm::SnareDrum:
+					case OPLPatch::Rhythm::HiHat:
 						// This is 142mHz in crush.mus, which definitely isn't two octaves
 						// below middle-C!
 						ev->milliHertz = midiToFreq(lastPercNote + SNARE_PERC_OFFSET);
 						break;
-					case OPLPatch::Unknown:
-					case OPLPatch::Melodic:
-					case OPLPatch::BassDrum:
+					case OPLPatch::Rhythm::Unknown:
+					case OPLPatch::Rhythm::Melodic:
+					case OPLPatch::Rhythm::BassDrum:
 						break;
 				}
 			}
 		}
+		trackIndex++;
 	}
 
 	// Disregard the MIDI patches and use the OPL ones
 	music->patches = oplBank;
 
-	if (!title.empty()) music->metadata[Metadata::Title] = title;
-
 	return music;
 }
 
-void MusicType_MUS_Vinyl::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_MUS_Vinyl::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
 	throw stream::error("Writing VGFM music files is not yet implemented.");
 	return;
 }
 
-SuppFilenames MusicType_MUS_Vinyl::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_MUS_Vinyl::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	SuppFilenames supps;
 	std::string filenameBase =
-		filenameMusic.substr(0, filenameMusic.find_last_of('.'));
+		filename.substr(0, filename.find_last_of('.'));
 	supps[SuppItem::Instruments] = filenameBase + ".tim";
 	return supps;
 }
 
-Metadata::MetadataTypes MusicType_MUS_Vinyl::getMetadataList() const
+std::vector<Attribute> MusicType_MUS_Vinyl::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	return types;
+	std::vector<Attribute> items;
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = MUS_TITLE_LEN;
+	}
+	return items;
 }

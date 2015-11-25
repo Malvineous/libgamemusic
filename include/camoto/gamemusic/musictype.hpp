@@ -25,6 +25,7 @@
 #include <vector>
 #include <map>
 #include <stdint.h>
+#include <camoto/enum-ops.hpp>
 #include <camoto/error.hpp>
 #include <camoto/stream.hpp>
 #include <camoto/suppitem.hpp>
@@ -40,8 +41,14 @@ namespace gamemusic {
 class MusicType
 {
 	public:
+		/// Type of object this class creates
+		typedef Music obj_t;
+
+		/// Type name as a string
+		static constexpr const char* const obj_t_name = "Music"; // defined in main.cpp
+
 		/// Confidence level when guessing a file format.
-		enum Certainty {
+		enum class Certainty {
 			DefinitelyNo,  ///< Definitely not in this format
 			Unsure,        ///< The checks were inconclusive, it could go either way
 			PossiblyYes,   ///< Everything checked out OK, but there's no signature
@@ -49,25 +56,35 @@ class MusicType
 		};
 
 		/// Output control flags.
-		enum Flags {
+		enum class WriteFlags {
 			Default          = 0x00,  ///< No special treatment
 			IntegerNotesOnly = 0x01,  ///< Disable pitchbends
 		};
 
-		/// Available capability flags, returned by getCaps().
+		/// Available capability flags, returned by caps().
 		/**
 		 * These are intended as guidelines to be used to warn users about loss of
 		 * fidelity when converting between formats.  Conversion may proceed anyway,
 		 * however some content will be dropped where possible, and exceptions will
 		 * be thrown where this is not possible.
 		 */
-		enum Caps {
+		enum class Caps {
 			/// @todo How to handle songs with shared instrument banks like MIDI or Ken's Labyrinth?
-			InstEmpty     = 0x0001, ///< Can have empty instruments
-			InstOPL       = 0x0002, ///< Can use OPL instruments
-			InstOPLRhythm = 0x0004, ///< Can use OPL rhythm-mode percussive instruments (if unset, format does not support OPL rhythm mode)
-			InstMIDI      = 0x0008, ///< Can use MIDI instruments
-			InstPCM       = 0x0010, ///< Can use sampled (PCM) instruments
+			InstOPL       = 0x0001, ///< Can use OPL instruments
+			InstOPLRhythm = 0x0002, ///< Can use OPL rhythm-mode percussive instruments (if unset, format does not support OPL rhythm mode)
+			InstMIDI      = 0x0004, ///< Can use MIDI instruments
+			InstPCM       = 0x0008, ///< Can use sampled (PCM) instruments
+
+			/// Bitmask to check whether instruments are present.
+			/**
+			 * For file formats with external instrument banks (e.g. Ken's Labyrinth)
+			 * this bitmask will return zero, because none of the Inst* flags will be
+			 * set.)  In this case, since the song will just use indices into the
+			 * instrument bank, the bank's caps() should be checked to see what sort
+			 * of instruments can be stored, if needed.
+			 */
+			HasInstruments_Bitmask = 0x000F,
+
 			HasEvents     = 0x0020, ///< Set if song, unset if instrument bank
 
 			/// Keeps patterns separate.
@@ -92,25 +109,25 @@ class MusicType
 		 *
 		 * @return The music short name/ID.
 		 */
-		virtual std::string getCode() const = 0;
+		virtual std::string code() const = 0;
 
 		/// Get the music format name, e.g. "id Software Music Format"
 		/**
 		 * @return The music name.
 		 */
-		virtual std::string getFriendlyName() const = 0;
+		virtual std::string friendlyName() const = 0;
 
 		/// Get a list of the known file extensions for this format.
 		/**
 		 * @return A vector of file extensions, e.g. "imf", "wlf"
 		 */
-		virtual std::vector<std::string> getFileExtensions() const = 0;
+		virtual std::vector<std::string> fileExtensions() const = 0;
 
 		/// Find out what features this file format supports.
 		/**
 		 * @return Zero or more \ref Caps items OR'd together.
 		 */
-		virtual unsigned long getCaps() const = 0;
+		virtual Caps caps() const = 0;
 
 		/// Check a stream to see if it's in this music format.
 		/**
@@ -119,13 +136,13 @@ class MusicType
 		 *
 		 * @return A single confidence value from \ref MusicType::Certainty.
 		 */
-		virtual Certainty isInstance(stream::input_sptr input) const = 0;
+		virtual Certainty isInstance(stream::input& input) const = 0;
 
 		/// Read a music file in this format.
 		/**
 		 * @pre Recommended that isInstance() has returned > DefinitelyNo.
 		 *
-		 * @param input
+		 * @param content
 		 *   The music file to read.
 		 *
 		 * @param suppData
@@ -140,8 +157,8 @@ class MusicType
 		 * @throw stream::error
 		 *   I/O error reading from input stream (e.g. file truncated)
 		 */
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData)
-			const = 0;
+		virtual std::unique_ptr<Music> read(stream::input& content,
+			SuppData& suppData) const = 0;
 
 		/// Write a song in this file format.
 		/**
@@ -158,7 +175,7 @@ class MusicType
 		 *   The actual song data to write.
 		 *
 		 * @param flags
-		 *   One or more \ref Flags values affecting the type of data written.
+		 *   One or more \ref WriteFlags values affecting the type of data written.
 		 *
 		 * @throw stream::error
 		 *   I/O error writing to output stream (e.g. disk full)
@@ -171,8 +188,8 @@ class MusicType
 		 *
 		 * @post The stream will be truncated to the correct size.
 		 */
-		virtual void write(stream::output_sptr output, SuppData& suppData,
-			MusicPtr music, unsigned int flags) const = 0;
+		virtual void write(stream::output& output, SuppData& suppData,
+			const Music& music, WriteFlags flags) const = 0;
 
 		/// Get a list of any required supplemental files.
 		/**
@@ -182,14 +199,14 @@ class MusicType
 		 * supplementary files, so the caller can open them and pass them along
 		 * to the music manipulation classes.
 		 *
-		 * @param input
+		 * @param content
 		 *   Optional stream containing an existing file (or a NULL pointer if a
 		 *   new file is to be created.)  This is used for file formats which store
 		 *   filenames internally, allowing those filenames to be read out and
 		 *   returned.  For newly created files (when this parameter is NULL),
-		 *   default filenames are synthesised based on filenameMusic.
+		 *   default filenames are synthesised based on filename.
 		 *
-		 * @param filenameMusic
+		 * @param filename
 		 *   The filename of the music file (no path.)  This is for supplemental
 		 *   files which share the same base name as the music, but a different
 		 *   filename extension.
@@ -200,22 +217,23 @@ class MusicType
 		 *   to an \ref SuppData map where it can be passed to create() or
 		 *   open().  Note that the filenames returned can have relative paths.
 		 */
-		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
-			const std::string& filenameMusic) const = 0;
+		virtual SuppFilenames getRequiredSupps(stream::input& content,
+			const std::string& filename) const = 0;
 
 		/// Discover valid metadata supported by this file format.
 		/**
-		 *  @see camoto::Metadata::getMetadataList()
+		 *  @see camoto::Metadata::supportedAttributes()
 		 */
-		virtual Metadata::MetadataTypes getMetadataList() const = 0;
+		virtual std::vector<Attribute> supportedAttributes() const = 0;
 
 };
 
-/// Shared pointer to an MusicType.
-typedef boost::shared_ptr<MusicType> MusicTypePtr;
+IMPLEMENT_ENUM_OPERATORS(MusicType::Caps);
+IMPLEMENT_ENUM_OPERATORS(MusicType::WriteFlags);
 
-/// Vector of MusicType shared pointers.
-typedef std::vector<MusicTypePtr> MusicTypeVector;
+/// ostream handler for printing Certainty types in test-case errors
+CAMOTO_GAMEMUSIC_API std::ostream& operator << (std::ostream& s,
+	const MusicType::Certainty& r);
 
 } // namespace gamemusic
 } // namespace camoto

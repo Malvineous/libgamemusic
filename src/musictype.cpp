@@ -1,6 +1,6 @@
 /**
- * @file  encode-opl.hpp
- * @brief Function to convert a Music instance into raw OPL data.
+ * @file  musictype.cpp
+ * @brief Utility functions for MusicType.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -18,21 +18,25 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef _CAMOTO_GAMEMUSIC_ENCODE_OPL_HPP_
-#define _CAMOTO_GAMEMUSIC_ENCODE_OPL_HPP_
-
-#include <camoto/gamemusic/music.hpp>
+#include <iostream>
 #include <camoto/gamemusic/musictype.hpp>
-#include <camoto/gamemusic/eventconverter-opl.hpp>
-#include <camoto/stream.hpp>
 
-namespace camoto {
-namespace gamemusic {
+using namespace camoto;
+using namespace camoto::gamemusic;
 
-void oplEncode(OPLWriterCallback *cb, const Music& music, DelayType delayType,
-	double fnumConversion, OPLWriteFlags flags);
-
-} // namespace gamemusic
-} // namespace camoto
-
-#endif // _CAMOTO_GAMEMUSIC_ENCODE_OPL_HPP_
+CAMOTO_GAMEMUSIC_API std::ostream& camoto::gamemusic::operator<< (
+	std::ostream& s, const MusicType::Certainty& r)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch-enum"
+	s << "MusicType::Certainty::";
+	switch (r) {
+		case MusicType::Certainty::DefinitelyNo: s << "DefinitelyNo"; break;
+		case MusicType::Certainty::Unsure: s << "Unsure"; break;
+		case MusicType::Certainty::PossiblyYes: s << "PossiblyYes"; break;
+		case MusicType::Certainty::DefinitelyYes: s << "DefinitelyYes"; break;
+		default: s << "???"; break;
+	}
+#pragma GCC diagnostic pop
+	return s;
+}

@@ -43,14 +43,14 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_DRO_v1(stream::input_sptr input)
-			:	input(input),
+		OPLReaderCallback_DRO_v1(stream::input& content)
+			:	content(content),
 				chipIndex(0)
 		{
-			this->input->seekg(16, stream::start);
-			this->input >> u32le(this->lenData);
+			this->content.seekg(16, stream::start);
+			this->content >> u32le(this->lenData);
 			// Skip to start of OPL data
-			this->input->seekg(24, stream::start);
+			this->content.seekg(24, stream::start);
 		}
 
 		virtual bool readNextPair(OPLEvent *oplEvent)
@@ -64,18 +64,18 @@ class OPLReaderCallback_DRO_v1: virtual public OPLReaderCallback
 				uint8_t code;
 nextCode:
 				if (this->lenData == 0) return false;
-				this->input >> u8(code);
+				this->content >> u8(code);
 				this->lenData--;
 				switch (code) {
 					case 0x00: // short delay
-						this->input >> u8(code);
+						this->content >> u8(code);
 						this->lenData--;
 						oplEvent->delay += code + 1;
 						oplEvent->valid |= OPLEvent::Delay;
 						goto nextCode;
 					case 0x01: { // long delay
 						uint16_t amt;
-						this->input >> u16le(amt);
+						this->content >> u16le(amt);
 						this->lenData--;
 						oplEvent->delay += amt + 1;
 						oplEvent->valid |= OPLEvent::Delay;
@@ -88,7 +88,7 @@ nextCode:
 						this->chipIndex = 1;
 						goto nextCode;
 					case 0x04: // escape
-						this->input
+						this->content
 							>> u8(oplEvent->reg)
 							>> u8(oplEvent->val)
 						;
@@ -98,7 +98,7 @@ nextCode:
 					default: // normal reg
 						oplEvent->chipIndex = this->chipIndex;
 						oplEvent->reg = code;
-						this->input >> u8(oplEvent->val);
+						this->content >> u8(oplEvent->val);
 						this->lenData--;
 						oplEvent->valid |= OPLEvent::Regs;
 						break;
@@ -111,7 +111,7 @@ nextCode:
 		}
 
 	protected:
-		stream::input_sptr input;   ///< Input file
+		stream::input& content;     ///< Input file
 		unsigned int chipIndex;     ///< Index of the currently selected OPL chip
 		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
 };
@@ -121,8 +121,8 @@ nextCode:
 class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 {
 	public:
-		OPLWriterCallback_DRO_v1(stream::output_sptr output)
-			:	output(output),
+		OPLWriterCallback_DRO_v1(stream::output& content)
+			:	content(content),
 				lastChipIndex(0),
 				msSongLength(0),
 				oplType(DRO_OPLTYPE_OPL2)
@@ -140,7 +140,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 					if (delay > 256) {
 						uint16_t ld = (delay > 65536) ? 65535 : delay - 1;
 						// Write out a 'long' delay
-						this->output
+						this->content
 							<< u8(1)
 							<< u16le(ld)
 						;
@@ -149,7 +149,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 						continue;
 					}
 					assert(delay <= 256);
-					this->output
+					this->content
 						<< u8(0) // delay command
 						<< u8(delay - 1) // delay value
 					;
@@ -161,7 +161,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 			if (oplEvent->valid & OPLEvent::Regs) {
 				if (oplEvent->chipIndex != this->lastChipIndex) {
 					assert(oplEvent->chipIndex < 2);
-					this->output << u8(0x02 + oplEvent->chipIndex);
+					this->content << u8(0x02 + oplEvent->chipIndex);
 					this->lastChipIndex = oplEvent->chipIndex;
 				}
 				if (oplEvent->chipIndex == 1) {
@@ -175,13 +175,13 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 				}
 				if (oplEvent->reg < 0x05) {
 					// Need to escape this reg
-					this->output
+					this->content
 						<< u8(4)
 					;
 					// Now the following byte will be treated as a register
 					// regardless of its value.
 				}
-				this->output
+				this->content
 					<< u8(oplEvent->reg)
 					<< u8(oplEvent->val)
 				;
@@ -190,7 +190,7 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 		}
 
 	protected:
-		stream::output_sptr output; ///< Output file
+		stream::output& content;    ///< Output file
 		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
 
 	public:
@@ -198,102 +198,104 @@ class OPLWriterCallback_DRO_v1: virtual public OPLWriterCallback
 		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 };
 
-std::string MusicType_DRO_v1::getCode() const
+std::string MusicType_DRO_v1::code() const
 {
 	return "dro-dosbox-v1";
 }
 
-std::string MusicType_DRO_v1::getFriendlyName() const
+std::string MusicType_DRO_v1::friendlyName() const
 {
 	return "DOSBox Raw OPL version 1";
 }
 
-std::vector<std::string> MusicType_DRO_v1::getFileExtensions() const
+std::vector<std::string> MusicType_DRO_v1::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("dro");
-	return vcExtensions;
+	return {
+		"dro",
+	};
 }
 
-unsigned long MusicType_DRO_v1::getCaps() const
+MusicType::Caps MusicType_DRO_v1::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
-		| HardwareOPL3
+		Caps::InstOPL
+		| Caps::HasEvents
+		| Caps::HardwareOPL3
 	;
 }
 
-MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_DRO_v1::isInstance(stream::input& content) const
 {
 	// Too short
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c03
-	if (input->size() < 12) return DefinitelyNo;
+	if (content.size() < 12) return Certainty::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c01
 	char sig[8];
-	input->seekg(0, stream::start);
-	input->read(sig, 8);
-	if (strncmp(sig, "DBRAWOPL", 8) != 0) return DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 8);
+	if (strncmp(sig, "DBRAWOPL", 8) != 0) return Certainty::DefinitelyNo;
 
 	// Make sure the header says it's version 0.1
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c02
 	uint16_t verMajor, verMinor;
-	input >> u16le(verMajor) >> u16le(verMinor);
-	if ((verMajor != 0) || (verMinor != 1)) return DefinitelyNo;
+	content >> u16le(verMajor) >> u16le(verMinor);
+	if ((verMajor != 0) || (verMinor != 1)) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c00
 	// TESTED BY: mus_dro_dosbox_v1_isinstance_c04
-	return DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_DRO_v1::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_DRO_v1::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
 	Tempo initialTempo;
 	initialTempo.usPerTick = DRO_CLOCK;
 
-	OPLReaderCallback_DRO_v1 cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
+	OPLReaderCallback_DRO_v1 cb(content);
+	auto music = oplDecode(&cb, DelayType::DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
 
 	// See if there are any tags present
-	readMalvMetadata(input, music->metadata);
+	readMalvMetadata(content, music.get());
 
 	return music;
 }
 
-void MusicType_DRO_v1::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_DRO_v1::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	output->write("DBRAWOPL\x00\x00\x01\x00", 12);
+	content.write("DBRAWOPL\x00\x00\x01\x00", 12);
 
 	// Write out some placeholders, which will be overwritten later
-	output
+	content
 		<< u32le(0) // Song length in milliseconds
 		<< u32le(0) // Song length in bytes
 		<< u32le(0) // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
 	;
 
 	// Call the generic OPL writer.
-	OPLWriterCallback_DRO_v1 cb(output);
-	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
+	OPLWriterCallback_DRO_v1 cb(content);
+	auto oplFlags = toOPLFlags(flags);
+	oplEncode(&cb, music, DelayType::DelayIsPreData, OPL_FNUM_DEFAULT, oplFlags);
 
 	// Update the placeholder we wrote in the constructor with the file size
-	int size = output->tellp();
+	int size = content.tellp();
 	size -= 24; // don't count the header
 
 	// Write out any metadata
-	writeMalvMetadata(output, music->metadata);
+	writeMalvMetadata(content, music.attributes());
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
-	output->seekp(12, stream::start);
-	output
+	content.seekp(12, stream::start);
+	content
 		<< u32le(cb.msSongLength) // Song length in milliseconds (one tick == 1ms)
 		<< u32le(size)            // Song length in bytes
 		<< u32le(cb.oplType)      // Hardware type (0=OPL2, 1=OPL3, 2=dual OPL2)
@@ -302,18 +304,14 @@ void MusicType_DRO_v1::write(stream::output_sptr output, SuppData& suppData,
 	return;
 }
 
-SuppFilenames MusicType_DRO_v1::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_DRO_v1::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_DRO_v1::getMetadataList() const
+std::vector<Attribute> MusicType_DRO_v1::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	types.push_back(Metadata::Author);
-	types.push_back(Metadata::Description);
-	return types;
+	return supportedMalvMetadata();
 }

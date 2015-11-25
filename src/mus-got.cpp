@@ -32,8 +32,8 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_GOT(stream::input_sptr input)
-			:	input(input)
+		OPLReaderCallback_GOT(stream::input& content)
+			:	content(content)
 		{
 		}
 
@@ -43,7 +43,7 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 
 			try {
 				uint8_t delay;
-				this->input
+				this->content
 					>> u8(delay)
 					>> u8(oplEvent->reg)
 					>> u8(oplEvent->val)
@@ -67,7 +67,7 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 		}
 
 	protected:
-		stream::input_sptr input;   ///< Input file
+		stream::input& content;   ///< Input file
 };
 
 
@@ -75,8 +75,8 @@ class OPLReaderCallback_GOT: virtual public OPLReaderCallback
 class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 {
 	public:
-		OPLWriterCallback_GOT(stream::output_sptr output)
-			:	output(output)
+		OPLWriterCallback_GOT(stream::output& content)
+			:	content(content)
 		{
 		}
 
@@ -92,7 +92,7 @@ class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 			}
 			// Write out super long delays as dummy events to an unused port.
 			while (delay > 0xFF) {
-				this->output
+				this->content
 					<< u8(0xFF)
 					<< u8(0x00)
 					<< u8(0x00)
@@ -105,14 +105,14 @@ class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 				// OPLWriteFlags::OPL2Only being supplied in the call to oplEncode().
 				assert(oplEvent->chipIndex == 0);
 
-				this->output
+				this->content
 					<< u8(delay)
 					<< u8(oplEvent->reg)
 					<< u8(oplEvent->val)
 				;
 			} else if (delay) {
 				// There is a delay but no regs (e.g. trailing delay)
-				this->output
+				this->content
 					<< u8(delay)
 					<< u8(0)
 					<< u8(0)
@@ -122,112 +122,114 @@ class OPLWriterCallback_GOT: virtual public OPLWriterCallback
 		}
 
 	protected:
-		stream::output_sptr output; ///< Output file
-		unsigned int speed;         ///< IMF clock rate
-		tempo_t usPerTick;          ///< Latest microseconds per tick value (tempo)
+		stream::output& content; ///< Output file
 };
 
 
-std::string MusicType_GOT::getCode() const
+std::string MusicType_GOT::code() const
 {
 	return "got";
 }
 
-std::string MusicType_GOT::getFriendlyName() const
+std::string MusicType_GOT::friendlyName() const
 {
 	return "God of Thunder";
 }
 
-std::vector<std::string> MusicType_GOT::getFileExtensions() const
+std::vector<std::string> MusicType_GOT::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	return vcExtensions;
+	// No filename extension for this format
+	return {};
 }
 
-unsigned long MusicType_GOT::getCaps() const
+MusicType::Caps MusicType_GOT::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
-		| HardwareOPL2
+		Caps::InstOPL
+		| Caps::HasEvents
+		| Caps::HardwareOPL2
 	;
 }
 
-MusicType::Certainty MusicType_GOT::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_GOT::isInstance(stream::input& content) const
 {
-	stream::len len = input->size();
+	stream::len len = content.size();
 
 	// Must be enough room for header + footer
 	// TESTED BY: mus_got_isinstance_c01
-	if (len < 6) return DefinitelyNo;
+	if (len < 6) return Certainty::DefinitelyNo;
 
 	// Uneven size.
 	// TESTED BY: mus_got_isinstance_c02
-	if (len % 3 != 0) return DefinitelyNo;
+	if (len % 3 != 0) return Certainty::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_got_isinstance_c03
 	uint16_t sig;
-	input->seekg(0, stream::start);
-	input >> u16le(sig);
-	if (sig != 0x0001) return DefinitelyNo;
+	content.seekg(0, stream::start);
+	content >> u16le(sig);
+	if (sig != 0x0001) return Certainty::DefinitelyNo;
 
 	// Make sure it ends with a loop-to-start marker
 	// TESTED BY: mus_got_isinstance_c04
 	uint32_t end;
-	input->seekg(-4, stream::end);
-	input >> u32le(end);
-	if (end != 0) return DefinitelyNo;
+	content.seekg(-4, stream::end);
+	content >> u32le(end);
+	if (end != 0) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_got_isinstance_c00
-	return PossiblyYes;
+	return Certainty::PossiblyYes;
 }
 
-MusicPtr MusicType_GOT::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_GOT::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(2, stream::start);
+	content.seekg(2, stream::start);
 
 	Tempo initialTempo;
 	initialTempo.hertz(GOT_DEFAULT_TEMPO);
 
-	OPLReaderCallback_GOT cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, initialTempo);
+	OPLReaderCallback_GOT cb(content);
+	auto music = oplDecode(&cb, DelayType::DelayIsPostData, OPL_FNUM_DEFAULT,
+		initialTempo);
 
 	return music;
 }
 
-void MusicType_GOT::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_GOT::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	output << u16le(1);
-
-	// Force this format to OPL2 as that's all we can write
-	flags |= OPLWriteFlags::OPL2Only;
+	content << u16le(1);
 
 	// Call the generic OPL writer.
-	OPLWriterCallback_GOT cb(output);
-	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
+	OPLWriterCallback_GOT cb(content);
+
+	auto oplFlags = toOPLFlags(flags);
+	// Force this format to OPL2 as that's all we can write
+	oplFlags |= OPLWriteFlags::OPL2Only;
+
+	oplEncode(&cb, music, DelayType::DelayIsPostData, OPL_FNUM_DEFAULT, oplFlags);
 
 	// Zero event (3 bytes) plus final 0x00
-	output << nullPadded("", 4);
+	content << nullPadded("", 4);
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_GOT::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_GOT::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_GOT::getMetadataList() const
+std::vector<Attribute> MusicType_GOT::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	return types;
+	// No tags
+	return {};
 }

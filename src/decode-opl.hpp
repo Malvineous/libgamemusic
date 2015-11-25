@@ -66,7 +66,7 @@ class OPLReaderCallback {
  * @param initialTempo
  *   Initial tempo of the song.
  */
-MusicPtr oplDecode(OPLReaderCallback *cb, DelayType delayType,
+std::unique_ptr<Music> oplDecode(OPLReaderCallback *cb, DelayType delayType,
 	double fnumConversion, const Tempo& initialTempo);
 
 } // namespace gamemusic

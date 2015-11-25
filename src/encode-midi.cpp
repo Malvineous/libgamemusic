@@ -20,6 +20,7 @@
 
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/eventconverter-midi.hpp>
+#include <camoto/gamemusic/util-midi.hpp>
 #include "encode-midi.hpp"
 
 using namespace camoto;
@@ -32,20 +33,22 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		/// Set encoding parameters.
 		/**
 		 * @param output
-		 *   Data stream to write the MIDI data to.
+		 *   Data stream to write the MIDI data to.  Must remain valid until the
+		 *   class has been destroyed.
 		 *
 		 * @param music
-		 *   The instance to convert to MIDI data.
+		 *   The instance to convert to MIDI data.  Must remain valid until the
+		 *   class has been destroyed.
 		 *
 		 * @param midiFlags
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
 		 *
 		 * @param cbEndOfTrack
-		 *   Callback notified at the end of each track.  May be NULL.
+		 *   Callback notified at the end of each track.  May be null.
 		 */
-		MIDIEncoder(stream::output_sptr output, ConstMusicPtr music,
-			unsigned int midiFlags, boost::function<void()> cbEndOfTrack);
+		MIDIEncoder(stream::output& output, const Music& music,
+			MIDIFlags midiFlags, std::function<void()> cbEndOfTrack);
 
 		/// Destructor.
 		~MIDIEncoder();
@@ -60,9 +63,9 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		 *   track by track).
 		 *
 		 * @param channelsUsed
-		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return, this
-		 *   each entry is set to true where that MIDI channel was used.  Set to
-		 *   NULL if this information is not required.
+		 *   Pointer to an array of MIDI_CHANNEL_COUNT entries of bool.  On return,
+		 *   this each entry is set to true where that MIDI channel was used.  Set
+		 *   to nullptr if this information is not required.
 		 *
 		 * @throw stream:error
 		 *   If the output data could not be written for some reason.
@@ -89,23 +92,12 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		virtual void endOfSong(uint32_t delay);
 
 	protected:
-		stream::output_sptr output;        ///< Target stream for SMF MIDI data
-		ConstMusicPtr music;               ///< Song to convert
-		unsigned int midiFlags;            ///< One or more MIDIFlags
-		boost::function<void()> cbEndOfTrack;///< Callback used at end of each track
+		stream::output& output;            ///< Target stream for SMF MIDI data
+		const Music& music;                ///< Song to convert
+		MIDIFlags midiFlags;               ///< One or more MIDIFlags
+		std::function<void()> cbEndOfTrack;///< Callback used at end of each track
 		uint8_t lastCommand;               ///< Last MIDI command written
 		bool channelsUsed[MIDI_CHANNEL_COUNT];  ///< Which MIDI channels had events on them
-
-		/// Write an integer in variable-length MIDI notation.
-		/**
-		 * This function will write up to four bytes into the MIDI stream.
-		 *
-		 * @param value
-		 *   Value to write.  Although it is a 32-bit integer, the MIDI format can
-		 *   only accept up to 28 bits.  An assertion failure will be triggered
-		 *   if the value is larger than this.
-		 */
-		void writeMIDINumber(uint32_t value);
 
 		/// Write a MIDI command, using running notation if possible.
 		/**
@@ -124,17 +116,17 @@ class MIDIEncoder: virtual private MIDIEventCallback
 		void writeCommand(uint32_t delay, uint8_t cmd);
 };
 
-void camoto::gamemusic::midiEncode(stream::output_sptr output, ConstMusicPtr music,
-	unsigned int midiFlags, bool *channelsUsed,
-	EventHandler::EventOrder eventOrder, boost::function<void()> cbEndOfTrack)
+void camoto::gamemusic::midiEncode(stream::output& output, const Music& music,
+	MIDIFlags midiFlags, bool *channelsUsed,
+	EventHandler::EventOrder eventOrder, std::function<void()> cbEndOfTrack)
 {
 	MIDIEncoder encoder(output, music, midiFlags, cbEndOfTrack);
 	encoder.encode(eventOrder, channelsUsed);
 	return;
 }
 
-MIDIEncoder::MIDIEncoder(stream::output_sptr output, ConstMusicPtr music,
-	unsigned int midiFlags, boost::function<void()> cbEndOfTrack)
+MIDIEncoder::MIDIEncoder(stream::output& output, const Music& music,
+	MIDIFlags midiFlags, std::function<void()> cbEndOfTrack)
 	:	output(output),
 		music(music),
 		midiFlags(midiFlags),
@@ -152,11 +144,18 @@ MIDIEncoder::~MIDIEncoder()
 
 void MIDIEncoder::encode(EventHandler::EventOrder eventOrder, bool *channelsUsed)
 {
-	EventConverter_MIDI conv(this, this->music, this->midiFlags);
+	// Create a dummy shared_ptr to pass to EventConverter_MIDI, which takes the
+	// reference to the Music instance and converts it into a fake smart_ptr
+	// (which will never try to delete the reference.)
+	// This is safe because the EventConverter_MIDI instance holding this fake
+	// smart_ptr does not outlive the current function.
+	std::shared_ptr<const Music> music_ptr(&this->music, [](const Music *p){ return; });
+
+	EventConverter_MIDI conv(this, music_ptr, this->midiFlags);
 
 	if (this->midiFlags & MIDIFlags::EmbedTempo) {
 		TempoEvent tempoEvent;
-		tempoEvent.tempo = this->music->initialTempo;
+		tempoEvent.tempo = this->music.initialTempo;
 		conv.handleEvent(0, 0, 0, &tempoEvent);
 	}
 
@@ -168,29 +167,9 @@ void MIDIEncoder::encode(EventHandler::EventOrder eventOrder, bool *channelsUsed
 	return;
 }
 
-void MIDIEncoder::writeMIDINumber(uint32_t value)
-{
-	// Make sure the value will fit in MIDI's 28-bit limit.
-	assert((value >> 28) == 0);
-
-	// Write the three most-significant bytes as 7-bit bytes, with the most
-	// significant bit set.
-	uint8_t next;
-	if (value & (0x7F << 21)) { next = 0x80 | (value >> 21); this->output << u8(next); }
-	if (value & (0x7F << 14)) { next = 0x80 | (value >> 14); this->output << u8(next); }
-	if (value & (0x7F <<  7)) { next = 0x80 | (value >>  7); this->output << u8(next); }
-
-	// Write the least significant 7-bits last, with the high bit unset to
-	// indicate the end of the variable-length stream.
-	next = (value & 0x7F);
-	this->output << u8(next);
-
-	return;
-}
-
 void MIDIEncoder::writeCommand(uint32_t delay, uint8_t cmd)
 {
-	this->writeMIDINumber(delay);
+	this->output << u28midi(delay);
 	assert(cmd < 0xF0); // these commands are not part of the running status
 	if (this->lastCommand == cmd) return;
 	this->output << u8(cmd);
@@ -275,8 +254,8 @@ void MIDIEncoder::midiPitchbend(uint32_t delay, uint8_t channel, uint16_t bend)
 void MIDIEncoder::midiSetTempo(uint32_t delay, const Tempo& tempo)
 {
 	unsigned long usPerQuarterNote = tempo.usPerQuarterNote();
-	this->writeMIDINumber(delay);
-	this->output->write("\xFF\x51\x03", 3);
+	this->output << u28midi(delay);
+	this->output.write("\xFF\x51\x03", 3);
 	this->output
 		<< u8(usPerQuarterNote >> 16)
 		<< u8(usPerQuarterNote >> 8)
@@ -299,8 +278,8 @@ void MIDIEncoder::endOfPattern()
 
 void MIDIEncoder::endOfSong(uint32_t delay)
 {
-	this->writeMIDINumber(delay);
+	this->output << u28midi(delay);
 	// Write an end-of-song event
-	this->output->write("\xFF\x2F\x00", 3);
+	this->output.write("\xFF\x2F\x00", 3);
 	return;
 }

@@ -31,7 +31,15 @@ class test_s3m_screamtracker: public test_music
 			this->indexInstrumentOPL = 1;
 			this->indexInstrumentMIDI = -1;
 			this->indexInstrumentPCM = 0;
-			this->hasMetadata[Metadata::Title] = true;
+
+			{
+				this->attributes.emplace_back();
+				auto& a = this->attributes.back();
+				a.type = Attribute::Type::Text;
+				a.name = CAMOTO_ATTRIBUTE_TITLE;
+				a.textValue = "Test title";
+				a.textMaxLength = 28;
+			}
 		}
 
 		void addTests()
@@ -41,10 +49,10 @@ class test_s3m_screamtracker: public test_music
 			ADD_MUSIC_TEST(&test_s3m_screamtracker::test_event_combining);
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Invalid signature bytes
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"Test title\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 				"\x1B\x11\x00\x00"
 				"\x05\x00" "\x04\x00" "\x02\x00"
@@ -125,7 +133,7 @@ class test_s3m_screamtracker: public test_music
 			));
 
 			// c02: Invalid signature tag
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"Test title\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 				"\x1A\x10\x00\x00"
 				"\x05\x00" "\x04\x00" "\x02\x00"
@@ -206,7 +214,7 @@ class test_s3m_screamtracker: public test_music
 			));
 
 			// c03: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"Test title\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
 				"\x1A"
 			));
@@ -380,21 +388,16 @@ class test_s3m_screamtracker: public test_music
 			);
 		}
 
-		/// Make sure notes and effects on the same row are combined into one event
 		void test_event_combining()
 		{
-			MusicPtr music(new Music());
+			// Make sure notes and effects on the same row are combined into one event
 #warning TODO: Need to implement this event-combining test
 			// Add trackinfo
 			// Add pattern, track, events
 			// Put note on and event and volume on same row
 			// Put note on, event and volume on consecutive rows
 			// Compare to standard data
-			/*
-			this->base.reset(new stream::string());
-			this->pType->write(this->base, this->suppData, music, this->writeFlags);
-			*/
-			BOOST_REQUIRE(this->is_content_equal(this->standard()));
+//			BOOST_REQUIRE(this->is_content_equal(this->standard()));
 		}
 };
 

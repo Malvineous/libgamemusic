@@ -18,7 +18,6 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/pointer_cast.hpp>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
@@ -30,30 +29,35 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-#define S3M_CHANNEL_COUNT 32 ///< Number of storage channels in S3M file
+/// Number of storage channels in S3M file.
+const unsigned int S3M_CHANNEL_COUNT = 32;
 
-/// Maximum number of bytes needed to store one complete packed pattern
-#define S3M_MAX_PACKED_PATTERN_SIZE (64*(32*6+1))
+/// Maximum number of bytes needed to store one complete packed pattern.
+const unsigned int S3M_MAX_PACKED_PATTERN_SIZE = 64 * (32 * 6 + 1);
 
 /// Number of rows in every pattern
-#define S3M_ROWS_PER_PATTERN 64
+const unsigned int S3M_ROWS_PER_PATTERN = 64;
 
 /// Calculate number of bytes to add to len to bring it up to a parapointer
 /// boundary (multiple of 16.)
 #define PP_PAD(len) ((16 - (len % 16)) % 16)
 
+/// Length of song title, in bytes.
+const unsigned int S3M_TITLE_LEN = 28;
+
 class EventConverter_S3M: virtual public EventHandler
 {
 	public:
-		/// Prepare to convert events into KLM data sent to a stream.
+		/// Prepare to convert events into S3M data sent to a stream.
 		/**
-		 * @param output
+		 * @param content
 		 *   Output stream the S3M data will be written to.
 		 *
-		 * @param patches
-		 *   Patch bank to write.
+		 * @param music
+		 *   Song parameters (patches, initial tempo, etc.)  Events are not read
+		 *   from here, the EventHandler is used for that.
 		 */
-		EventConverter_S3M(stream::output_sptr output, const PatchBankPtr& patches);
+		EventConverter_S3M(stream::output& content, const Music& music);
 
 		/// Destructor.
 		virtual ~EventConverter_S3M();
@@ -78,76 +82,76 @@ class EventConverter_S3M: virtual public EventHandler
 		Tempo lastTempo; ///< Last tempo set by song (or initial tempo)
 
 	protected:
-		stream::output_sptr output;  ///< Where to write data
+		stream::output& content;  ///< Where to write data
+		const Music& music;          ///< Song being written
 		uint8_t patternBuffer[S3M_MAX_PACKED_PATTERN_SIZE]; ///< Store pattern before writing to file
 		uint8_t *patBufPos;          ///< Current position in patternBuffer
 		unsigned int curRow;         ///< Current row in pattern (0-63 inclusive)
-		const PatchBankPtr patches;  ///< Copy of the patches for the song
 
 		/// Write out the current delay
 		void writeDelay(unsigned long curTick);
 };
 
-std::string MusicType_S3M::getCode() const
+std::string MusicType_S3M::code() const
 {
 	return "s3m-screamtracker";
 }
 
-std::string MusicType_S3M::getFriendlyName() const
+std::string MusicType_S3M::friendlyName() const
 {
 	return "ScreamTracker 3 Module";
 }
 
-std::vector<std::string> MusicType_S3M::getFileExtensions() const
+std::vector<std::string> MusicType_S3M::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("s3m");
-	return vcExtensions;
+	return {
+		"s3m",
+	};
 }
 
-unsigned long MusicType_S3M::getCaps() const
+MusicType::Caps MusicType_S3M::caps() const
 {
 	return
-		InstEmpty
-		| InstOPL
-		| InstPCM
-		| HasEvents
-		| HasPatterns
+		Caps::InstOPL
+		| Caps::InstPCM
+		| Caps::HasEvents
+		| Caps::HasPatterns
 	;
 }
 
-MusicType::Certainty MusicType_S3M::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_S3M::isInstance(stream::input& content) const
 {
-	stream::pos len = input->size();
+	stream::pos len = content.size();
 	// Too short
 	// TESTED BY: mus_s3m_screamtracker_isinstance_c03
-	if (len < 30) return MusicType::DefinitelyNo;
+	if (len < 30) return Certainty::DefinitelyNo;
 
-	input->seekg(28, stream::start);
+	content.seekg(28, stream::start);
 	uint8_t sig1, sig2;
-	input
+	content
 		>> u8(sig1)
 		>> u8(sig2)
 	;
 	// Invalid signature bytes
 	// TESTED BY: mus_s3m_screamtracker_isinstance_c01
-	if ((sig1 != 0x1A) || (sig2 != 0x10)) return MusicType::DefinitelyNo;
+	if ((sig1 != 0x1A) || (sig2 != 0x10)) return Certainty::DefinitelyNo;
 
-	input->seekg(28+4+6*2, stream::start);
+	content.seekg(28+4+6*2, stream::start);
 	std::string sig3;
-	input >> fixedLength(sig3, 4);
+	content >> fixedLength(sig3, 4);
 	// Invalid signature tag
 	// TESTED BY: mus_s3m_screamtracker_isinstance_c02
-	if (sig3.compare("SCRM") != 0) return MusicType::DefinitelyNo;
+	if (sig3.compare("SCRM") != 0) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_s3m_screamtracker_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_S3M::read(stream::input& content,
+	SuppData& suppData) const
 {
-	MusicPtr music(new Music());
-	music->patches.reset(new PatchBank());
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 
 	// All S3M files seem to be in 4/4 time?
 	music->initialTempo.beatsPerBar = 4;
@@ -156,15 +160,24 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 	music->ticksPerTrack = 64;
 	music->loopDest = -1; // no loop
 
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
-	input >> nullPadded(music->metadata[Metadata::Title], 28);
+	// Add metadata item for title, and read content into it
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = S3M_TITLE_LEN;
+		content >> nullPadded(a.textValue, S3M_TITLE_LEN);
+	}
 
 	uint8_t sig1, type, globalVolume, masterVolume, framesPerRow, framesPerSecond;
 	uint8_t ultraClickRemoval, defaultPan;
 	uint16_t reserved, orderCount, instrumentCount, patternCount, flags;
 	uint16_t trackerVersion, sampleType, ptrSpecial;
-	input
+	content
 		>> u8(sig1)
 		>> u8(type)
 		>> u16le(reserved)
@@ -175,8 +188,8 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 		>> u16le(trackerVersion)
 		>> u16le(sampleType)
 	;
-	input->seekg(4, stream::cur); // "SCRM" signature
-	input
+	content.seekg(4, stream::cur); // "SCRM" signature
+	content
 		>> u8(globalVolume)
 		>> u8(framesPerRow)
 		>> u8(framesPerSecond)
@@ -184,8 +197,8 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 		>> u8(ultraClickRemoval)
 		>> u8(defaultPan)
 	;
-	input->seekg(8, stream::cur); // padding
-	input
+	content.seekg(8, stream::cur); // padding
+	content
 		>> u16le(ptrSpecial)
 	;
 	if (type != 0x10) {
@@ -194,32 +207,32 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 
 	int adlibTrack1 = -1; // index of first OPL track
 	uint8_t channelSettings[S3M_CHANNEL_COUNT];
-	input->read(channelSettings, S3M_CHANNEL_COUNT);
+	content.read(channelSettings, S3M_CHANNEL_COUNT);
 	for (unsigned int i = 0; i < S3M_CHANNEL_COUNT; i++) {
-		TrackInfo t;
-		const uint8_t& c = channelSettings[i];
+		music->trackInfo.emplace_back();
+		auto& t = music->trackInfo.back();
+		auto& c = channelSettings[i];
 		if (c < 16) {
-			t.channelType = TrackInfo::PCMChannel;
+			t.channelType = TrackInfo::ChannelType::PCM;
 			// 0,1,2...8,9,10 -> 0,2,4...1,3,5 [L1,R1,L2,R2,...]
 			t.channelIndex = (c % 8) * 2 + (c >> 3);
 		} else if (c < 25) {
-			t.channelType = TrackInfo::OPLChannel;
+			t.channelType = TrackInfo::ChannelType::OPL;
 			t.channelIndex = c - 16;
 			if (adlibTrack1 < 0) adlibTrack1 = i;
 		} else if (c < 30) {
-			t.channelType = TrackInfo::OPLPercChannel;
+			t.channelType = TrackInfo::ChannelType::OPLPerc;
 			/// @todo: Make sure this correctly maps to the right perc instrument
 			t.channelIndex = 4 - (c - 25);
 		} else {
-			t.channelType = TrackInfo::UnusedChannel;
+			t.channelType = TrackInfo::ChannelType::Unused;
 			t.channelIndex = c - 30;
 		}
-		music->trackInfo.push_back(t);
 	}
 
 	for (unsigned int i = 0; i < orderCount; i++) {
 		uint8_t order;
-		input >> u8(order);
+		content >> u8(order);
 		if (order < 0xFE) {
 			music->patternOrder.push_back(order);
 		} else if (order == 0xFE) {
@@ -231,7 +244,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 	ptrInstruments.reserve(instrumentCount);
 	for (unsigned int i = 0; i < instrumentCount; i++) {
 		uint16_t ptrInstrument;
-		input >> u16le(ptrInstrument);
+		content >> u16le(ptrInstrument);
 		ptrInstruments.push_back(ptrInstrument);
 	}
 
@@ -239,7 +252,7 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 	ptrPatterns.reserve(patternCount);
 	for (unsigned int i = 0; i < patternCount; i++) {
 		uint16_t ptrPattern;
-		input >> u16le(ptrPattern);
+		content >> u16le(ptrPattern);
 		ptrPatterns.push_back(ptrPattern);
 	}
 
@@ -248,15 +261,13 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 
 	// Read instruments
 	music->patches->reserve(instrumentCount);
-	for (std::vector<uint16_t>::const_iterator
-		i = ptrInstruments.begin(); i != ptrInstruments.end(); i++
-	) {
+	for (auto& i : ptrInstruments) {
 		// Jump to the parapointer destination
-		input->seekg(*i << 4, stream::start);
+		content.seekg(i << 4, stream::start);
 
 		uint8_t type;
 		std::string title;
-		input
+		content
 			>> u8(type)
 			>> nullPadded(title, 12)
 		;
@@ -265,20 +276,21 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 			case 0: {
 				// Read anyway as it wouldn't be listed if there was no significance.
 				// It might be supposed to be a blank line.
-				PatchPtr p(new Patch());
-				input->seekg(1+2+4+4+4+1+1+1+1+4+12, stream::cur);
-				input >> nullPadded(p->name, 28);
+				auto p = std::make_shared<Patch>();
+				content.seekg(1+2+4+4+4+1+1+1+1+4+12, stream::cur);
+				content >> nullPadded(p->name, 28);
 				music->patches->push_back(p);
 				break;
 			}
 			case 1: {
-				PCMPatchPtr p(new PCMPatch());
+				auto p = std::make_shared<PCMPatch>();
 				uint32_t ppSample;
 				uint8_t ppSampleHigh, volume, reserved, pack, flags;
-				input
+				unsigned long lenData;
+				content
 					>> u8(ppSampleHigh)
 					>> u16le(ppSample)
-					>> u32le(p->lenData)
+					>> u32le(lenData)
 					>> u32le(p->loopStart)
 					>> u32le(p->loopEnd)
 					>> u8(volume)
@@ -302,18 +314,18 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 				if (volume > 63) volume = 63;
 				p->defaultVolume = (volume << 2) | (volume >> 4); // 0-63 -> 0-255
 
-				input->seekg(12, stream::cur);
-				input >> nullPadded(p->name, 28);
+				content.seekg(12, stream::cur);
+				content >> nullPadded(p->name, 28);
 
 				// Read the PCM data
-				input->seekg(ppSample << 4, stream::start);
-				p->data.reset(new uint8_t[p->lenData]);
-				input->read(p->data.get(), p->lenData);
+				content.seekg(ppSample << 4, stream::start);
+				p->data = std::vector<uint8_t>(lenData);
+				content.read(p->data.data(), p->data.size());
 
 				// Convert from little-endian to host byte order if 16-bit
 				if (p->bitDepth == 16) {
-					int16_t *data = (int16_t *)p->data.get();
-					for (unsigned long i = 0; i < p->lenData / 2; i++) {
+					auto data = (int16_t *)p->data.data();
+					for (unsigned long i = 0; i < lenData / 2; i++) {
 						*data = le16toh(*data);
 						data++;
 					}
@@ -328,11 +340,11 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 			case 5:
 			case 6:
 			case 7: {
-				input->seekg(3, stream::cur);
+				content.seekg(3, stream::cur);
 
-				OPLPatchPtr p(new OPLPatch());
+				auto p = std::make_shared<OPLPatch>();
 				uint8_t inst[11];
-				input->read(inst, 11);
+				content.read(inst, 11);
 
 				OPLOperator *o = &p->m;
 				for (int op = 0; op < 2; op++) {
@@ -353,15 +365,15 @@ MusicPtr MusicType_S3M::read(stream::input_sptr input, SuppData& suppData) const
 				}
 				p->feedback    = (inst[10] >> 1) & 0x07;
 				p->connection  =  inst[10] & 1;
-				p->rhythm      = OPLPatch::Melodic;
+				p->rhythm      = OPLPatch::Rhythm::Melodic;
 
-				input->seekg(1, stream::cur);
+				content.seekg(1, stream::cur);
 				uint8_t volume;
-				input >> u8(volume);
+				content >> u8(volume);
 				p->defaultVolume = (volume << 2) | (volume >> 4);
-				input->seekg(1+2, stream::cur);
+				content.seekg(1+2, stream::cur);
 				uint32_t c2spd;
-				input >> u32le(c2spd);
+				content >> u32le(c2spd);
 /*
 C-4 note
 4363 = 135411 mHz
@@ -376,8 +388,8 @@ C-4 note
 				if (c2spd != 8363) throw stream::error("S3M Adlib instrument has fine "
 					"tuning value - these are unimplemented!  Please report this problem.");
 
-				input->seekg(12, stream::cur);
-				input >> nullPadded(p->name, 28);
+				content.seekg(12, stream::cur);
+				content >> nullPadded(p->name, 28);
 				music->patches->push_back(p);
 				break;
 			}
@@ -392,15 +404,15 @@ C-4 note
 	bool firstPattern = true;
 	unsigned int patternIndex = 0;
 	const unsigned int& firstOrder = music->patternOrder[0];
-	for (std::vector<uint16_t>::const_iterator
-		i = ptrPatterns.begin(); i != ptrPatterns.end(); i++, patternIndex++
-	) {
+	for (auto& i : ptrPatterns) {
+		music->patterns.emplace_back();
+		auto& pattern = music->patterns.back();
+
 		// Jump to the parapointer destination
-		input->seekg(*i << 4, stream::start);
-		PatternPtr pattern(new Pattern());
+		content.seekg(i << 4, stream::start);
 		for (unsigned int track = 0; track < S3M_CHANNEL_COUNT; track++) {
-			TrackPtr t(new Track());
-			pattern->push_back(t);
+			pattern.emplace_back();
+			auto& t = pattern.back();
 			if (
 				firstPattern
 				&& (patternIndex == firstOrder)
@@ -408,40 +420,44 @@ C-4 note
 			) { // first OPL track in pattern being played first in order list
 				// Set standard settings
 				{
-					TrackEvent te;
-					te.delay = 0;
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					te.event.reset(ev);
-					ev->configType = ConfigurationEvent::EnableOPL3;
+					auto ev = std::make_shared<ConfigurationEvent>();
+					ev->configType = ConfigurationEvent::Type::EnableOPL3;
 					ev->value = 0;
-					t->push_back(te);
-				}
-				{
+
 					TrackEvent te;
 					te.delay = 0;
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					te.event.reset(ev);
-					ev->configType = ConfigurationEvent::EnableDeepTremolo;
-					ev->value = 1;
-					t->push_back(te);
+					te.event = ev;
+					t.push_back(te);
 				}
 				{
+					auto ev = std::make_shared<ConfigurationEvent>();
+					ev->configType = ConfigurationEvent::Type::EnableDeepTremolo;
+					ev->value = 1;
+
 					TrackEvent te;
 					te.delay = 0;
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					te.event.reset(ev);
-					ev->configType = ConfigurationEvent::EnableDeepVibrato;
-					ev->value = 1;
-					t->push_back(te);
+					te.event = ev;
+					t.push_back(te);
 				}
 				{
+					auto ev = std::make_shared<ConfigurationEvent>();
+					ev->configType = ConfigurationEvent::Type::EnableDeepVibrato;
+					ev->value = 1;
+
 					TrackEvent te;
 					te.delay = 0;
-					ConfigurationEvent *ev = new ConfigurationEvent();
-					te.event.reset(ev);
-					ev->configType = ConfigurationEvent::EnableWaveSel;
+					te.event = ev;
+					t.push_back(te);
+				}
+				{
+					auto ev = std::make_shared<ConfigurationEvent>();
+					ev->configType = ConfigurationEvent::Type::EnableWaveSel;
 					ev->value = 1;
-					t->push_back(te);
+
+					TrackEvent te;
+					te.delay = 0;
+					te.event = ev;
+					t.push_back(te);
 				}
 
 				firstPattern = false;
@@ -457,33 +473,33 @@ C-4 note
 
 		// Skip length field
 		uint16_t lenPackedRow;
-		input >> u16le(lenPackedRow);
+		content >> u16le(lenPackedRow);
 		unsigned int lenRead = 2;
 
-		Tempo lastTempo = music->initialTempo;
+		auto lastTempo = music->initialTempo;
 		for (unsigned int row = 0; row < S3M_ROWS_PER_PATTERN; row++) {
 			uint8_t what;
 			do {
-				input >> u8(what);
+				content >> u8(what);
 				lenRead++;
 				unsigned int channel = what & 0x1F;
-				TrackPtr& track = pattern->at(channel);
+				auto& track = pattern.at(channel);
 				uint8_t note, instrument, volume, command, info;
 				if (what & 0x20) {
-					input
+					content
 						>> u8(note)
 						>> u8(instrument)
 					;
 					lenRead += 2;
 				}
 				if (what & 0x40) {
-					input
+					content
 						>> u8(volume)
 					;
 					lenRead++;
 				}
 				if (what & 0x80) {
-					input
+					content
 						>> u8(command)
 						>> u8(info)
 					;
@@ -494,24 +510,21 @@ C-4 note
 						// No note?
 					} else if (note == 254) {
 						// Note off
+						auto ev = std::make_shared<NoteOffEvent>();
+
 						TrackEvent te;
 						te.delay = row - lastRow[channel];
-						NoteOffEvent *ev = new NoteOffEvent();
-						te.event.reset(ev);
-						track->push_back(te);
+						te.event = ev;
+						track.push_back(te);
 						lastRow[channel] = row;
 					} else {
-						TrackEvent te;
-						te.delay = row - lastRow[channel];
-						NoteOnEvent *ev = new NoteOnEvent();
-						te.event.reset(ev);
-
 						if (instrument == 0) instrument = lastInstrument[channel];
 						else {
 							instrument--;
 							lastInstrument[channel] = instrument;
 						}
 
+						auto ev = std::make_shared<NoteOnEvent>();
 						ev->instrument = instrument;
 						ev->milliHertz = midiToFreq(((note >> 4) + 1) * 12 + (note & 0x0F));
 
@@ -521,69 +534,78 @@ C-4 note
 						} else { // missing or =255
 							ev->velocity = DefaultVelocity; // instrument default
 						}
-						track->push_back(te);
+
+						TrackEvent te;
+						te.delay = row - lastRow[channel];
+						te.event = ev;
+						track.push_back(te);
 						lastRow[channel] = row;
 					}
 				} else if (what & 0x40) { // 0x20 unset because of 'else'
 					// Volume change
-					TrackEvent te;
-					te.delay = row - lastRow[channel];
-					EffectEvent *ev = new EffectEvent();
-					te.event.reset(ev);
-					ev->type = EffectEvent::Volume;
+					auto ev = std::make_shared<EffectEvent>();
+					ev->type = EffectEvent::Type::Volume;
 					if (volume == 64) ev->data = 255;
 					else ev->data = (volume << 2) | (volume >> 4);
-					track->push_back(te);
+
+					TrackEvent te;
+					te.delay = row - lastRow[channel];
+					te.event = ev;
+					track.push_back(te);
 					lastRow[channel] = row;
 				}
 				if (what & 0x80) {
 					switch (command) {
 						case 0x01: { // A: set speed
-							TrackEvent te;
-							te.delay = row - lastRow[channel];
-							TempoEvent *ev = new TempoEvent();
-							te.event.reset(ev);
+							auto ev = std::make_shared<TempoEvent>();
 							ev->tempo = lastTempo;
 							ev->tempo.module(info, lastTempo.module_tempo());
-							track->push_back(te);
+
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							te.event = ev;
+							track.push_back(te);
 							lastRow[channel] = row;
 							lastTempo = ev->tempo;
 							break;
 						}
 						case 0x02: { // B: Jump to order
-							TrackEvent te;
-							te.delay = row - lastRow[channel];
-							GotoEvent *ev = new GotoEvent();
-							te.event.reset(ev);
-							ev->type = GotoEvent::SpecificOrder;
+							auto ev = std::make_shared<GotoEvent>();
+							ev->type = GotoEvent::Type::SpecificOrder;
 							ev->loop = 0;
 							ev->targetOrder = info;
 							ev->targetRow = 0;
-							track->push_back(te);
+
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							te.event = ev;
+							track.push_back(te);
 							lastRow[channel] = row;
 							break;
 						}
 						case 0x03: { // C: Jump to row
-							TrackEvent te;
-							te.delay = row - lastRow[channel];
-							GotoEvent *ev = new GotoEvent();
-							te.event.reset(ev);
-							ev->type = GotoEvent::NextPattern;
+							auto ev = std::make_shared<GotoEvent>();
+							ev->type = GotoEvent::Type::NextPattern;
 							ev->loop = 0;
 							ev->targetOrder = 0;
 							ev->targetRow = ((info & 0xf0) >> 4) * 10 + (info & 0x0f);
-							track->push_back(te);
+
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							te.event = ev;
+							track.push_back(te);
 							lastRow[channel] = row;
 							break;
 						}
 						case 0x20: { // T: set tempo
-							TrackEvent te;
-							te.delay = row - lastRow[channel];
-							TempoEvent *ev = new TempoEvent();
-							te.event.reset(ev);
+							auto ev = std::make_shared<TempoEvent>();
 							ev->tempo = lastTempo;
 							ev->tempo.module(lastTempo.module_speed(), info);
-							track->push_back(te);
+
+							TrackEvent te;
+							te.delay = row - lastRow[channel];
+							te.event = ev;
+							track.push_back(te);
 							lastRow[channel] = row;
 							lastTempo = ev->tempo;
 							break;
@@ -604,44 +626,35 @@ C-4 note
 				"read." << std::endl;
 		}
 
-		music->patterns.push_back(pattern);
+		patternIndex++;
 	}
 
 	return music;
 }
 
-void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_S3M::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	Metadata::TypeMap::const_iterator itTitle
-		= music->metadata.find(Metadata::Title);
-	if (itTitle != music->metadata.end()) {
-		if (itTitle->second.length() > 28) {
-			throw format_limitation("The metadata element 'Title' is longer than "
-				"the maximum 28 character length.");
-		}
-		output << nullPadded(itTitle->second, 28);
-	} else {
-		output << nullPadded(std::string(), 28);
-	}
-	unsigned long tempo = music->initialTempo.module_tempo();
+	content << nullPadded(music.attributes().at(0).textValue, S3M_TITLE_LEN);
+
+	auto tempo = music.initialTempo.module_tempo();
 	if (tempo > 255) {
 		throw format_limitation(createString("Tempo is too fast for S3M file!  "
 			"Calculated value is " << tempo << " but max permitted value is 255."));
 	}
-	output
+	content
 		<< u8(0x1A)
 		<< u8(0x10)  // ScreamTracker 3
 		<< u16le(0x0000) // reserved
-		<< u16le(music->patternOrder.size() + 1) // +1 makes room for an EOF value
-		<< u16le(music->patches->size())
-		<< u16le(music->patterns.size())
+		<< u16le(music.patternOrder.size() + 1) // +1 makes room for an EOF value
+		<< u16le(music.patches->size())
+		<< u16le(music.patterns.size())
 		<< u16le(0) // flags
 		<< u16le(0xCA00) // tracker version
 		<< u16le(0x0002) // unsigned samples
 		<< nullPadded("SCRM", 4)
 		<< u8(64) // global volume range
-		<< u8(music->initialTempo.module_speed())
+		<< u8(music.initialTempo.module_speed())
 		<< u8(tempo)
 		<< u8(0x30) // mixing volume (SB only)
 		<< u8(0x10) // GUS click removal (seems to be what ST3 puts here, probably unused today)
@@ -651,82 +664,76 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 
 	// Map all the tracks to S3M channels
 	// libgamemusic track -> S3M channel -> S3M target (OPL, Left PCM 1, etc.)
-	if (music->trackInfo.size() > S3M_CHANNEL_COUNT) {
+	if (music.trackInfo.size() > S3M_CHANNEL_COUNT) {
 		throw format_limitation("Too many channels!  S3M has a maximum of "
 			TOSTRING(S3M_CHANNEL_COUNT) " channels.");
 	}
-	for (TrackInfoVector::const_iterator
-		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
-	) {
+	for (auto& ti : music.trackInfo) {
 		uint8_t chanAlloc = 255;
-		switch (ti->channelType){
-			case TrackInfo::UnusedChannel:
+		switch (ti.channelType){
+			case TrackInfo::ChannelType::Unused:
 				chanAlloc = 255;
 				break;
-			case TrackInfo::AnyChannel:
-				throw stream::error("S3M writer was given an AnyChannel track!  This "
+			case TrackInfo::ChannelType::Any:
+				throw stream::error("S3M writer was given an ChannelType::Any track!  This "
 					"is not permitted and is a bug.");
-			case TrackInfo::OPLChannel:
-				if (ti->channelIndex > 8) {
+			case TrackInfo::ChannelType::OPL:
+				if (ti.channelIndex > 8) {
 					throw stream::error("Got a track on OPL channel > 8.  S3M only "
 						"supports one OPL chip.");
 				}
-				chanAlloc = 16 + ti->channelIndex;
+				chanAlloc = 16 + ti.channelIndex;
 				break;
-			case TrackInfo::OPLPercChannel:
-				assert(ti->channelIndex < 5);
-				chanAlloc = 25 + (4 - ti->channelIndex);
+			case TrackInfo::ChannelType::OPLPerc:
+				assert(ti.channelIndex < 5);
+				chanAlloc = 25 + (4 - ti.channelIndex);
 				break;
-			case TrackInfo::MIDIChannel:
+			case TrackInfo::ChannelType::MIDI:
 				throw stream::error("S3M files cannot store MIDI instruments.");
-			case TrackInfo::PCMChannel:
+			case TrackInfo::ChannelType::PCM:
 				// 0,1,2,3,4,5 -> 0,8,1,9,2,10 [L1,R1,L2,R2,...]
-				chanAlloc = (ti->channelIndex % 2) * 8 + (ti->channelIndex >> 1);
+				chanAlloc = (ti.channelIndex % 2) * 8 + (ti.channelIndex >> 1);
 				break;
 		}
 		// Record where this S3M channel is going to be played
-		output << u8(chanAlloc);
+		content << u8(chanAlloc);
 	}
 
 	// Pad up to 32 channels
-	for (int i = music->trackInfo.size(); i < S3M_CHANNEL_COUNT; i++) {
-		output << u8(255);
+	for (unsigned int i = music.trackInfo.size(); i < S3M_CHANNEL_COUNT; i++) {
+		content << u8(255);
 	}
 
 	// Order count
-	for (std::vector<unsigned int>::const_iterator
-		i = music->patternOrder.begin(); i != music->patternOrder.end(); i++
-	) {
-		output << u8(*i);
+	for (auto& i : music.patternOrder) {
+		content << u8(i);
 	}
 	// Order list finishes off with two EOF values
-	output << u8(0xFF);
+	content << u8(0xFF);
 
 	// Work out where the first parapointer will point to
-	stream::pos offPatternPtrs = 0x60 + (music->patternOrder.size() + 1)*1
-		+ music->patches->size()*2;
-	stream::pos nextPP = offPatternPtrs + music->patterns.size()*2;
+	stream::pos offPatternPtrs = 0x60 + (music.patternOrder.size() + 1)*1
+		+ music.patches->size()*2;
+	stream::pos nextPP = offPatternPtrs + music.patterns.size()*2;
 	int finalPad = PP_PAD(nextPP);
 	nextPP += finalPad;
 	stream::pos firstPP = nextPP;
 
 	// Instrument pointers
 	std::vector<stream::pos> instOffsets;
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
+	for (auto& i : *music.patches) {
 		// Since we're using parapointers the lower four bits of the offset
 		// must always be zero as those bits aren't saved.
 		assert((nextPP & 0x0F) == 0);
 
-		output << u16le(nextPP >> 4);
+		content << u16le(nextPP >> 4);
 		instOffsets.push_back(nextPP);
 
 		// Figure out how big this instrument is for the next offset
 		nextPP += 0x50;
-		PCMPatchPtr pcmPatch = boost::dynamic_pointer_cast<PCMPatch>(*i);
+		auto pcmPatch = dynamic_cast<PCMPatch*>(i.get());
 		if (pcmPatch) {
-			nextPP += pcmPatch->lenData;
+			nextPP += pcmPatch->data.size();
 			// Round up to the nearest parapointer boundary
 			if (nextPP % 16) {
 				nextPP += PP_PAD(nextPP);
@@ -736,36 +743,36 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 
 	// Pattern pointers
 	assert((nextPP & 0x0F) == 0);
-	assert(output->tellp() == offPatternPtrs);
+	assert(content.tellp() == offPatternPtrs);
 	stream::pos offFirstPattern = nextPP;
-	if (music->patterns.size()) {
-		output << u16le(offFirstPattern >> 4);
+	if (music.patterns.size()) {
+		content << u16le(offFirstPattern >> 4);
 		// Reserve some space for all the other pattern pointers to update later
-		output << nullPadded(std::string(), (music->patterns.size() - 1) * 2 /* sizeof(uint16le) */);
+		content << nullPadded(std::string(), (music.patterns.size() - 1) * 2 /* sizeof(uint16le) */);
 	}
 
 	// Default pan positions are unused, so omitted
-	//output << nullPadded(std::string(), numChannels);
+	//content << nullPadded(std::string(), numChannels);
 
 	// Pad up to first parapointer position.  ST3 uses 0x80, we'll use 0x00.
-	output << nullPadded(std::string(), finalPad);
-	assert(output->tellp() == firstPP);
+	content << nullPadded(std::string(), finalPad);
+	assert(content.tellp() == firstPP);
 
 	// Write out the instruments
 	std::vector<stream::pos>::iterator nextInstOffset = instOffsets.begin();
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++, nextInstOffset++
-	) {
-		OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(*i);
+	for (auto& i : *music.patches) {
+		auto oplPatch = dynamic_cast<OPLPatch*>(i.get());
 		if (oplPatch) {
 			uint8_t type = 2;
-			if (oplPatch->rhythm != 0) type += 6 - oplPatch->rhythm;
+			if (oplPatch->rhythm != OPLPatch::Rhythm::Melodic) {
+				type += 6 - (int)oplPatch->rhythm;
+			}
 			uint32_t c2spd = 8363;
 			uint8_t volume = oplPatch->defaultVolume >> 2; // 0-255 -> 0-63
 
 			uint8_t inst[11];
 			assert(oplPatch);
-			OPLOperator *o = &oplPatch->m;
+			auto o = &oplPatch->m;
 			for (int op = 0; op < 2; op++) {
 				inst[0 + op] =
 					((o->enableTremolo & 1) << 7) |
@@ -784,13 +791,13 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 			}
 			inst[10] = ((oplPatch->feedback & 7) << 1) | (oplPatch->connection & 1);
 
-			output
+			content
 				<< u8(type)
 				<< nullPadded(std::string(), 12) // blank filename
 				<< nullPadded(std::string(), 3)
 			;
-			output->write(inst, 11);
-			output
+			content.write(inst, 11);
+			content
 				<< u8(0)
 				<< u8(volume)
 				<< nullPadded(std::string(), 3)
@@ -800,7 +807,7 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 				<< nullPadded("SCRI", 4)
 			;
 		} else {
-			PCMPatchPtr pcmPatch = boost::dynamic_pointer_cast<PCMPatch>(*i);
+			auto pcmPatch = dynamic_cast<PCMPatch*>(i.get());
 			if (pcmPatch) {
 				if ((pcmPatch->bitDepth != 8) && (pcmPatch->bitDepth != 16)) {
 					throw format_limitation("This file format can only store 8-bit and "
@@ -821,15 +828,15 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 				uint8_t volume = pcmPatch->defaultVolume >> 2; // 0-255 -> 0-63
 
 				stream::pos sampleOffset = *nextInstOffset;
-				assert(output->tellp() == sampleOffset);
+				assert(content.tellp() == sampleOffset);
 				sampleOffset += 0x50; // skip instrument header
 				sampleOffset >>= 4; // it's a parapointer
-				output
+				content
 					<< u8(1) // PCM sample
 					<< nullPadded(std::string(), 12) // blank filename
 					<< u8(sampleOffset >> 16)
 					<< u16le(sampleOffset & 0xFFFF)
-					<< u32le(pcmPatch->lenData)
+					<< u32le(pcmPatch->data.size())
 					<< u32le(pcmPatch->loopStart)
 					<< u32le(pcmPatch->loopEnd)
 					<< u8(volume)
@@ -841,79 +848,88 @@ void MusicType_S3M::write(stream::output_sptr output, SuppData& suppData,
 					<< nullPadded(pcmPatch->name.substr(0, 28), 28) /// @todo Write instrument w/ 28+29 char name to test
 					<< nullPadded("SCRS", 4)
 				;
-				output->write(pcmPatch->data.get(), pcmPatch->lenData);
+				content.write(pcmPatch->data.data(), pcmPatch->data.size());
 
 				// Pad up to parapointer boundary.  This is easier since the sample data
 				// always starts on a parapointer boundary.
-				output << nullPadded(std::string(), PP_PAD(pcmPatch->lenData));
+				content << nullPadded(std::string(), PP_PAD(pcmPatch->data.size()));
 			} else {
-				MIDIPatchPtr midiPatch = boost::dynamic_pointer_cast<MIDIPatch>(*i);
+				auto midiPatch = dynamic_cast<MIDIPatch*>(i.get());
 				if (midiPatch) {
 					throw format_limitation("This file format can only store OPL and PCM "
 						"instruments.");
 				}
 
 				// Otherwise write a blank, it's a placeholder
-				output
+				content
 					<< u8(0) // type
 					<< nullPadded(std::string(), 12 + 3 + 11 + 1)
 				;
-				output
+				content
 					<< u8(63) // default volume
 					<< nullPadded(std::string(), 3)
 					<< u32le(8363) // c2spd
 					<< nullPadded(std::string(), 12)
-					<< nullPadded((*i)->name.substr(0, 28), 28) /// @todo Write instrument w/ 28+29 char name to test
+					<< nullPadded(i->name.substr(0, 28), 28) /// @todo Write instrument w/ 28+29 char name to test
 					<< nullPadded("SCRS", 4)
 				;
 			}
 		}
+		nextInstOffset++;
 	}
 
 	// Write out the patterns
-	EventConverter_S3M conv(output, music->patches);
-	conv.lastTempo = music->initialTempo;
+	EventConverter_S3M conv(content, music);
+	conv.lastTempo = music.initialTempo;
 	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	// Go back and write the pattern offsets except for the last one which is EOF
-	assert(music->patterns.size() == conv.lenPattern.size());
+	assert(music.patterns.size() == conv.lenPattern.size());
 	if (conv.lenPattern.size()) {
-		output->seekp(offPatternPtrs + 2, stream::start);
+		content.seekp(offPatternPtrs + 2, stream::start);
 		stream::pos offNextPattern = offFirstPattern;
 		for (std::vector<stream::len>::const_iterator
 			i = conv.lenPattern.begin(); i != conv.lenPattern.end() - 1; i++
 		) {
 			offNextPattern += *i;
-			output << u16le(offNextPattern >> 4);
+			content << u16le(offNextPattern >> 4);
 		}
 	}
 	return;
 }
 
-SuppFilenames MusicType_S3M::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_S3M::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_S3M::getMetadataList() const
+std::vector<Attribute> MusicType_S3M::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	return types;
+	std::vector<Attribute> items;
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = S3M_TITLE_LEN;
+	}
+	return items;
 }
 
 
-EventConverter_S3M::EventConverter_S3M(stream::output_sptr output,
-	const PatchBankPtr& patches)
-	:	output(output),
+EventConverter_S3M::EventConverter_S3M(stream::output& content,
+	const Music& music)
+	:	content(content),
+		music(music),
 		patBufPos(patternBuffer),
-		curRow(0),
-		patches(patches)
+		curRow(0)
 {
 }
 
@@ -939,10 +955,10 @@ void EventConverter_S3M::endOfPattern(unsigned long delay)
 	// Write out the pattern
 	unsigned int lenUsed = this->patBufPos - this->patternBuffer;
 	uint16_t valLengthField = lenUsed + 2; // include size of length field itself
-	this->output << u16le(valLengthField);
-	this->output->write(this->patternBuffer, lenUsed);
+	this->content << u16le(valLengthField);
+	this->content.write(this->patternBuffer, lenUsed);
 	unsigned int lenPadding = PP_PAD(lenUsed + 2);
-	output << nullPadded(std::string(), lenPadding);
+	content << nullPadded(std::string(), lenPadding);
 	this->patBufPos = this->patternBuffer;
 	this->curRow = 0;
 
@@ -986,7 +1002,7 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 	uint8_t velFlag = 0;
 	if (
 		(ev->velocity >= 0) &&
-		((unsigned int)ev->velocity != this->patches->at(ev->instrument)->defaultVolume)
+		((unsigned int)ev->velocity != this->music.patches->at(ev->instrument)->defaultVolume)
 	) velFlag = 0x40;
 	*this->patBufPos++ = (trackIndex & 0x1F) | 0x20 | velFlag; // event with note+inst
 	*this->patBufPos++ = (oct << 4) | note;
@@ -1011,11 +1027,11 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case EffectEvent::PitchbendNote:
+		case EffectEvent::Type::PitchbendNote:
 			//if (this->flags & IntegerNotesOnly) return;
 			std::cout << "S3M: TODO - implement pitch bends\n";
 			break;
-		case EffectEvent::Volume:
+		case EffectEvent::Type::Volume:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x40; // event with volume only
 			*this->patBufPos++ = ev->data >> 2; // volume value
 			break;
@@ -1028,12 +1044,12 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
-		case GotoEvent::NextPattern:
+		case GotoEvent::Type::NextPattern:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // event with effect only
 			*this->patBufPos++ = 0x03; // C: Jump to row
 			*this->patBufPos++ = ((ev->targetRow / 10) << 4) | (ev->targetRow % 10); // decimal as hex
 			break;
-		case GotoEvent::SpecificOrder:
+		case GotoEvent::Type::SpecificOrder:
 			*this->patBufPos++ = (trackIndex & 0x1F) | 0x80; // event with effect only
 			*this->patBufPos++ = 0x02; // B: Jump to order
 			*this->patBufPos++ = ev->targetOrder;
@@ -1048,21 +1064,21 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 {
 	this->writeDelay(delay);
 	switch (ev->configType) {
-		case ConfigurationEvent::EmptyEvent:
+		case ConfigurationEvent::Type::EmptyEvent:
 			break;
-		case ConfigurationEvent::EnableOPL3:
+		case ConfigurationEvent::Type::EnableOPL3:
 			if (ev->value != 0) std::cerr << "OPL3 cannot be enabled in this format, ignoring event.\n";
 			break;
-		case ConfigurationEvent::EnableDeepTremolo:
+		case ConfigurationEvent::Type::EnableDeepTremolo:
 			if (ev->value != 1) std::cerr << "Deep tremolo cannot be disabled in this format, ignoring event.\n";
 			break;
-		case ConfigurationEvent::EnableDeepVibrato:
+		case ConfigurationEvent::Type::EnableDeepVibrato:
 			if (ev->value != 1) std::cerr << "Deep vibrato cannot be disabled in this format, ignoring event.\n";
 			break;
-		case ConfigurationEvent::EnableRhythm:
+		case ConfigurationEvent::Type::EnableRhythm:
 			// Ignored, will set when rhythm channels are played
 			break;
-		case ConfigurationEvent::EnableWaveSel:
+		case ConfigurationEvent::Type::EnableWaveSel:
 			if (ev->value != 1) std::cerr << "Wave selection registers cannot be disabled in this format, ignoring event.\n";
 			break;
 	}

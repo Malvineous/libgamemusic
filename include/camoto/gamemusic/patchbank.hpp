@@ -22,9 +22,9 @@
 #ifndef _CAMOTO_GAMEMUSIC_PATCHBANK_HPP_
 #define _CAMOTO_GAMEMUSIC_PATCHBANK_HPP_
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <boost/shared_ptr.hpp>
 #include <camoto/gamemusic/patch.hpp>
 #include <camoto/gamemusic/exceptions.hpp>
 
@@ -32,10 +32,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// A PatchBank is a collection of patches, of any type (OPL, MIDI, etc.)
-typedef std::vector<PatchPtr> PatchBank;
-
-/// Shared pointer to a PatchBank.
-typedef boost::shared_ptr<PatchBank> PatchBankPtr;
+typedef std::vector<std::shared_ptr<Patch>> PatchBank;
 
 /// Convert Patch types into a string.
 template <class T>
@@ -44,12 +41,12 @@ struct PatchTypeName
 	static const char *name;
 };
 
-/// Require only certain patches in a PatchBankPtr.
+/// Require only certain patches in a std::shared_ptr<PatchBank>.
 template <class T>
-void requirePatches(const PatchBankPtr& p)
+void requirePatches(const PatchBank& p)
 {
-	for (PatchBank::const_iterator i = p->begin(); i != p->end(); i++) {
-		if (!dynamic_cast<T *>(i->get())) {
+	for (auto& i : p) {
+		if (!dynamic_cast<T *>(i.get())) {
 			throw format_limitation("This file format can only store "
 				+ std::string(PatchTypeName<T>::name) + " instruments.");
 		}

@@ -18,7 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <boost/pointer_cast.hpp>
+#include <iostream>
 #include <camoto/iostream_helpers.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
@@ -34,6 +34,9 @@ using namespace camoto::gamemusic;
 
 /// Number of available channels in a CMF file.
 const unsigned int CMF_MAX_CHANNELS = 16;
+
+/// Maximum number of bytes in each CMF title/composer/remarks field.
+const unsigned int CMF_ATTR_MAXLEN = 32767;
 
 /// Number of preset instruments (repeated from patch 0 to 128)
 #define CMF_NUM_DEFAULT_INSTRUMENTS 16
@@ -56,64 +59,64 @@ static const char *CMF_DEFAULT_PATCHES =
 "\x71\x22\xC5\x00\x6E\x8B\x17\x0E\x00\x00\x02"
 "\x32\x21\x16\x80\x73\x75\x24\x57\x00\x00\x0E";
 
-std::string MusicType_CMF::getCode() const
+std::string MusicType_CMF::code() const
 {
 	return "cmf-creativelabs";
 }
 
-std::string MusicType_CMF::getFriendlyName() const
+std::string MusicType_CMF::friendlyName() const
 {
 	return "Creative Labs Music File";
 }
 
-std::vector<std::string> MusicType_CMF::getFileExtensions() const
+std::vector<std::string> MusicType_CMF::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("cmf");
-	return vcExtensions;
+	return {
+		"cmf",
+	};
 }
 
-unsigned long MusicType_CMF::getCaps() const
+MusicType::Caps MusicType_CMF::caps() const
 {
 	return
-		InstEmpty
-		| InstOPL
-		| HasEvents
+		Caps::InstOPL
+		| Caps::InstOPLRhythm
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_CMF::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_CMF::isInstance(stream::input& content) const
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c01
 	char sig[4];
-	psMusic->seekg(0, stream::start);
-	psMusic->read(sig, 4);
-	if (strncmp(sig, "CTMF", 4) != 0) return MusicType::DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 4);
+	if (strncmp(sig, "CTMF", 4) != 0) return Certainty::DefinitelyNo;
 
 	// Make sure the header says it's version 1.0 or 1.1
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c02 (wrong ver)
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c03 (1.0)
 	uint16_t ver;
-	psMusic >> u16le(ver);
-	if ((ver != 0x100) && (ver != 0x101)) return MusicType::DefinitelyNo;
+	content >> u16le(ver);
+	if ((ver != 0x100) && (ver != 0x101)) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_CMF::read(stream::input& content, SuppData& suppData) const
 {
-	stream::len lenData = input->size();
+	stream::len lenData = content.size();
 
 	// Skip CTMF header.  This is an absolute seek as it will be by far the most
 	// common situation and avoids a lot of complexity because the header includes
 	// absolute file offsets, which we thus won't have to adjust.
-	input->seekg(4, stream::start); // skip CTMF header
+	content.seekg(4, stream::start); // skip CTMF header
 
 	uint16_t ver, offInst, ticksPerQuarter, ticksPerSecond;
 	uint16_t offMusic, offTitle, offComposer, offRemarks;
-	input
+	content
 		>> u16le(ver)
 		>> u16le(offInst)
 		>> u16le(offMusic)
@@ -141,14 +144,14 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	}
 
 	// Skip channel-in-use table as we don't need it
-	input->seekg(16, stream::cur);
+	content.seekg(16, stream::cur);
 
 	// Rest of header depends on file version
 	uint16_t numInstruments;
 	switch (ver) {
 		case 0x100: {
 			uint8_t temp;
-			input
+			content
 				>> u8(temp)
 			;
 			numInstruments = temp;
@@ -158,33 +161,31 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 			std::cerr << "Warning: Unknown CMF version " << (int)(ver >> 8) << '.'
 				<< (int)(ver & 0xFF) << ", proceeding as if v1.1" << std::endl;
 		case 0x101:
-			input
+			content
 				>> u16le(numInstruments)
 			;
 			// Skip uint16le tempo value (unknown use)
-			input->seekg(2, stream::cur);
+			content.seekg(2, stream::cur);
 			break;
 	}
 
 	// Process the MIDI data
-	input->seekg(offMusic, stream::start);
+	content.seekg(offMusic, stream::start);
 	Tempo initialTempo;
 	initialTempo.hertz(ticksPerSecond);
 	initialTempo.ticksPerQuarterNote(ticksPerQuarter);
-	MusicPtr music = midiDecode(input, MIDIFlags::UsePatchIndex
+	std::unique_ptr<Music> music = midiDecode(content, MIDIFlags::UsePatchIndex
 		| MIDIFlags::CMFExtensions, initialTempo);
 
 	unsigned int oplChannel = 0;
 	bool opl3 = false;
-	for (TrackInfoVector::iterator
-		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
-	) {
-		if (ti->channelIndex >= 11) {
-			ti->channelType = TrackInfo::OPLPercChannel;
-			ti->channelIndex = 15 - ti->channelIndex;
+	for (auto& ti : music->trackInfo) {
+		if (ti.channelIndex >= 11) {
+			ti.channelType = TrackInfo::ChannelType::OPLPerc;
+			ti.channelIndex = 15 - ti.channelIndex;
 		} else {
-			ti->channelType = TrackInfo::OPLChannel;
-			ti->channelIndex = oplChannel++;
+			ti.channelType = TrackInfo::ChannelType::OPL;
+			ti.channelIndex = oplChannel++;
 			if (oplChannel == 6) {
 				oplChannel = 9;
 				opl3 = true;
@@ -194,56 +195,61 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	}
 
 	// Set standard CMF settings
-	TrackPtr configTrack = music->patterns.at(0)->at(0);
+	auto& configTrack = music->patterns.at(0).at(0);
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableDeepTremolo;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableDeepTremolo;
-		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 0, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 0, te);
 	}
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableDeepVibrato;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableDeepVibrato;
-		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 1, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 1, te);
 	}
 	{
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableWaveSel;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableWaveSel;
-		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 2, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 2, te);
 	}
 
 	if (opl3) {
+		auto ev = std::make_shared<ConfigurationEvent>();
+		ev->configType = ConfigurationEvent::Type::EnableOPL3;
+		ev->value = 1;
+
 		TrackEvent te;
 		te.delay = 0;
-		ConfigurationEvent *ev = new ConfigurationEvent();
-		te.event.reset(ev);
-		ev->configType = ConfigurationEvent::EnableOPL3;
-		ev->value = 1;
-		configTrack->insert(configTrack->begin() + 0, te);
+		te.event = ev;
+		configTrack.insert(configTrack.begin() + 0, te);
 	}
 
 	// Read the instruments
-	PatchBankPtr oplBank(new PatchBank());
+	auto oplBank = std::make_shared<PatchBank>();
 	oplBank->reserve(numInstruments);
-	input->seekg(offInst, stream::start);
+	content.seekg(offInst, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
-		OPLPatchPtr patch(new OPLPatch());
+		auto patch = std::make_shared<OPLPatch>();
 		uint8_t inst[16];
-		input->read((char *)inst, 16);
+		content.read((char *)inst, 16);
 
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
+#warning TODO: Replace this with readSBI iostream handler, if the formats really are the same
 			o->enableTremolo = (inst[0 + op] >> 7) & 1;
 			o->enableVibrato = (inst[0 + op] >> 6) & 1;
 			o->enableSustain = (inst[0 + op] >> 5) & 1;
@@ -260,17 +266,17 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Melodic;
+		patch->rhythm      = OPLPatch::Rhythm::Melodic;
 
 		oplBank->push_back(patch);
 	}
 
 	// Load the default instruments
 	int genericMapping[CMF_NUM_DEFAULT_INSTRUMENTS];
-	PatchBankPtr oplBankDefault(new PatchBank());
+	auto oplBankDefault = std::make_shared<PatchBank>();
 	oplBankDefault->reserve(CMF_NUM_DEFAULT_INSTRUMENTS);
 	for (unsigned int i = 0; i < CMF_NUM_DEFAULT_INSTRUMENTS; i++) {
-		OPLPatchPtr patch(new OPLPatch());
+		auto patch = std::make_shared<OPLPatch>();
 		uint8_t *inst = (uint8_t *)(CMF_DEFAULT_PATCHES + i * 16);
 
 		OPLOperator *o = &patch->m;
@@ -291,7 +297,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Melodic;
+		patch->rhythm      = OPLPatch::Rhythm::Melodic;
 
 		oplBankDefault->push_back(patch);
 		genericMapping[i] = -1; // not yet assigned
@@ -307,25 +313,17 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	// optimised values.  This will condense the 127 available standard
 	// instruments down into only those which are used, as well as duplicating
 	// any instrument used for both percussion and normal rhythm.
-	for (std::vector<unsigned int>::const_iterator
-		o = music->patternOrder.begin(); o != music->patternOrder.end(); o++
-	) {
-		const unsigned int& patternIndex = *o;
-		const PatternPtr& pattern = music->patterns[patternIndex];
+	for (auto& patternIndex : music->patternOrder) {
+		auto& pattern = music->patterns[patternIndex];
 
 		// For each track
 		unsigned int trackIndex = 0;
-		for (Pattern::const_iterator
-			pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
-		) {
-			const TrackInfo& ti = music->trackInfo[trackIndex];
+		for (auto& pt : pattern) {
+			auto& ti = music->trackInfo[trackIndex];
 
 			// For each event in the track
-			for (Track::const_iterator
-				ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-			) {
-				const TrackEvent& te = *ev;
-				NoteOnEvent *nev = dynamic_cast<NoteOnEvent *>(te.event.get());
+			for (auto& te : pt) {
+				auto nev = dynamic_cast<NoteOnEvent *>(te.event.get());
 				if (!nev) continue;
 
 				// The velocity is loaded directly into the OPL chip, which uses a
@@ -335,14 +333,15 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 				// Figure out which rhythm instrument (if any) this is
 				// If there's a mapping (CMF instrument block # to patchbank #), use that, otherwise:
 				int targetRhythm;
-				if (ti.channelType == TrackInfo::OPLPercChannel) {
+				if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 					targetRhythm = ti.channelIndex + 1;
 				} else {
 					targetRhythm = 0;
 				}
 
 				// Figure out what CMF instrument number to play
-				MIDIPatchPtr midiInst = boost::dynamic_pointer_cast<MIDIPatch>(music->patches->at(nev->instrument));
+				auto midiInst = dynamic_cast<const MIDIPatch*>(
+					music->patches->at(nev->instrument).get());
 				assert(midiInst);
 				unsigned int oplIndex = midiInst->midiPatch;
 				int& curTarget = instMapping[targetRhythm][oplIndex];
@@ -371,6 +370,7 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 				assert(curTarget >= 0);
 				nev->instrument = curTarget;
 			}
+			trackIndex++;
 		}
 	}
 
@@ -378,37 +378,61 @@ MusicPtr MusicType_CMF::read(stream::input_sptr input, SuppData& suppData) const
 	music->patches = oplBank;
 
 	// Read metadata
-	if (offTitle) {
-		input->seekg(offTitle, stream::start);
-		input >> nullTerminated(music->metadata[Metadata::Title], 256);
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+		if (offTitle) {
+			content.seekg(offTitle, stream::start);
+			content >> nullTerminated(a.textValue, CMF_ATTR_MAXLEN);
+		}
 	}
-	if (offComposer) {
-		input->seekg(offComposer, stream::start);
-		input >> nullTerminated(music->metadata[Metadata::Author], 256);
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_AUTHOR;
+		a.desc = "Song composer";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+		if (offComposer) {
+			content.seekg(offComposer, stream::start);
+			content >> nullTerminated(a.textValue, CMF_ATTR_MAXLEN);
+		}
 	}
-	if (offRemarks) {
-		input->seekg(offRemarks, stream::start);
-		input >> nullTerminated(music->metadata[Metadata::Description], 256);
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_COMMENT;
+		a.desc = "Song remarks";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+		if (offRemarks) {
+			content.seekg(offRemarks, stream::start);
+			content >> nullTerminated(a.textValue, CMF_ATTR_MAXLEN);
+		}
 	}
 
 	// Swap operators for required percussive patches
-	oplDenormalisePerc(music, OPLPerc_CarFromMod);
+	oplDenormalisePerc(*music, OPLNormaliseType::CarFromMod);
 
 	return music;
 }
 
-void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_CMF::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->size() >= MIDI_PATCHES) {
+	requirePatches<OPLPatch>(*music.patches);
+	if (music.patches->size() >= MIDI_PATCHES) {
 		throw bad_patch("CMF files have a maximum of 128 instruments.");
 	}
 
 	// Swap operators for required percussive patches
-	PatchBankPtr patches = oplNormalisePerc(music, OPLPerc_CarFromMod);
+	auto patches = oplNormalisePerc(music, OPLNormaliseType::CarFromMod);
 
-	output->write(
+	content.write(
 		"CTMF"
 		"\x01\x01" // version 1.1
 	, 6);
@@ -417,35 +441,8 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	uint16_t lenText[3], offText[3];
 
 	// Get lengths from metadata
-	Metadata::TypeMap::const_iterator itTitle = music->metadata.find(Metadata::Title);
-	Metadata::TypeMap::const_iterator itComposer = music->metadata.find(Metadata::Author);
-	Metadata::TypeMap::const_iterator itDesc = music->metadata.find(Metadata::Description);
-	if (itTitle != music->metadata.end()) {
-		if (itTitle->second.length() > 65535) {
-			throw format_limitation("The metadata element 'Title' is longer than "
-				"the maximum 65535 character length.");
-		}
-		lenText[0] = itTitle->second.length();
-	} else {
-		lenText[0] = 0; // no tag
-	}
-	if (itComposer != music->metadata.end()) {
-		if (itComposer->second.length() > 65535) {
-			throw format_limitation("The metadata element 'Author' is longer than "
-				"the maximum 65535 character length.");
-		}
-		lenText[1] = itComposer->second.length();
-	} else {
-		lenText[1] = 0; // no tag
-	}
-	if (itDesc != music->metadata.end()) {
-		if (itDesc->second.length() > 65535) {
-			throw format_limitation("The metadata element 'Description' is longer than "
-				"the maximum 65535 character length.");
-		}
-		lenText[2] = itDesc->second.length();
-	} else {
-		lenText[2] = 0; // no tag
+	for (unsigned int i = 0; i < 3; i++) {
+		lenText[i] = music.attributes().at(i).textValue.length();
 	}
 
 	for (int i = 0; i < 3; i++) {
@@ -461,66 +458,61 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 	offNext += 16 * numInstruments;
 	uint16_t offMusic = offNext;
 
-	output
+	content
 		<< u16le(offInst)
 		<< u16le(offMusic)
-		<< u16le(music->initialTempo.ticksPerQuarterNote())
-		<< u16le(music->initialTempo.hertz())
+		<< u16le(music.initialTempo.ticksPerQuarterNote())
+		<< u16le(music.initialTempo.hertz())
 	;
 
 	// Write offset of title, composer and remarks
 	for (int i = 0; i < 3; i++) {
-		output << u16le(offText[i]);
+		content << u16le(offText[i]);
 	}
 
 	// Placeholder channel-in-use table (overwritten later)
-	for (int i = 0; i < 16; i++) output << u8(1);
+	for (int i = 0; i < 16; i++) content << u8(1);
 
-	output
+	content
 		<< u16le(numInstruments)
-		<< u16le(music->initialTempo.bpm())
+		<< u16le(music.initialTempo.bpm())
 	;
 
 	// Write title, composer and remarks strings here (null terminated)
-	if (itTitle != music->metadata.end()) {
-		output << nullTerminated(itTitle->second, 65535);
-	}
-	if (itComposer != music->metadata.end()) {
-		output << nullTerminated(itComposer->second, 65535);
-	}
-	if (itDesc != music->metadata.end()) {
-		output << nullTerminated(itDesc->second, 65535);
+	for (unsigned int i = 0; i < 3; i++) {
+		if (lenText[i] > 0) {
+			content << nullTerminated(music.attributes().at(i).textValue,
+				CMF_ATTR_MAXLEN);
+		}
 	}
 
 	// Create a new TrackInfo that moves everything onto the correct MIDI channels
-	TrackInfoVector midiTrackInfo;
-	for (TrackInfoVector::iterator
-		ti = music->trackInfo.begin(); ti != music->trackInfo.end(); ti++
-	) {
+	std::vector<TrackInfo> midiTrackInfo;
+	for (auto& ti : music.trackInfo) {
 		TrackInfo nti;
-		nti.channelType = TrackInfo::MIDIChannel;
-		if (ti->channelType == TrackInfo::OPLPercChannel) {
-			nti.channelIndex = 15 - ti->channelIndex;
+		nti.channelType = TrackInfo::ChannelType::MIDI;
+		if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
+			nti.channelIndex = 15 - ti.channelIndex;
 		} else {
-			nti = *ti;
+			nti = ti;
 		}
 		if (nti.channelIndex > 15) {
 			throw format_limitation("CMF files can only have up to 16 channels.");
 		}
 		midiTrackInfo.push_back(nti);
 	}
-	MusicPtr musicMIDI(new Music);
-	*musicMIDI = *music;
+	auto musicMIDI = std::make_shared<Music>();
+	*musicMIDI = music;
 	musicMIDI->trackInfo = midiTrackInfo;
 	// musicMIDI is now the same as music, but with the CMF MIDI track assignment
 	// for midiEncode to use to place percussive events on the right channels.
 
 	for (int i = 0; i < numInstruments; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(i));
+		auto patch = dynamic_cast<const OPLPatch*>(patches->at(i).get());
 		assert(patch);
 
-		OPLOperator *o = &patch->m;
+		auto o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =
 				((o->enableTremolo & 1) << 7) |
@@ -540,44 +532,68 @@ void MusicType_CMF::write(stream::output_sptr output, SuppData& suppData,
 		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
 		inst[11] = inst[12] = inst[13] = inst[14] = inst[15] = 0;
 
-		output->write((char *)inst, 16);
+		content.write((char *)inst, 16);
 	}
 
 	// Call the generic OPL writer.
 	bool channelsUsed[MIDI_CHANNEL_COUNT];
-	unsigned long midiFlags = MIDIFlags::UsePatchIndex | MIDIFlags::CMFExtensions;
-	if (flags & MusicType::IntegerNotesOnly) {
+	MIDIFlags midiFlags = MIDIFlags::UsePatchIndex | MIDIFlags::CMFExtensions;
+	if (flags & MusicType::WriteFlags::IntegerNotesOnly) {
 		midiFlags |= MIDIFlags::IntegerNotesOnly;
 	}
-	midiEncode(output, musicMIDI, midiFlags, channelsUsed,
+	midiEncode(content, *musicMIDI, midiFlags, channelsUsed,
 		EventHandler::Order_Row_Track, NULL);
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	// Update the channel-in-use table
 	uint8_t channelsInUse[MIDI_CHANNEL_COUNT];
 	for (unsigned int i = 0; i < MIDI_CHANNEL_COUNT; i++) {
 		channelsInUse[i] = channelsUsed[i] ? 1 : 0;
 	}
-	output->seekp(20, stream::start);
-	output->write((char *)channelsInUse, 16);
+	content.seekp(20, stream::start);
+	content.write((char *)channelsInUse, 16);
 
 	return;
 }
 
-SuppFilenames MusicType_CMF::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_CMF::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_CMF::getMetadataList() const
+std::vector<Attribute> MusicType_CMF::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	types.push_back(Metadata::Author);
-	types.push_back(Metadata::Description);
-	return types;
+	std::vector<Attribute> items;
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+	}
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_AUTHOR;
+		a.desc = "Song composer";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+	}
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_COMMENT;
+		a.desc = "Song remarks";
+		a.textMaxLength = CMF_ATTR_MAXLEN;
+	}
+	return items;
 }

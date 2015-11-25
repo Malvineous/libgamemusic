@@ -37,16 +37,16 @@ class test_mus_got: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::PossiblyYes, this->standard());
+			this->isInstance(MusicType::Certainty::PossiblyYes, this->standard());
 
 			// c01: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x01"
 				"\x00\x00\x00" "\x00"
 			));
 
 			// c02: Uneven length
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x01\x00"
 				"\x00\x20\xAE"
 				"\x00"
@@ -54,7 +54,7 @@ class test_mus_got: public test_music
 			));
 
 			// c03: Bad signature
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x02\x00"
 				"\x00\x20\xAE"
 				"\x00\x40\x7F"
@@ -76,7 +76,7 @@ class test_mus_got: public test_music
 			));
 
 			// c04: Missing/incomplete loop-to-start marker
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x01\x00"
 				"\x00\x20\xAE"
 				"\x00\x40\x7F"

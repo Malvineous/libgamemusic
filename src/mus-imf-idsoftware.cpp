@@ -40,8 +40,8 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_IMF(stream::input_sptr input, unsigned int lenData)
-			:	input(input),
+		OPLReaderCallback_IMF(stream::input& content, unsigned int lenData)
+			:	content(content),
 				lenData(lenData)
 		{
 		}
@@ -52,7 +52,7 @@ class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 			if (this->lenData == 0) return false;
 
 			try {
-				this->input
+				this->content
 					>> u8(oplEvent->reg)
 					>> u8(oplEvent->val)
 					>> u16le(oplEvent->delay)
@@ -69,8 +69,8 @@ class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 		}
 
 	protected:
-		stream::input_sptr input;   ///< Input file
-		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
+		stream::input& content;   ///< Input file
+		unsigned long lenData;    ///< Length of song data (where song stops and tags start)
 };
 
 
@@ -78,8 +78,8 @@ class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 {
 	public:
-		OPLWriterCallback_IMF(stream::output_sptr output, unsigned int speed)
-			:	output(output),
+		OPLWriterCallback_IMF(stream::output& content, unsigned int speed)
+			:	content(content),
 				speed(speed)
 		{
 		}
@@ -94,7 +94,7 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 
 				// Write out super long delays as dummy events to an unused port.
 				while (delay > 0xFFFF) {
-					this->output
+					this->content
 						<< u8(0x00)
 						<< u8(0x00)
 						<< u16le(0xFFFF)
@@ -110,14 +110,14 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 				// OPLWriteFlags::OPL2Only being supplied in the call to oplEncode().
 				assert(oplEvent->chipIndex == 0);
 
-				this->output
+				this->content
 					<< u8(oplEvent->reg)
 					<< u8(oplEvent->val)
 					<< u16le(delay)
 				;
 			} else if (delay) {
 				// There is a delay but no regs (e.g. trailing delay)
-				this->output
+				this->content
 					<< u8(0)
 					<< u8(0)
 					<< u16le(delay)
@@ -127,56 +127,58 @@ class OPLWriterCallback_IMF: virtual public OPLWriterCallback
 		}
 
 	protected:
-		stream::output_sptr output; ///< Output file
-		unsigned int speed;         ///< IMF clock rate
+		stream::output& content; ///< Output file
+		unsigned int speed;      ///< IMF clock rate
 };
 
 
-MusicType_IMF_Common::MusicType_IMF_Common(unsigned int imfType, unsigned int speed)
+MusicType_IMF_Common::MusicType_IMF_Common(unsigned int imfType,
+	unsigned int speed)
 	:	imfType(imfType),
 		speed(speed)
 {
 }
 
-unsigned long MusicType_IMF_Common::getCaps() const
+MusicType::Caps MusicType_IMF_Common::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
-		| HardwareOPL2
+		Caps::InstOPL
+		| Caps::HasEvents
+		| Caps::HardwareOPL2
 	;
 }
 
-MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input& content)
+	const
 {
-	stream::pos len = input->size();
+	stream::pos len = content.size();
 
 	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c01
-	if (len < 4) return DefinitelyNo; // too short
+	if (len < 4) return Certainty::DefinitelyNo; // too short
 
 	// Read the first two bytes as the data length size and make sure they
 	// don't point past the end of the file.
 	// TESTED BY: mus_imf_idsoftware_type1_isinstance_c05
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 	uint16_t dataLen;
-	input >> u16le(dataLen);
-	if (dataLen > len) return DefinitelyNo;
+	content >> u16le(dataLen);
+	if (dataLen > len) return Certainty::DefinitelyNo;
 
 	if (dataLen == 0) { // type-0 format
 		// Jump back so these bytes are counted as the first event
-		input->seekg(0, stream::start);
+		content.seekg(0, stream::start);
 		// Only type-0 files start like this
 		// TESTED BY: mus_imf_idsoftware_type0_isinstance_c04
-		if (this->imfType != 0) return DefinitelyNo;
+		if (this->imfType != 0) return Certainty::DefinitelyNo;
 		dataLen = len;
 	} else { // type-1 format
 		// TESTED BY: mus_imf_idsoftware_type1_isinstance_c04
-		if (this->imfType != 1) return DefinitelyNo;
+		if (this->imfType != 1) return Certainty::DefinitelyNo;
 	}
 
 	// Make sure files with incomplete data sections aren't picked up
 	// TESTED BY: mus_imf_idsoftware_type*_isinstance_c06
-	if (dataLen % 4) return DefinitelyNo;
+	if (dataLen % 4) return Certainty::DefinitelyNo;
 
 	// TODO: Parse file and check for invalid register writes.
 	uint16_t delay;
@@ -185,7 +187,7 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 		// When dataLen < 4, TESTED BY: mus_imf_idsoftware_type1_isinstance_c06
 
 		// Read in the next reg/data pair
-		input
+		content
 			>> u8(reg)
 			>> u8(val)
 			>> u16le(delay)
@@ -207,30 +209,31 @@ MusicType::Certainty MusicType_IMF_Common::isInstance(stream::input_sptr input) 
 		) {
 			// This is an invalid OPL register
 			// TESTED BY: mus_imf_idsoftware_type*_isinstance_c02
-			return DefinitelyNo;
+			return Certainty::DefinitelyNo;
 		}
 
 		// Very unlikely that a real song would have a lengthy delay in it...
 		// TESTED BY: mus_imf_idsoftware_type*_isinstance_c03
-		if (delay > IMF_MAX_DELAY) return DefinitelyNo;
+		if (delay > IMF_MAX_DELAY) return Certainty::DefinitelyNo;
 
 		dataLen -= 4;
 	}
 
 	// TESTED BY: mus_imf_idsoftware_isinstance_c00
 	// TESTED BY: mus_imf_idsoftware_isinstance_c05
-	return DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_IMF_Common::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_IMF_Common::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
 	unsigned int lenData;
 	if (this->imfType == 1) {
-		input >> u16le(lenData);
+		content >> u16le(lenData);
 	} else {
 		lenData = IMF_LEN_UNUSED; // read until EOF
 	}
@@ -239,78 +242,75 @@ MusicPtr MusicType_IMF_Common::read(stream::input_sptr input, SuppData& suppData
 	initialTempo.hertz(this->speed);
 	initialTempo.ticksPerBeat = this->speed / 4; // still wrong, but the defaults are wildly inaccurate
 
-	OPLReaderCallback_IMF cb(input, lenData);
-	MusicPtr music = oplDecode(&cb, DelayIsPostData, OPL_FNUM_DEFAULT, initialTempo);
+	OPLReaderCallback_IMF cb(content, lenData);
+	auto music = oplDecode(&cb, DelayType::DelayIsPostData, OPL_FNUM_DEFAULT,
+		initialTempo);
 
 	if (this->imfType == 1) {
 		// See if there are any tags present
-		readMalvMetadata(input, music->metadata);
+		readMalvMetadata(content, music.get());
 	}
 
 	return music;
 }
 
-void MusicType_IMF_Common::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_IMF_Common::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
 	if (this->imfType == 1) {
 		// Write a placeholder for the song length we'll fill out later when we
 		// know what value to use.
-		output->write("\x00\x00", 2);
+		content.write("\x00\x00", 2);
 	}
 
 	// Most files seem to start with a dummy event for some reason.  At least it
 	// makes it easy to tell between type-0 and type-1 files.
-	output << u32le(0);
+	content << u32le(0);
 
 	// Call the generic OPL writer.
-	OPLWriterCallback_IMF cb(output, this->speed);
+	OPLWriterCallback_IMF cb(content, this->speed);
+
+	auto oplFlags = toOPLFlags(flags);
 
 	// IMF files need the first channel free, as games use this for Adlib SFX.
-	flags |= OPLWriteFlags::ReserveFirstChan;
+	oplFlags |= OPLWriteFlags::ReserveFirstChan;
 
 	// Force this format to OPL2 as that's all we can write
-	flags |= OPLWriteFlags::OPL2Only;
+	oplFlags |= OPLWriteFlags::OPL2Only;
 
-	oplEncode(&cb, music, DelayIsPostData, OPL_FNUM_DEFAULT, flags);
+	oplEncode(&cb, music, DelayType::DelayIsPostData, OPL_FNUM_DEFAULT, oplFlags);
 
 	if (this->imfType == 1) {
 		// Update the placeholder we wrote in the constructor with the file size
-		int size = output->tellp();
+		int size = content.tellp();
 		size -= 2; // don't count the header
 
 		// Write out any metadata
-		writeMalvMetadata(output, music->metadata);
+		writeMalvMetadata(content, music.attributes());
 
 		// Set final filesize to this
-		output->truncate_here();
+		content.truncate_here();
 
-		output->seekp(0, stream::start);
-		output << u16le(size);
+		content.seekp(0, stream::start);
+		content << u16le(size);
 	} else {
 		// Set final filesize to this
-		output->truncate_here();
+		content.truncate_here();
 	}
 
 	return;
 }
 
-SuppFilenames MusicType_IMF_Common::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_IMF_Common::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_IMF_Common::getMetadataList() const
+std::vector<Attribute> MusicType_IMF_Common::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	if (this->imfType == 1) {
-		types.push_back(Metadata::Title);
-		types.push_back(Metadata::Author);
-		types.push_back(Metadata::Description);
-	}
-	return types;
+	return supportedMalvMetadata();
 }
 
 
@@ -319,22 +319,22 @@ MusicType_IMF_Type0::MusicType_IMF_Type0()
 {
 }
 
-std::string MusicType_IMF_Type0::getCode() const
+std::string MusicType_IMF_Type0::code() const
 {
 	return "imf-idsoftware-type0";
 }
 
-std::string MusicType_IMF_Type0::getFriendlyName() const
+std::string MusicType_IMF_Type0::friendlyName() const
 {
 	return "id Software Music Format (type-0, 560Hz)";
 }
 
-std::vector<std::string> MusicType_IMF_Type0::getFileExtensions() const
+std::vector<std::string> MusicType_IMF_Type0::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("imf");
-	vcExtensions.push_back("mni");
-	return vcExtensions;
+	return {
+		"imf",
+		"mni",
+	};
 }
 
 
@@ -343,22 +343,22 @@ MusicType_IMF_Type1::MusicType_IMF_Type1()
 {
 }
 
-std::string MusicType_IMF_Type1::getCode() const
+std::string MusicType_IMF_Type1::code() const
 {
 	return "imf-idsoftware-type1";
 }
 
-std::string MusicType_IMF_Type1::getFriendlyName() const
+std::string MusicType_IMF_Type1::friendlyName() const
 {
 	return "id Software Music Format (type-1, 560Hz)";
 }
 
-std::vector<std::string> MusicType_IMF_Type1::getFileExtensions() const
+std::vector<std::string> MusicType_IMF_Type1::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("imf");
-	vcExtensions.push_back("mni");
-	return vcExtensions;
+	return {
+		"imf",
+		"mni",
+	};
 }
 
 
@@ -367,21 +367,21 @@ MusicType_WLF_Type0::MusicType_WLF_Type0()
 {
 }
 
-std::string MusicType_WLF_Type0::getCode() const
+std::string MusicType_WLF_Type0::code() const
 {
 	return "wlf-idsoftware-type0";
 }
 
-std::string MusicType_WLF_Type0::getFriendlyName() const
+std::string MusicType_WLF_Type0::friendlyName() const
 {
 	return "id Software Music Format (type-0, 700Hz)";
 }
 
-std::vector<std::string> MusicType_WLF_Type0::getFileExtensions() const
+std::vector<std::string> MusicType_WLF_Type0::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("wlf");
-	return vcExtensions;
+	return {
+		"wlf",
+	};
 }
 
 
@@ -390,21 +390,21 @@ MusicType_WLF_Type1::MusicType_WLF_Type1()
 {
 }
 
-std::string MusicType_WLF_Type1::getCode() const
+std::string MusicType_WLF_Type1::code() const
 {
 	return "wlf-idsoftware-type1";
 }
 
-std::string MusicType_WLF_Type1::getFriendlyName() const
+std::string MusicType_WLF_Type1::friendlyName() const
 {
 	return "id Software Music Format (type-1, 700Hz)";
 }
 
-std::vector<std::string> MusicType_WLF_Type1::getFileExtensions() const
+std::vector<std::string> MusicType_WLF_Type1::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("wlf");
-	return vcExtensions;
+	return {
+		"wlf",
+	};
 }
 
 
@@ -413,19 +413,19 @@ MusicType_IMF_Duke2::MusicType_IMF_Duke2()
 {
 }
 
-std::string MusicType_IMF_Duke2::getCode() const
+std::string MusicType_IMF_Duke2::code() const
 {
 	return "imf-idsoftware-duke2";
 }
 
-std::string MusicType_IMF_Duke2::getFriendlyName() const
+std::string MusicType_IMF_Duke2::friendlyName() const
 {
 	return "id Software Music Format (type-0, 280Hz)";
 }
 
-std::vector<std::string> MusicType_IMF_Duke2::getFileExtensions() const
+std::vector<std::string> MusicType_IMF_Duke2::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("imf");
-	return vcExtensions;
+	return {
+		"imf",
+	};
 }

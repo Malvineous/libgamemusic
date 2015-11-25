@@ -1,7 +1,6 @@
 /**
  * @file  camoto/gamemusic/music.hpp
- * @brief Declaration of top-level Music class, for in-memory representation
- *        of all music formats.
+ * @brief Format-independent in-memory representation of a single song.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
  *
@@ -22,25 +21,17 @@
 #ifndef _CAMOTO_GAMEMUSIC_MUSIC_HPP_
 #define _CAMOTO_GAMEMUSIC_MUSIC_HPP_
 
-#include <math.h>
-#include <boost/shared_ptr.hpp>
-#include <camoto/metadata.hpp>
-#include <camoto/gamemusic/tempo.hpp>
+#include <camoto/attribute.hpp>
 
 namespace camoto {
 namespace gamemusic {
 
-struct Music;
-
-/// Shared pointer to a Music instance.
-typedef boost::shared_ptr<Music> MusicPtr;
-
-/// Shared pointer to an unmodifiable Music instance.
-typedef boost::shared_ptr<const Music> ConstMusicPtr;
+class Music;
 
 } // namespace gamemusic
 } // namespace camoto
 
+#include <camoto/gamemusic/tempo.hpp>
 #include <camoto/gamemusic/patchbank.hpp>
 #include <camoto/gamemusic/events.hpp>
 
@@ -51,16 +42,16 @@ namespace gamemusic {
 /**
  * This controls which channel a track's events are played on.
  */
-struct DLL_EXPORT TrackInfo
+struct CAMOTO_GAMEMUSIC_API TrackInfo
 {
 	/// Channel type
 	enum ChannelType {
-		UnusedChannel,
-		AnyChannel,
-		OPLChannel,
-		OPLPercChannel,
-		MIDIChannel,
-		PCMChannel,
+		Unused,
+		Any,
+		OPL,
+		OPLPerc,
+		MIDI,
+		PCM,
 	};
 
 	/// What type of channel this track will be played through.
@@ -99,9 +90,6 @@ struct DLL_EXPORT TrackInfo
 	unsigned int channelIndex;
 };
 
-/// Vector of trackinfo (a channel map)
-typedef std::vector<TrackInfo> TrackInfoVector;
-
 /// In-memory representation of a single song.
 /**
  * This class represents a single song in an arbitrary file format.  The
@@ -110,10 +98,17 @@ typedef std::vector<TrackInfo> TrackInfoVector;
  * back to a file, as most file formats only support differing subsets of the
  * capabilities presented here.
  */
-struct Music
+struct Music: public HasAttributes
 {
+	/// Add a new attribute.  This function should only be used by format
+	/// handlers.
+	inline Attribute& addAttribute() {
+		this->v_attributes.emplace_back();
+		return this->v_attributes.back();
+	}
+
 	/// PatchBank holding all instruments in the song.
-	PatchBankPtr patches;
+	std::shared_ptr<PatchBank> patches;
 
 	/// List of all tracks in the song and their channel allocations.
 	/**
@@ -121,7 +116,7 @@ struct Music
 	 * this vector, and the allocation specified in this vector holds true for
 	 * all tracks in all patterns.
 	 */
-	TrackInfoVector trackInfo;
+	std::vector<TrackInfo> trackInfo;
 
 	/// List of events in the song (note on, note off, etc.)
 	/**
@@ -129,7 +124,7 @@ struct Music
 	 * vector.  Patterns are played one after the other, in the order given by
 	 * \ref patternOrder.
 	 */
-	std::vector<PatternPtr> patterns;
+	std::vector<Pattern> patterns;
 
 	/// Which order the above patterns play in.
 	/**
@@ -152,9 +147,6 @@ struct Music
 	 * This is the same for all tracks in all patterns in the song.
 	 */
 	unsigned int ticksPerTrack;
-
-	/// List of metadata elements set.  Remove from map to unset.
-	Metadata::TypeMap metadata;
 
 	/// Initial song tempo, time signature, etc.
 	/**

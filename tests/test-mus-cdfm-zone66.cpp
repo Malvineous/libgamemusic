@@ -38,10 +38,10 @@ class test_cdfm_zone66: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Sample data past EOF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x55\x00\x00\x00"
 				"\x00\x01"
@@ -66,7 +66,7 @@ class test_cdfm_zone66: public test_music
 			));
 
 			// c02: Loop target is past end of song
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x02"
 				"\x45\x00\x00\x00"
 				"\x00\x01"
@@ -91,7 +91,7 @@ class test_cdfm_zone66: public test_music
 			));
 
 			// c03: Sequence specifies invalid pattern
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x45\x00\x00\x00"
 				"\x00\x02"
@@ -116,7 +116,7 @@ class test_cdfm_zone66: public test_music
 			));
 
 			// c04: Pattern data offset is past EOF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x45\x00\x00\x00"
 				"\x00\x01"
@@ -141,20 +141,20 @@ class test_cdfm_zone66: public test_music
 			));
 
 			// c05: Too short: header truncated
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x45\x00\x00"
 			));
 
 			// c06: Too short: order list truncated
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x45\x00\x00\x00"
 				"\x00"
 			));
 
 			// c07: Too short: pattern-offset-list truncated
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x05\x02\x02\x01\x01\x01"
 				"\x45\x00\x00\x00"
 				"\x00\x01"
@@ -163,7 +163,7 @@ class test_cdfm_zone66: public test_music
 			));
 
 			// c08: Sample data past EOF, with no PCM instruments
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"\x05\x02\x02\x00\x01\x01"
 				"\x55\x00\x00\x00"
 				"\x00\x01"

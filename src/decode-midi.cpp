@@ -24,6 +24,7 @@
 #include <camoto/util.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
+#include <camoto/gamemusic/util-midi.hpp>
 #include "patch-adlib.hpp"
 #include "decode-midi.hpp"
 #include "track-split.hpp"
@@ -53,9 +54,6 @@ class MIDIDecoder
 	public:
 		/// Constructor
 		/**
-		 * @param input
-		 *   Data stream containing the MIDI data.
-		 *
 		 * @param midiFlags
 		 *   One or more flags.  Use MIDIFlags::Default unless the MIDI
 		 *   data is unusual in some way.
@@ -65,8 +63,7 @@ class MIDIDecoder
 		 *   particularly important for a MIDI file to get the beat/bar arrangement
 		 *   correct.
 		 */
-		MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
-			const Tempo& initialTempo);
+		MIDIDecoder(MIDIFlags midiFlags, const Tempo& initialTempo);
 
 		virtual ~MIDIDecoder();
 
@@ -76,20 +73,23 @@ class MIDIDecoder
 		 * until it returns false.  It will populate the events and instruments in
 		 * the supplied Music instance.
 		 *
+		 * @param content
+		 *   Data stream containing the MIDI data.
+		 *
 		 * @throw stream:error
 		 *   If the input data could not be read or converted for some reason.
 		 */
-		MusicPtr decode();
+		std::unique_ptr<Music> decode(stream::input& content);
 
 	protected:
-		stream::input_sptr input;         ///< MIDI data to read
+		stream::input* content;         ///< MIDI data to read
 		unsigned long lastDelay[MIDI_CHANNEL_COUNT]; ///< Ticks since last event on this channel
 		unsigned long totalDelay;         ///< Running total of all delays
 		std::vector<bool> noteOnTrack;    ///< true if note playing on given track
 		uint8_t lastEvent;                ///< Last event (for MIDI running status)
-		std::deque<EventPtr> eventBuffer; ///< List of events to return in readNextEvent()
-		PatchBankPtr patches;             ///< Cached patches populated by getPatchBank()
-		unsigned int midiFlags;           ///< Flags supplied in constructor
+		std::deque<std::shared_ptr<Event>> eventBuffer; ///< List of events to return in readNextEvent()
+		PatchBank patches;             ///< Cached patches populated by getPatchBank()
+		MIDIFlags midiFlags;           ///< Flags supplied in constructor
 		Tempo curTempo;                   ///< Last set song tempo
 
 		/// For each of the percussion notes, which instrument are we using?
@@ -103,13 +103,6 @@ class MIDIDecoder
 
 		/// Is this note being played on this channel?
 		bool activeNotes[MIDI_CHANNEL_COUNT][MIDI_NOTES];
-
-		/// Read a variable-length integer from MIDI data.
-		/**
-		 * Reads up to four bytes from the MIDI stream, returning a 28-bit
-		 * integer.
-		 */
-		uint32_t readMIDINumber();
 
 		/// Set the MIDI patch in use on the given channel.
 		/**
@@ -125,22 +118,20 @@ class MIDIDecoder
 		 * @param midiPatch
 		 *   MIDI instrument number (0-127).
 		 */
-		void setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
+		void setInstrument(PatchBank& patches, unsigned int midiChannel,
 			unsigned int midiPatch);
 };
 
-MusicPtr camoto::gamemusic::midiDecode(stream::input_sptr input,
-	unsigned int flags, const Tempo& initialTempo)
+std::unique_ptr<Music> camoto::gamemusic::midiDecode(stream::input& input,
+	MIDIFlags flags, const Tempo& initialTempo)
 {
-	MIDIDecoder decoder(input, flags, initialTempo);
-	return decoder.decode();
+	MIDIDecoder decoder(flags, initialTempo);
+	return decoder.decode(input);
 }
 
 
-MIDIDecoder::MIDIDecoder(stream::input_sptr input, unsigned int midiFlags,
-	const Tempo& initialTempo)
-	:	input(input),
-		totalDelay(0),
+MIDIDecoder::MIDIDecoder(MIDIFlags midiFlags, const Tempo& initialTempo)
+	:	totalDelay(0),
 		lastEvent(0),
 		midiFlags(midiFlags),
 		curTempo(initialTempo)
@@ -157,24 +148,23 @@ MIDIDecoder::~MIDIDecoder()
 {
 }
 
-MusicPtr MIDIDecoder::decode()
+std::unique_ptr<Music> MIDIDecoder::decode(stream::input& content)
 {
-	MusicPtr music(new Music());
-	music->patches.reset(new PatchBank());
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 	music->initialTempo = this->curTempo;
 
-	PatternPtr pattern(new Pattern());
-	music->patterns.push_back(pattern);
+	music->patterns.emplace_back();
+	Pattern& pattern = music->patterns.back();
 	music->patternOrder.push_back(0);
 
 	for (unsigned int c = 0; c < MIDI_CHANNEL_COUNT; c++) {
-		TrackInfo t;
-		t.channelType = TrackInfo::MIDIChannel;
+		music->trackInfo.emplace_back();
+		TrackInfo& t = music->trackInfo.back();
+		t.channelType = TrackInfo::ChannelType::MIDI;
 		t.channelIndex = c;
-		music->trackInfo.push_back(t);
 
-		TrackPtr track(new Track());
-		pattern->push_back(track);
+		pattern.emplace_back();
 		lastDelay[c] = 0;
 	}
 
@@ -182,7 +172,8 @@ MusicPtr MIDIDecoder::decode()
 	try {
 		bool eof = false;
 		do {
-			uint32_t delay = this->readMIDINumber();
+			uint32_t delay;
+			content >> u28midi(delay);
 			for (unsigned int c = 0; c < MIDI_CHANNEL_COUNT; c++) {
 				lastDelay[c] += delay;
 			}
@@ -217,14 +208,14 @@ MusicPtr MIDIDecoder::decode()
 			}
 
 			uint8_t event, evdata;
-			this->input >> u8(event);
+			content >> u8(event);
 			if (event & 0x80) {
 				// If the high bit is set it's a normal event
 				if ((event & 0xF0) != 0xF0) {
 					// 0xF0 events do not change the running status
 					this->lastEvent = event;
 				}
-				this->input >> u8(evdata);
+				content >> u8(evdata);
 			} else {
 				// The high bit is unset, so this is actually the first data
 				// byte for a new event, of the same type as the last event.
@@ -251,7 +242,7 @@ MusicPtr MIDIDecoder::decode()
 
 					const uint8_t& note = evdata;
 					uint8_t velocity;
-					this->input >> u8(velocity);
+					content >> u8(velocity);
 
 					TrackEvent te;
 					te.delay = this->lastDelay[track];
@@ -274,7 +265,7 @@ MusicPtr MIDIDecoder::decode()
 						te.event.reset(ev);
 						ev->milliHertz = midiToFreq(note);
 					}
-					pattern->at(track)->push_back(te);
+					pattern[track].push_back(te);
 
 					// Record this note as inactive on the channel
 					this->activeNotes[midiChannel][note] = false;
@@ -289,7 +280,7 @@ MusicPtr MIDIDecoder::decode()
 
 					uint8_t& note = evdata;
 					uint8_t velocity;
-					this->input >> u8(velocity);
+					content >> u8(velocity);
 
 					if ((velocity == 0) || (this->activeNotes[midiChannel][note])) { // note off
 						// Only generate a note-off event if the note was actually on, or
@@ -315,7 +306,7 @@ MusicPtr MIDIDecoder::decode()
 							te.event.reset(ev);
 							ev->milliHertz = midiToFreq(note);
 						}
-						pattern->at(track)->push_back(te);
+						pattern[track].push_back(te);
 
 						// Record this note as inactive on the channel
 						this->activeNotes[midiChannel][note] = false;
@@ -332,7 +323,7 @@ MusicPtr MIDIDecoder::decode()
 						if (((this->midiFlags & MIDIFlags::Channel10NoPerc) == 0) && (midiChannel == 9)) {
 							if (this->percMap[note] == 0xFF) {
 								// Need to allocate a new instrument for this percussion note
-								MIDIPatchPtr newPatch(new MIDIPatch());
+								auto newPatch = std::make_shared<MIDIPatch>();
 								newPatch->percussion = true;
 								newPatch->midiPatch = note;
 								this->percMap[note] = music->patches->size();
@@ -347,7 +338,7 @@ MusicPtr MIDIDecoder::decode()
 						if (ev->instrument >= music->patches->size()) {
 							// A note is sounding without a patch change event ever arriving,
 							// so use a default instrument
-							this->setInstrument(music->patches, midiChannel, MIDI_DEFAULT_PATCH);
+							this->setInstrument(*music->patches, midiChannel, MIDI_DEFAULT_PATCH);
 						}
 
 						if (this->midiFlags & MIDIFlags::CMFExtensions) {
@@ -359,7 +350,7 @@ MusicPtr MIDIDecoder::decode()
 								eventsOPL8.push_back(ev);
 							}
 						}
-						pattern->at(track)->push_back(te);
+						pattern[track].push_back(te);
 
 						// Record this note as active on the channel
 						this->activeNotes[midiChannel][note] = true;
@@ -369,7 +360,7 @@ MusicPtr MIDIDecoder::decode()
 				case 0xA0: { // Polyphonic key pressure (two data bytes)
 					const uint8_t& note = evdata;
 					uint8_t pressure;
-					this->input >> u8(pressure);
+					content >> u8(pressure);
 
 					TrackEvent te;
 					te.delay = this->lastDelay[track];
@@ -377,16 +368,16 @@ MusicPtr MIDIDecoder::decode()
 
 					SpecificNoteEffectEvent *ev = new SpecificNoteEffectEvent();
 					te.event.reset(ev);
-					ev->type = EffectEvent::Volume;
+					ev->type = EffectEvent::Type::Volume;
 					ev->data = (pressure << 1) | (pressure >> 6);
 					ev->milliHertz = midiToFreq(note);
-					pattern->at(track)->push_back(te);
+					pattern[track].push_back(te);
 					break;
 				}
 				case 0xB0: { // Controller (two data bytes)
 					uint8_t value;
 					// controller index is in evdata
-					this->input >> u8(value);
+					content >> u8(value);
 					switch (evdata) {
 						case 0x63: {
 							bool newVibrato = value & 1;
@@ -397,9 +388,9 @@ MusicPtr MIDIDecoder::decode()
 								this->lastDelay[track] = 0;
 								ConfigurationEvent *ev = new ConfigurationEvent();
 								te.event.reset(ev);
-								ev->configType = ConfigurationEvent::EnableDeepVibrato;
+								ev->configType = ConfigurationEvent::Type::EnableDeepVibrato;
 								ev->value = newVibrato ? 1 : 0;
-								pattern->at(track)->push_back(te);
+								pattern[track].push_back(te);
 								deepVibrato = newVibrato;
 							}
 							if (newTremolo != deepTremolo) {
@@ -408,9 +399,9 @@ MusicPtr MIDIDecoder::decode()
 								this->lastDelay[track] = 0;
 								ConfigurationEvent *ev = new ConfigurationEvent();
 								te.event.reset(ev);
-								ev->configType = ConfigurationEvent::EnableDeepTremolo;
+								ev->configType = ConfigurationEvent::Type::EnableDeepTremolo;
 								ev->value = newTremolo ? 1 : 0;
-								pattern->at(track)->push_back(te);
+								pattern[track].push_back(te);
 								deepTremolo = newTremolo;
 							}
 							break;
@@ -421,9 +412,9 @@ MusicPtr MIDIDecoder::decode()
 							this->lastDelay[track] = 0;
 							ConfigurationEvent *ev = new ConfigurationEvent();
 							te.event.reset(ev);
-							ev->configType = ConfigurationEvent::EnableRhythm;
+							ev->configType = ConfigurationEvent::Type::EnableRhythm;
 							ev->value = value;
-							pattern->at(track)->push_back(te);
+							pattern[track].push_back(te);
 							break;
 						}
 						case 0x68: {
@@ -432,9 +423,9 @@ MusicPtr MIDIDecoder::decode()
 							lastDelay[track] = 0;
 							PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
 							te.event.reset(ev);
-							ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+							ev->type = (EffectEvent::Type)PolyphonicEffectEvent::Type::PitchbendChannel;
 							ev->data = midiSemitonesToPitchbend(value / 128.0);
-							pattern->at(track)->push_back(te);
+							pattern[track].push_back(te);
 							break;
 						}
 						case 0x69: {
@@ -443,9 +434,9 @@ MusicPtr MIDIDecoder::decode()
 							lastDelay[track] = 0;
 							PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
 							te.event.reset(ev);
-							ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+							ev->type = (EffectEvent::Type)PolyphonicEffectEvent::Type::PitchbendChannel;
 							ev->data = midiSemitonesToPitchbend(-value / 128.0);
-							pattern->at(track)->push_back(te);
+							pattern[track].push_back(te);
 							break;
 						}
 						default:
@@ -456,7 +447,7 @@ MusicPtr MIDIDecoder::decode()
 					break;
 				}
 				case 0xC0: { // Instrument change (one data byte)
-					this->setInstrument(music->patches, midiChannel, evdata);
+					this->setInstrument(*music->patches, midiChannel, evdata);
 					break;
 				}
 				case 0xD0: { // Channel pressure (one data byte)
@@ -465,16 +456,16 @@ MusicPtr MIDIDecoder::decode()
 					this->lastDelay[track] = 0;
 					PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
 					te.event.reset(ev);
-					ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::VolumeChannel;
+					ev->type = (EffectEvent::Type)PolyphonicEffectEvent::Type::VolumeChannel;
 					// MIDI is 1-127, we are 1-255 (MIDI velocity 0 is note off)
 					ev->data = (evdata << 1) | (evdata >> 6);
-					pattern->at(track)->push_back(te);
+					pattern[track].push_back(te);
 
 					break;
 				}
 				case 0xE0: { // Pitch bend (two data bytes)
 					uint8_t msb;
-					this->input >> u8(msb);
+					content >> u8(msb);
 					// Only lower seven bits are used in each byte
 					unsigned int bend = ((msb & 0x7F) << 7) | (evdata & 0x7F);
 
@@ -483,26 +474,26 @@ MusicPtr MIDIDecoder::decode()
 					this->lastDelay[track] = 0;
 					PolyphonicEffectEvent *ev = new PolyphonicEffectEvent();
 					te.event.reset(ev);
-					ev->type = (EffectEvent::EffectType)PolyphonicEffectEvent::PitchbendChannel;
+					ev->type = (EffectEvent::Type)PolyphonicEffectEvent::Type::PitchbendChannel;
 					ev->data = bend;
-					pattern->at(track)->push_back(te);
+					pattern[track].push_back(te);
 					break;
 				}
 				case 0xF0: // System message (arbitrary data bytes)
 					switch (event) {
 						case 0xF0: { // Sysex
-							while ((evdata & 0x80) == 0) this->input >> u8(evdata);
+							while ((evdata & 0x80) == 0) content >> u8(evdata);
 							// This will have read in the terminating EOX (0xF7) message too
 							break;
 						}
 						case 0xF1: // MIDI Time Code Quarter Frame
-							this->input->seekg(1, stream::cur); // message data (ignored)
+							content.seekg(1, stream::cur); // message data (ignored)
 							break;
 						case 0xF2: // Song position pointer
-							this->input->seekg(2, stream::cur); // message data (ignored)
+							content.seekg(2, stream::cur); // message data (ignored)
 							break;
 						case 0xF3: // Song select
-							this->input->seekg(1, stream::cur); // message data (ignored)
+							content.seekg(1, stream::cur); // message data (ignored)
 							std::cout << "Warning: MIDI Song Select is not implemented." << std::endl;
 							break;
 						case 0xF6: // Tune request
@@ -523,7 +514,8 @@ MusicPtr MIDIDecoder::decode()
 							eof = true;
 							break;
 						case 0xFF: { // System reset, used as meta-events in a MIDI file
-							uint32_t len = this->readMIDINumber();
+							uint32_t len;
+							content >> u28midi(len);
 							switch (evdata) {
 								case 0x2F: // end of track
 									eof = true;
@@ -531,14 +523,14 @@ MusicPtr MIDIDecoder::decode()
 								case 0x51: { // set tempo
 									if (len != 3) {
 										std::cerr << "Set tempo event had invalid length!" << std::endl;
-										this->input->seekg(len, stream::cur); // message data (ignored)
+										content.seekg(len, stream::cur); // message data (ignored)
 										break;
 									}
 									unsigned long usPerQuarterNote = 0;
 									uint8_t n;
-									this->input >> u8(n); usPerQuarterNote  = n << 16;
-									this->input >> u8(n); usPerQuarterNote |= n << 8;
-									this->input >> u8(n); usPerQuarterNote |= n;
+									content >> u8(n); usPerQuarterNote  = n << 16;
+									content >> u8(n); usPerQuarterNote |= n << 8;
+									content >> u8(n); usPerQuarterNote |= n;
 
 									if (this->totalDelay == 0) {
 										// No events yet, update initial tempo
@@ -551,7 +543,7 @@ MusicPtr MIDIDecoder::decode()
 										TempoEvent *ev = new TempoEvent();
 										te.event.reset(ev);
 										ev->tempo.usPerQuarterNote(usPerQuarterNote);
-										pattern->at(track)->push_back(te);
+										pattern[track].push_back(te);
 									}
 									break;
 								}
@@ -559,7 +551,7 @@ MusicPtr MIDIDecoder::decode()
 									if (len < 3+2+1) break; // too short for opcode + data
 									uint8_t mfgId1;
 									uint16_t mfgId2;
-									this->input
+									content
 										>> u8(mfgId1)
 										>> u16be(mfgId2)
 									;
@@ -567,12 +559,12 @@ MusicPtr MIDIDecoder::decode()
 									if ((mfgId1 == 0) && (mfgId2 == 0x3F)) {
 										// AdLib MDI opcode
 										uint16_t opcode;
-										this->input >> u16be(opcode);
+										content >> u16be(opcode);
 										len -= 2;
 										switch (opcode) {
 											case 1: { // Instrument change
 												uint8_t channel;
-												this->input >> u8(channel);
+												content >> u8(channel);
 												len--;
 												if (len < 28) {
 													std::cout << "[decode-midi] Got AdLib patch change "
@@ -586,34 +578,34 @@ MusicPtr MIDIDecoder::decode()
 														<< ", ignoring." << std::endl;
 													break;
 												}
-												OPLPatchPtr oplPatch(new OPLPatch);
-												readAdLibPatch<uint8_t>(this->input, &*oplPatch);
+												auto oplPatch = std::make_shared<OPLPatch>();
+												content >> adlibPatch<uint8_t>(*oplPatch);
 												len -= 28;
 												this->currentInstrument[channel] = music->patches->size();
 												music->patches->push_back(oplPatch);
 
 												// Switch this track from MIDI instruments to OPL ones
 												TrackInfo& t = music->trackInfo[channel];
-												t.channelType = TrackInfo::OPLChannel;
+												t.channelType = TrackInfo::ChannelType::OPL;
 												break;
 											}
 											case 2: { // Rhythm-mode change
 												uint8_t soundMode;
-												this->input >> u8(soundMode);
+												content >> u8(soundMode);
 												len--;
 												TrackEvent te;
 												te.delay = this->lastDelay[track];
 												this->lastDelay[track] = 0;
 												ConfigurationEvent *ev = new ConfigurationEvent();
 												te.event.reset(ev);
-												ev->configType = ConfigurationEvent::EnableRhythm;
+												ev->configType = ConfigurationEvent::Type::EnableRhythm;
 												ev->value = (soundMode == 0) ? 0 : 1;
-												pattern->at(track)->push_back(te);
+												pattern[track].push_back(te);
 												break;
 											}
 											case 3: { // Pitchbend range change
 												uint8_t pitchBRange;
-												this->input >> u8(pitchBRange);
+												content >> u8(pitchBRange);
 												len--;
 												std::cout << "[decode-midi] AdLib pitchbend range "
 													"change (to " << (int)pitchBRange
@@ -627,13 +619,13 @@ MusicPtr MIDIDecoder::decode()
 											"MIDI meta-event 0x7F: " << std::hex << (int)mfgId1
 											<< "/" << mfgId2 << std::dec << std::endl;
 									}
-									this->input->seekg(len, stream::cur); // message data (ignored)
+									content.seekg(len, stream::cur); // message data (ignored)
 									break;
 								}
 								default:
 									std::cout << "[decode-midi] Unknown MIDI meta-event 0x"
 										<< std::hex << (int)evdata << std::dec << std::endl;
-									this->input->seekg(len, stream::cur); // message data (ignored)
+									content.seekg(len, stream::cur); // message data (ignored)
 									break;
 							}
 							break;
@@ -660,7 +652,7 @@ MusicPtr MIDIDecoder::decode()
 		if (lastDelay[track] == totalDelay) {
 			// This track is unused
 			music->trackInfo.erase(music->trackInfo.begin() + track);
-			music->patterns.at(0)->erase(music->patterns.at(0)->begin() + track);
+			music->patterns[0].erase(music->patterns[0].begin() + track);
 		} else if (lastDelay[track]) {
 			// This track has a trailing delay
 			TrackEvent te;
@@ -668,55 +660,25 @@ MusicPtr MIDIDecoder::decode()
 			lastDelay[track] = 0;
 			ConfigurationEvent *ev = new ConfigurationEvent();
 			te.event.reset(ev);
-			ev->configType = ConfigurationEvent::EmptyEvent;
+			ev->configType = ConfigurationEvent::Type::EmptyEvent;
 			ev->value = 0;
-			pattern->at(track)->push_back(te);
+			pattern[track].push_back(te);
 		}
 	}
 
 	music->ticksPerTrack = this->totalDelay;
 
-	splitPolyphonicTracks(music);
+	splitPolyphonicTracks(*music);
 	return music;
 }
 
-uint32_t MIDIDecoder::readMIDINumber()
-{
-	// Make sure this->setMIDIStream() has been called
-	assert(this->input);
-
-	uint32_t val = 0;
-
-	if (this->midiFlags & MIDIFlags::AdLibMUS) {
-		for (int i = 0; i < 255; i++) { // 255 is just an arbitrary limit
-			uint8_t n;
-			this->input >> u8(n);
-			if (n == 0xF8) {
-				val += 240;
-			} else {
-				val += n;
-				break;
-			}
-		}
-	} else {
-		for (int i = 0; i < 4; i++) {
-			uint8_t n;
-			this->input >> u8(n);
-			val <<= 7;
-			val |= (n & 0x7F); // ignore the MSB
-			if (!(n & 0x80)) break; // last byte has the MSB unset
-		}
-	}
-	return val;
-}
-
-void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
+void MIDIDecoder::setInstrument(PatchBank& patches, unsigned int midiChannel,
 	unsigned int midiPatch)
 {
 	bool found = false;
 	int n = 0;
-	for (PatchBank::const_iterator i = patches->begin(); i != patches->end(); i++, n++) {
-		MIDIPatchPtr p = boost::dynamic_pointer_cast<MIDIPatch>(*i);
+	for (auto& i : patches) {
+		auto p = std::dynamic_pointer_cast<MIDIPatch>(i);
 		if (!p) continue;
 		if (p->percussion) continue;
 		if (p->midiPatch == midiPatch) {
@@ -724,14 +686,15 @@ void MIDIDecoder::setInstrument(PatchBankPtr& patches, unsigned int midiChannel,
 			found = true;
 			break;
 		}
+		n++;
 	}
 	if (!found) {
 		// Have to allocate a new instrument
-		MIDIPatchPtr newPatch(new MIDIPatch());
+		auto newPatch = std::make_shared<MIDIPatch>();
 		newPatch->percussion = false;
 		newPatch->midiPatch = midiPatch;
-		this->currentInstrument[midiChannel] = patches->size();
-		patches->push_back(newPatch);
+		this->currentInstrument[midiChannel] = patches.size();
+		patches.push_back(newPatch);
 	}
 	return;
 }

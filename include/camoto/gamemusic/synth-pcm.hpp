@@ -21,22 +21,20 @@
 #ifndef _CAMOTO_GAMEMUSIC_SYNTH_PCM_HPP_
 #define _CAMOTO_GAMEMUSIC_SYNTH_PCM_HPP_
 
-#include <stdint.h>
-#include <boost/shared_array.hpp>
-#include <camoto/gamemusic/events.hpp>
+#include <camoto/gamemusic/eventhandler.hpp>
 #include <camoto/gamemusic/patch-pcm.hpp>
 
 namespace camoto {
 namespace gamemusic {
 
-class DLL_EXPORT SynthPCMCallback: virtual public TempoCallback
+class CAMOTO_GAMEMUSIC_API SynthPCMCallback: virtual public TempoCallback
 {
 };
 
 typedef boost::shared_ptr<SynthPCMCallback> SynthPCMCallbackPtr;
 
 /// Interface to an PCM/FM/Adlib synthesizer.
-class DLL_EXPORT SynthPCM: virtual public EventHandler
+class CAMOTO_GAMEMUSIC_API SynthPCM: virtual public EventHandler
 {
 	public:
 		/// Constructor
@@ -55,19 +53,6 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		SynthPCM(unsigned long sampleRate, SynthPCMCallback *cb);
 		~SynthPCM();
 
-		/// Reset the synthesiser to initial state.
-		/**
-		 * @post Object is in same state as it is just following the constructor.
-		 */
-		void reset(const TrackInfoVector *trackInfo, PatchBankPtr patches);
-
-		/// Synthesize and mix one frame of audio into the given buffer.
-		/**
-		 * @post Any active effects that change on each frame are updated to then
-		 *   next frame.
-		 */
-		void mix(int16_t *output, unsigned long len);
-
 		/// Set a MIDI patch bank to use.
 		/**
 		 * If a patch bank is set that contains PCM instruments, then events on
@@ -82,7 +67,21 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 		 *   Entries 0 to 127 inclusive are for GM instruments, entries 128 to 255
 		 *   are for percussion (128=note 0, 129=note 1, etc.)
 		 */
-		void setBankMIDI(PatchBankPtr bankMIDI);
+		void setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI);
+
+		/// Reset the synthesiser to initial state.
+		/**
+		 * @post Object is in same state as it is just following the constructor.
+		 */
+		void reset(const std::vector<TrackInfo>& trackInfo,
+			std::shared_ptr<const PatchBank> patches);
+
+		/// Synthesize and mix one frame of audio into the given buffer.
+		/**
+		 * @post Any active effects that change on each frame are updated to then
+		 *   next frame.
+		 */
+		void mix(int16_t *output, unsigned long len);
 
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
@@ -101,21 +100,20 @@ class DLL_EXPORT SynthPCM: virtual public EventHandler
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
-		unsigned long outputSampleRate;   ///< in Hertz, e.g. 44100
-		SynthPCMCallback *cb;             ///< Callback for tempo change events
-		const TrackInfoVector *trackInfo; ///< Track to channel assignments
-		PatchBankPtr patches;             ///< Patch bank
-		PatchBankPtr bankMIDI;            ///< Optional patch bank for MIDI notes
+		unsigned long outputSampleRate;      ///< in Hertz, e.g. 44100
+		SynthPCMCallback *cb;                ///< Callback for tempo change events
+		std::vector<TrackInfo> trackInfo;    ///< Track to channel assignments
+		std::shared_ptr<const PatchBank> patches;  ///< Patch bank
+		std::shared_ptr<const PatchBank> bankMIDI; ///< Optional patch bank for MIDI notes
 
 		struct Sample {
 			unsigned long track;      ///< Source track (for finding note again)
 			unsigned long sampleRate; ///< Playback sample rate for this note
-			PCMPatchPtr patch;
+			std::shared_ptr<PCMPatch> patch;
 			unsigned long pos; ///< Number of samples played at outputSampleRate
 			unsigned int vol; // 0..255
 		};
-		typedef std::vector<Sample> SampleVector;
-		SampleVector activeSamples;
+		std::vector<Sample> activeSamples;
 
 		/// Switch all notes off on the given track.
 		void noteOff(unsigned int trackIndex);

@@ -41,25 +41,25 @@ class test_dro_dosbox_v1: public test_music
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_perc_dupe);
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Wrong signature
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"DBRAWOPP" "\x00\x00\x01\x00"
 			));
 
 			// c02: Wrong version
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"DBRAWOPL" "\x01\x00\x00\x00"
 			));
 
 			// c03: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"DB"
 			));
 
 			// c04: Short but valid file
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"DBRAWOPL" "\x00\x00\x01\x00"
 			));
 		}
@@ -144,32 +144,34 @@ class test_dro_dosbox_v1: public test_music
 		void test_inst_read()
 		{
 			// Read the standard file
-			MusicPtr music(this->pType->read(this->base, this->suppData));
+			auto music = this->pType->read(this->base, this->suppData);
 			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.scaleLevel, 0x1);
 			CHECK_OPL_PATCH(1, m.attackRate, 0xD);
-			CHECK_OPL_PATCH(1, rhythm, 1);
+			CHECK_OPL_PATCH(1, rhythm, OPLPatch::Rhythm::HiHat);
 			// Rhythm top-cymbal
 			CHECK_OPL_PATCH(2, c.scaleLevel, 0x1);
 			CHECK_OPL_PATCH(2, c.attackRate, 0xC);
-			CHECK_OPL_PATCH(2, rhythm, 2);
+			CHECK_OPL_PATCH(2, rhythm, OPLPatch::Rhythm::TopCymbal);
 			// Rhythm tom-tom
 			CHECK_OPL_PATCH(3, m.attackRate, 0xB);
-			CHECK_OPL_PATCH(3, rhythm, 3);
+			CHECK_OPL_PATCH(3, rhythm, OPLPatch::Rhythm::TomTom);
 			// Rhythm snare
 			CHECK_OPL_PATCH(4, c.attackRate, 0xA);
-			CHECK_OPL_PATCH(4, rhythm, 4);
+			CHECK_OPL_PATCH(4, rhythm, OPLPatch::Rhythm::SnareDrum);
 			// Rhythm bass-drum
 			CHECK_OPL_PATCH(5, m.attackRate, 0x9);
 			CHECK_OPL_PATCH(5, c.attackRate, 0x8);
-			CHECK_OPL_PATCH(5, rhythm, 5);
+			CHECK_OPL_PATCH(5, rhythm, OPLPatch::Rhythm::BassDrum);
 		}
 
 		/// Make sure delays are combined correctly
 		void test_delay_combining()
 		{
-			this->base.reset(new stream::string());
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
 			this->base << STRING_WITH_NULLS(
 				"DBRAWOPL" "\x00\x00\x01\x00"
 				"\x37\x03\x01\x00" "\x2f\x00\x00\x00" "\x00\x00\x00\x00"
@@ -185,10 +187,13 @@ class test_dro_dosbox_v1: public test_music
 			);
 
 			// Read the above file
-			MusicPtr music(this->pType->read(this->base, this->suppData));
+			auto music = this->pType->read(this->base, this->suppData);
+
 			// Write it out again
-			this->base.reset(new stream::string());
-			this->pType->write(this->base, this->suppData, music, this->writeFlags);
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
+			this->pType->write(this->base, this->suppData, *music, this->writeFlags);
 
 			// Make sure it matches what we read
 			std::string target = STRING_WITH_NULLS(
@@ -211,7 +216,9 @@ class test_dro_dosbox_v1: public test_music
 		/// different rhythm instruments.
 		void test_perc_dupe()
 		{
-			this->base.reset(new stream::string());
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
 			this->base << STRING_WITH_NULLS(
 				"DBRAWOPL" "\x00\x00\x01\x00"
 				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
@@ -277,28 +284,30 @@ class test_dro_dosbox_v1: public test_music
 				"\xbd\x30" "\x00\x0f"
 				"\xbd\x20" "\x00\x03" // trailing delay
 			);
-			MusicPtr music(this->pType->read(this->base, this->suppData));
+			auto music = this->pType->read(this->base, this->suppData);
 			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(1, rhythm, OPLPatch::HiHat);
+			CHECK_OPL_PATCH(1, rhythm, OPLPatch::Rhythm::HiHat);
 			// Rhythm top-cymbal
 			CHECK_OPL_PATCH(2, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(2, rhythm, OPLPatch::TopCymbal);
+			CHECK_OPL_PATCH(2, rhythm, OPLPatch::Rhythm::TopCymbal);
 			// Rhythm tom-tom
 			CHECK_OPL_PATCH(3, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(3, rhythm, OPLPatch::TomTom);
+			CHECK_OPL_PATCH(3, rhythm, OPLPatch::Rhythm::TomTom);
 			// Rhythm snare
 			CHECK_OPL_PATCH(4, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(4, rhythm, OPLPatch::SnareDrum);
+			CHECK_OPL_PATCH(4, rhythm, OPLPatch::Rhythm::SnareDrum);
 			// Rhythm bass-drum
 			CHECK_OPL_PATCH(5, m.attackRate, 0x1);
 			CHECK_OPL_PATCH(5, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(5, rhythm, OPLPatch::BassDrum);
+			CHECK_OPL_PATCH(5, rhythm, OPLPatch::Rhythm::BassDrum);
 
 			// Do exactly the same again but load all the instruments before playing
 			// any notes.
-			this->base.reset(new stream::string());
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
 			this->base << STRING_WITH_NULLS(
 				"DBRAWOPL" "\x00\x00\x01\x00"
 				"\x80\x00\x00\x00" "\x9a\x00\x00\x00" "\x00\x00\x00\x00"
@@ -368,20 +377,20 @@ class test_dro_dosbox_v1: public test_music
 			// Melodic instrument is handled in default test
 			// Rhythm hi-hat
 			CHECK_OPL_PATCH(1, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(1, rhythm, 1);
+			CHECK_OPL_PATCH(1, rhythm, OPLPatch::Rhythm::HiHat);
 			// Rhythm top-cymbal
 			CHECK_OPL_PATCH(2, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(2, rhythm, 2);
+			CHECK_OPL_PATCH(2, rhythm, OPLPatch::Rhythm::TopCymbal);
 			// Rhythm tom-tom
 			CHECK_OPL_PATCH(3, m.attackRate, 0x1);
-			CHECK_OPL_PATCH(3, rhythm, 3);
+			CHECK_OPL_PATCH(3, rhythm, OPLPatch::Rhythm::TomTom);
 			// Rhythm snare
 			CHECK_OPL_PATCH(4, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(4, rhythm, 4);
+			CHECK_OPL_PATCH(4, rhythm, OPLPatch::Rhythm::SnareDrum);
 			// Rhythm bass-drum
 			CHECK_OPL_PATCH(5, m.attackRate, 0x1);
 			CHECK_OPL_PATCH(5, c.attackRate, 0x1);
-			CHECK_OPL_PATCH(5, rhythm, 5);
+			CHECK_OPL_PATCH(5, rhythm, OPLPatch::Rhythm::BassDrum);
 		}
 };
 

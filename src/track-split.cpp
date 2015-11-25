@@ -34,8 +34,8 @@ std::string SpecificNoteOffEvent::getContent() const
 	return ss.str();
 }
 
-void SpecificNoteOffEvent::processEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, EventHandler *handler)
+void SpecificNoteOffEvent::processEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
@@ -51,8 +51,8 @@ std::string SpecificNoteEffectEvent::getContent() const
 	return ss.str();
 }
 
-void SpecificNoteEffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, EventHandler *handler)
+void SpecificNoteEffectEvent::processEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
@@ -63,26 +63,24 @@ std::string PolyphonicEffectEvent::getContent() const
 	std::ostringstream ss;
 	ss
 		<< this->Event::getContent()
-		<< "event=effect-polyphonic;type=" << this->type << ";data=" << this->data
+		<< "event=effect-polyphonic;type=" << (int)this->type
+		<< ";data=" << this->data
 	;
 	return ss.str();
 }
 
-void PolyphonicEffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
-	unsigned int patternIndex, EventHandler *handler)
+void PolyphonicEffectEvent::processEvent(unsigned long delay,
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
 }
 
-void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
+void camoto::gamemusic::splitPolyphonicTracks(Music& music)
 {
 	unsigned int patternIndex = 0;
 	// For each pattern
-	for (std::vector<PatternPtr>::iterator
-		pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
-	) {
-		PatternPtr& pattern = *pp;
+	for (auto& pattern : music.patterns) {
 
 		if (patternIndex > 0) {
 			throw format_limitation("splitPolyphonicTracks() can't yet work with multipattern data");
@@ -94,21 +92,16 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 
 		// For each track
 		unsigned long trackIndex = 0;
-		for (Pattern::iterator
-			pt = pattern->begin(); pt != pattern->end(); trackIndex++
-		) {
-			assert(pattern->size() == music->trackInfo.size());
+		for (auto pt = pattern.begin(); pt != pattern.end(); trackIndex++) {
+			assert(pattern.size() == music.trackInfo.size());
 
-			TrackPtr main(new Track);
-			TrackPtr overflow(new Track);
+			Track main;
+			Track overflow;
 			bool movedNotes = false; // did we move any notes to the overflow track?
 			unsigned long curNoteFreq = 0;
 			unsigned long delayMain = 0, delayOverflow = 0;
 			double curBend = 0; // current pitchbend in semitones
-			for (Track::iterator
-				ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-			) {
-				TrackEvent& te = *ev;
+			for (auto& te : *pt) {
 				delayMain += te.delay;
 				delayOverflow += te.delay;
 
@@ -118,7 +111,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 						// Note is currently playing, move this event to a new channel
 						te.delay = delayOverflow;
 						delayOverflow = 0;
-						overflow->push_back(te);
+						overflow.push_back(te);
 						movedNotes = true;
 					} else {
 						// No note is playing, record this one
@@ -134,7 +127,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 							evNoteOn->milliHertz = midiToFreq(targetNote);
 						}
 
-						main->push_back(te);
+						main.push_back(te);
 					}
 					continue;
 				}
@@ -149,13 +142,13 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 						delayMain = 0;
 						NoteOffEvent *evNoteOff = new NoteOffEvent();
 						te.event.reset(evNoteOff);
-						main->push_back(te);
+						main.push_back(te);
 						curNoteFreq = 0;
 					} else {
 						// Might be a note off for one of the overflow notes, move it
 						te.delay = delayOverflow;
 						delayOverflow = 0;
-						overflow->push_back(te);
+						overflow.push_back(te);
 						// movedNotes is only set for note-on events
 					}
 					continue;
@@ -172,13 +165,13 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 						EffectEvent *evEffect = new EffectEvent();
 						*evEffect = *evSpecNoteEffect;
 						te.event.reset(evEffect);
-						main->push_back(te);
+						main.push_back(te);
 						curNoteFreq = 0;
 					} else {
 						// Might be an effect for one of the overflow notes, move it
 						te.delay = delayOverflow;
 						delayOverflow = 0;
-						overflow->push_back(te);
+						overflow.push_back(te);
 						// movedNotes is only set for note-on events
 					}
 					continue;
@@ -194,48 +187,50 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 					// Leave on main channel
 					te.delay = delayMain;
 					delayMain = 0;
-					main->push_back(te);
+					main.push_back(te);
 					continue;
 				}
 
 				PolyphonicEffectEvent *evPolyEffect =
 					dynamic_cast<PolyphonicEffectEvent *>(te.event.get());
 				if (evPolyEffect) {
-					switch ((PolyphonicEffectEvent::PolyphonicEffectType)evPolyEffect->type) {
-						case PolyphonicEffectEvent::PitchbendChannel:
+					switch ((PolyphonicEffectEvent::Type)evPolyEffect->type) {
+						case PolyphonicEffectEvent::Type::PitchbendChannel:
 							curBend = midiPitchbendToSemitones(evPolyEffect->data);
 
 							// Create a normal pitchbend if there is a note currently playing
 							if (curNoteFreq) {
-								TrackEvent teCopy;
-								teCopy.delay = delayMain;
-								delayMain = 0;
-								EffectEvent *evEffect = new EffectEvent();
-								teCopy.event.reset(evEffect);
-								evEffect->type = EffectEvent::PitchbendNote;
+								auto evEffect = std::make_shared<EffectEvent>();
+								evEffect->type = EffectEvent::Type::PitchbendNote;
 								double targetNote = curBend + freqToMIDI(curNoteFreq);
 								evEffect->data = midiToFreq(targetNote);
-								main->push_back(teCopy);
+
+								TrackEvent teCopy;
+								teCopy.delay = delayMain;
+								teCopy.event = evEffect;
+								delayMain = 0;
+								main.push_back(teCopy);
 							}
 							break;
 
-						case PolyphonicEffectEvent::VolumeChannel:
+						case PolyphonicEffectEvent::Type::VolumeChannel:
 							// Just convert the event to a normal volume change
+							auto evEffect = std::make_shared<EffectEvent>();
+							evEffect->type = EffectEvent::Type::Volume;
+							evEffect->data = evPolyEffect->data;
+
 							TrackEvent teCopy;
 							teCopy.delay = delayMain;
 							delayMain = 0;
-							EffectEvent *evEffect = new EffectEvent();
-							teCopy.event.reset(evEffect);
-							evEffect->type = EffectEvent::Volume;
-							evEffect->data = evPolyEffect->data;
-							main->push_back(teCopy);
+							teCopy.event = evEffect;
+							main.push_back(teCopy);
 							break;
 					}
 					// Move the polyphonic event onto the overflow channel in case there
 					// are other notes playing.  (If not, no harm done).
 					te.delay = delayOverflow;
 					delayOverflow = 0;
-					overflow->push_back(te);
+					overflow.push_back(te);
 
 					// Don't want these events added to the main channel below
 					continue;
@@ -244,7 +239,7 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 				// Any other event is just left on the main channel
 				te.delay = delayMain;
 				delayMain = 0;
-				main->push_back(te);
+				main.push_back(te);
 			} // for (each event on the track)
 
 			// Remove the track we have just processed, and replace it with the main
@@ -255,18 +250,19 @@ void camoto::gamemusic::splitPolyphonicTracks(MusicPtr& music)
 				// Notes were moved to the overflow track, so we need to process that
 				// too.  Insert the overflow track after the current one so that it
 				// will be processed in the next loop iteration.
-				pt = pattern->insert(pt + 1, overflow);
+				pt = pattern.insert(pt + 1, overflow);
 
 				// Duplicate the TrackInfo structure too
-				assert(trackIndex < music->trackInfo.size());
-				music->trackInfo.insert(music->trackInfo.begin() + trackIndex + 1,
-					music->trackInfo[trackIndex]);
+				assert(trackIndex < music.trackInfo.size());
+				music.trackInfo.insert(music.trackInfo.begin() + trackIndex + 1,
+					music.trackInfo[trackIndex]);
 			} else {
 				// No inserted track, check the next one
 				pt++;
 			}
 
 		} // for (each track in the pattern)
+		patternIndex++;
 	} // for (each pattern)
 
 	// Remember to duplicate pitchbend events on a track if needed by notes

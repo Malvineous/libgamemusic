@@ -35,8 +35,8 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_RAW: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_RAW(stream::input_sptr input)
-			:	input(input),
+		OPLReaderCallback_RAW(stream::input& content)
+			:	content(content),
 				chipIndex(0)
 		{
 		}
@@ -48,7 +48,7 @@ class OPLReaderCallback_RAW: virtual public OPLReaderCallback
 
 			try {
 nextCode:
-				this->input
+				this->content
 					>> u8(oplEvent->val)
 					>> u8(oplEvent->reg)
 				;
@@ -61,7 +61,7 @@ nextCode:
 						switch (oplEvent->val) {
 							case 0x00: { // clock change
 								uint16_t clock;
-								this->input >> u16le(clock);
+								this->content >> u16le(clock);
 								if (clock == 0) clock = 0xffff;
 								oplEvent->valid |= OPLEvent::Tempo;
 								oplEvent->tempo.usPerTick = RAWCLOCK_TO_uS(clock);
@@ -96,8 +96,8 @@ nextCode:
 		}
 
 	protected:
-		stream::input_sptr input;   ///< Input file
-		unsigned int chipIndex;     ///< Index of the currently selected OPL chip
+		stream::input& content;  ///< Input file
+		unsigned int chipIndex;  ///< Index of the currently selected OPL chip
 };
 
 
@@ -105,8 +105,8 @@ nextCode:
 class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 {
 	public:
-		OPLWriterCallback_RAW(stream::output_sptr output)
-			:	output(output),
+		OPLWriterCallback_RAW(stream::output& content)
+			:	content(content),
 				lastChipIndex(0)
 		{
 		}
@@ -115,7 +115,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 		{
 			if (oplEvent->valid & OPLEvent::Tempo) {
 				uint16_t clock = uS_TO_RAWCLOCK(oplEvent->tempo.usPerTick);
-				this->output
+				this->content
 					<< u8(0x00) // clock change
 					<< u8(0x02) // control data
 					<< u16le(clock)
@@ -127,7 +127,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 				unsigned long delay = oplEvent->delay;
 				while (delay > 0) {
 					uint8_t d = (delay > 255) ? 255 : delay;
-					this->output
+					this->content
 						<< u8(d) // delay value
 						<< u8(0) // delay command
 					;
@@ -139,7 +139,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 				// Switch OPL chips if necessary
 				if (oplEvent->chipIndex != this->lastChipIndex) {
 					assert(oplEvent->chipIndex < 2);
-					this->output
+					this->content
 						<< u8(0x01 + oplEvent->chipIndex) // 0x01 = chip 0, 0x02 = chip 1
 						<< u8(0x02) // control command
 					;
@@ -150,7 +150,7 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 				// it is we have to drop the pair as there's no way of escaping these
 				// values.
 				if ((oplEvent->reg != 0x00) || (oplEvent->reg != 0x02)) {
-					this->output
+					this->content
 						<< u8(oplEvent->val)
 						<< u8(oplEvent->reg)
 					;
@@ -163,114 +163,113 @@ class OPLWriterCallback_RAW: virtual public OPLWriterCallback
 		}
 
 	protected:
-		stream::output_sptr output; ///< Output file
+		stream::output& content;    ///< Output file
 		unsigned int lastChipIndex; ///< Index of the currently selected OPL chip
 };
 
-std::string MusicType_RAW::getCode() const
+std::string MusicType_RAW::code() const
 {
 	return "raw-rdos";
 }
 
-std::string MusicType_RAW::getFriendlyName() const
+std::string MusicType_RAW::friendlyName() const
 {
 	return "Rdos raw OPL capture";
 }
 
-std::vector<std::string> MusicType_RAW::getFileExtensions() const
+std::vector<std::string> MusicType_RAW::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("raw");
-	return vcExtensions;
+	return {
+		"raw",
+	};
 }
 
-unsigned long MusicType_RAW::getCaps() const
+MusicType::Caps MusicType_RAW::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
+		Caps::InstOPL
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_RAW::isInstance(stream::input_sptr input) const
+MusicType::Certainty MusicType_RAW::isInstance(stream::input& content) const
 {
 	// Too short
 	// TESTED BY: mus_raw_rdos_isinstance_c02
-	if (input->size() < 10) return DefinitelyNo;
+	if (content.size() < 10) return Certainty::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_raw_rdos_isinstance_c01
 	char sig[8];
-	input->seekg(0, stream::start);
-	input->read(sig, 8);
-	if (strncmp(sig, "RAWADATA", 8) != 0) return DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 8);
+	if (strncmp(sig, "RAWADATA", 8) != 0) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_raw_rdos_isinstance_c00
 	// TESTED BY: mus_raw_rdos_isinstance_c03
-	return DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_RAW::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_RAW::read(stream::input& content,
+	SuppData& suppData) const
 {
-	input->seekg(8, stream::start);
+	content.seekg(8, stream::start);
 	uint16_t clock;
-	input >> u16le(clock);
+	content >> u16le(clock);
 	if (clock == 0) clock = 0xffff;
 	Tempo initialTempo;
 	initialTempo.usPerTick = RAWCLOCK_TO_uS(clock);
 
-	OPLReaderCallback_RAW cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
+	OPLReaderCallback_RAW cb(content);
+	auto music = oplDecode(&cb, DelayType::DelayIsPreData, OPL_FNUM_DEFAULT,
+		initialTempo);
 
 	// See if there are any tags present
-	readMalvMetadata(input, music->metadata);
+	readMalvMetadata(content, music.get());
 
 	return music;
 }
 
-void MusicType_RAW::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_RAW::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	unsigned long tempo = uS_TO_RAWCLOCK(music->initialTempo.usPerTick);
+	unsigned long tempo = uS_TO_RAWCLOCK(music.initialTempo.usPerTick);
 	if (tempo > 65534) {
 		throw format_limitation(createString(
 			"The tempo is too slow for this format (tempo is " << tempo
 			<< ", max is 65534)"
 		));
 	}
-	output
+	content
 		<< nullPadded("RAWADATA", 8)
-		<< u16le(uS_TO_RAWCLOCK(music->initialTempo.usPerTick))
+		<< u16le(uS_TO_RAWCLOCK(music.initialTempo.usPerTick))
 	;
 
 	// Call the generic OPL writer.
-	OPLWriterCallback_RAW cb(output);
-	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
+	OPLWriterCallback_RAW cb(content);
+	auto oplFlags = toOPLFlags(flags);
+	oplEncode(&cb, music, DelayType::DelayIsPreData, OPL_FNUM_DEFAULT, oplFlags);
 
 	// Write out the EOF marker
-	output << u8(0xFF) << u8(0xFF);
+	content << u8(0xFF) << u8(0xFF);
 
 	// Write out any metadata
-	writeMalvMetadata(output, music->metadata);
+	writeMalvMetadata(content, music.attributes());
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_RAW::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_RAW::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_RAW::getMetadataList() const
+std::vector<Attribute> MusicType_RAW::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	types.push_back(Metadata::Author);
-	types.push_back(Metadata::Description);
-	return types;
+	return supportedMalvMetadata();
 }

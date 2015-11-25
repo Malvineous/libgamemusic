@@ -91,8 +91,8 @@ inline unsigned int lin_velocity_to_log_volume(unsigned int vel,
 	return round((max + 1) - pow(max + 1, 1 - vel / 255.0));
 }
 
-#ifndef DLL_EXPORT
-#define DLL_EXPORT
+#ifndef CAMOTO_GAMEMUSIC_API
+#define CAMOTO_GAMEMUSIC_API
 #endif
 
 /// Convert the given f-number and block into a note frequency.
@@ -110,7 +110,7 @@ inline unsigned int lin_velocity_to_log_volume(unsigned int vel,
  *
  * @return The converted frequency in milliHertz.
  */
-int DLL_EXPORT fnumToMilliHertz(unsigned int fnum, unsigned int block,
+int CAMOTO_GAMEMUSIC_API fnumToMilliHertz(unsigned int fnum, unsigned int block,
 	unsigned int conversionFactor);
 
 /// Convert a frequency into an OPL f-number
@@ -139,7 +139,7 @@ int DLL_EXPORT fnumToMilliHertz(unsigned int fnum, unsigned int block,
  *   a value to fnum/block and back to milliHertz is not guaranteed to reproduce
  *   the original value.
  */
-void DLL_EXPORT milliHertzToFnum(unsigned int milliHertz,
+void CAMOTO_GAMEMUSIC_API milliHertzToFnum(unsigned int milliHertz,
 	unsigned int *fnum, unsigned int *block, unsigned int conversionFactor);
 
 } // namespace gamemusic
@@ -150,14 +150,14 @@ void DLL_EXPORT milliHertzToFnum(unsigned int milliHertz,
 namespace camoto {
 namespace gamemusic {
 
-typedef enum {
+enum class OPLNormaliseType {
 	/// Matching operators: mod -> mod, car -> car, for all rhythm instruments.
-	OPLPerc_MatchingOps,
+	MatchingOps,
 	/// Carrier-only perc have settings loaded from the modulator fields.
-	OPLPerc_CarFromMod,
+	CarFromMod,
 	/// Modulator-only perc have settings loaded from the carrier fields.
-	OPLPerc_ModFromCar,
-} OPL_NORMALISE_PERC;
+	ModFromCar,
+};
 
 /// Ensure all the percussive instruments are set correctly.
 /**
@@ -176,7 +176,8 @@ typedef enum {
  *   Flag indicating whether percussive instruments need their operators
  *   swapped.
  */
-void DLL_EXPORT oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
+void CAMOTO_GAMEMUSIC_API oplDenormalisePerc(Music& music,
+	OPLNormaliseType method);
 
 /// Remove all possible duplicate percussive instruments.
 /**
@@ -194,11 +195,10 @@ void DLL_EXPORT oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
  *   Flag indicating whether percussive instruments need their operators
  *   swapped.
  *
- * @return The new instrument bank, possible with swapped operators.  Some
- *   patches will point to the same place as in the original bank - only
- *   the modified patches will be different pointers.
+ * @return The new instrument bank, possibly with swapped operators.
  */
-PatchBankPtr DLL_EXPORT oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method);
+std::unique_ptr<PatchBank> CAMOTO_GAMEMUSIC_API oplNormalisePerc(
+	const Music& music, OPLNormaliseType method);
 
 } // namespace gamemusic
 } // namespace camoto

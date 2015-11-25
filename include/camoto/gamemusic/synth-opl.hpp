@@ -23,15 +23,15 @@
 
 #include <stdint.h>
 
-#ifndef DLL_EXPORT
-#define DLL_EXPORT
+#ifndef CAMOTO_GAMEMUSIC_API
+#define CAMOTO_GAMEMUSIC_API
 #endif
 
 namespace camoto {
 namespace gamemusic {
 
 /// Interface to an OPL/FM/Adlib synthesizer.
-class DLL_EXPORT SynthOPL
+class CAMOTO_GAMEMUSIC_API SynthOPL
 {
 	public:
 		SynthOPL(unsigned long sampleRate);

@@ -42,10 +42,10 @@ class test_cdfm_zone66_gus: public test_music
 			ADD_MUSIC_TEST(&test_cdfm_zone66_gus::test_volume_to_velocity);
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Sample data past EOF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x35\x01\x00\x00"
 				"\xCC" "\x03" "\x02" "\x01" "\x01"
 				"\x00\x00\x01"
@@ -61,7 +61,7 @@ class test_cdfm_zone66_gus: public test_music
 			));
 
 			// c02: Loop target is past end of song
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x35\x00\x00\x00"
 				"\xCC" "\x03" "\x02" "\x01" "\x0F"
 				"\x00\x00\x01"
@@ -77,7 +77,7 @@ class test_cdfm_zone66_gus: public test_music
 			));
 
 			// c03: Sequence specifies invalid pattern
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x35\x00\x00\x00"
 				"\xCC" "\x03" "\x02" "\x01" "\x01"
 				"\x00\x0F\x01"
@@ -93,7 +93,7 @@ class test_cdfm_zone66_gus: public test_music
 			));
 
 			// c04: Pattern data offset is past EOF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x35\x00\x00\x00"
 				"\xCC" "\x03" "\x02" "\x01" "\x01"
 				"\x00\x00\x01"

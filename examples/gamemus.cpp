@@ -18,10 +18,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <boost/program_options.hpp>
-#include <boost/bind.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/thread.hpp>
 #include <portaudio.h>
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
@@ -34,6 +34,7 @@
 #ifndef _MSC_VER
 #include <config.h>
 #endif
+#include "common-attributes.hpp"
 
 namespace po = boost::program_options;
 namespace gm = camoto::gamemusic;
@@ -91,48 +92,70 @@ bool split(const std::string& in, char delim, std::string *out1, std::string *ou
  *
  * @throws int on failure (one of the RET_* values)
  */
-gm::MusicPtr openMusicFile(const std::string& strFilename,
-	const char *typeArg, const std::string& strType, gm::ManagerPtr pManager,
-	bool bForceOpen, gm::MusicTypePtr *pMusicTypeOut)
+int openMusicFile(const std::string& strFilename,
+	const char *typeArg, const std::string& strType, bool bForceOpen,
+	std::shared_ptr<gm::Music>* pMusicOut,
+	gm::MusicManager::handler_t* pMusicTypeOut)
 {
-	stream::input_file_sptr psMusic(new stream::input_file());
-	try {
-		psMusic->open(strFilename.c_str());
-	} catch (stream::open_error& e) {
-		std::cerr << "Error opening " << strFilename << ": " << e.what()
-			<< std::endl;
-		throw RET_SHOWSTOPPER;
-	}
-
-	gm::MusicTypePtr pMusicType;
+	stream::file content(strFilename, false);
+	gm::MusicManager::handler_t pMusicType;
 	if (strType.empty()) {
 		// Need to autodetect the file format.
-		gm::MusicTypePtr pTestType;
-		int i = 0;
-		while ((pTestType = pManager->getMusicType(i++))) {
-			gm::MusicType::Certainty cert = pTestType->isInstance(psMusic);
+		for (const auto& i : gm::MusicManager::formats()) {
+			gm::MusicType::Certainty cert = i->isInstance(content);
 			switch (cert) {
-				case gm::MusicType::DefinitelyNo:
+
+				case gm::MusicType::Certainty::DefinitelyNo:
 					// Don't print anything (TODO: Maybe unless verbose?)
 					break;
-				case gm::MusicType::Unsure:
-					std::cout << "File could be: " << pTestType->getFriendlyName()
-						<< " [" << pTestType->getCode() << "]" << std::endl;
+
+				case gm::MusicType::Certainty::Unsure:
+					std::cout << "File could be: " << i->friendlyName()
+						<< " [" << i->code() << "]" << std::endl;
 					// If we haven't found a match already, use this one
-					if (!pMusicType) pMusicType = pTestType;
+					if (!pMusicType) pMusicType = i;
 					break;
-				case gm::MusicType::PossiblyYes:
-					std::cout << "File is likely to be: " << pTestType->getFriendlyName()
-						<< " [" << pTestType->getCode() << "]" << std::endl;
+
+				case gm::MusicType::Certainty::PossiblyYes:
+					std::cout << "File is likely to be: " << i->friendlyName()
+						<< " [" << i->code() << "]" << std::endl;
 					// Take this one as it's better than an uncertain match
-					pMusicType = pTestType;
+					pMusicType = i;
 					break;
-				case gm::MusicType::DefinitelyYes:
-					std::cout << "File is definitely: " << pTestType->getFriendlyName()
-						<< " [" << pTestType->getCode() << "]" << std::endl;
-					pMusicType = pTestType;
+
+				case gm::MusicType::Certainty::DefinitelyYes:
+					std::cout << "File is definitely: " << i->friendlyName()
+						<< " [" << i->code() << "]" << std::endl;
+					pMusicType = i;
 					// Don't bother checking any other formats if we got a 100% match
 					goto finishTesting;
+			}
+			if (cert != gm::MusicType::Certainty::DefinitelyNo) {
+				// We got a possible match, see if it requires any suppdata
+				auto suppList = i->getRequiredSupps(content, strFilename);
+				if (suppList.size() > 0) {
+					// It has suppdata, see if it's present
+					std::cout << "  * This format requires supplemental files..."
+						<< std::endl;
+					bool bSuppOK = true;
+					for (const auto& s : suppList) {
+						try {
+							stream::file test_presence(s.second, false);
+						} catch (const stream::open_error&) {
+							bSuppOK = false;
+							std::cout << "  * Could not find/open " << s.second
+								<< ", archive is probably not " << i->code() << std::endl;
+							break;
+						}
+					}
+					if (bSuppOK) {
+						// All supp files opened ok
+						std::cout << "  * All supp files present, archive is likely "
+							<< i->code() << std::endl;
+						// Set this as the most likely format
+						pMusicType = i;
+					}
+				}
 			}
 		}
 finishTesting:
@@ -140,14 +163,14 @@ finishTesting:
 			std::cerr << "Unable to automatically determine the file type.  Use "
 				"the " << typeArg << " option to manually specify the file format."
 				<< std::endl;
-			throw RET_BE_MORE_SPECIFIC;
+			return RET_BE_MORE_SPECIFIC;
 		}
 	} else {
-		gm::MusicTypePtr pTestType(pManager->getMusicTypeByCode(strType));
+		auto pTestType = gm::MusicManager::byCode(strType);
 		if (!pTestType) {
 			std::cerr << "Unknown file type given to " << typeArg << ": " << strType
 				<< std::endl;
-			throw RET_BADARGS;
+			return RET_BADARGS;
 		}
 		pMusicType = pTestType;
 	}
@@ -155,41 +178,44 @@ finishTesting:
 	assert(pMusicType != NULL);
 
 	// Check to see if the file is actually in this format
-	if (!pMusicType->isInstance(psMusic)) {
+	if (pMusicType->isInstance(content) == gm::MusicType::Certainty::DefinitelyNo) {
 		if (bForceOpen) {
 			std::cerr << "Warning: " << strFilename << " is not a "
-				<< pMusicType->getFriendlyName() << ", open forced." << std::endl;
+				<< pMusicType->friendlyName() << ", open forced." << std::endl;
 		} else {
 			std::cerr << "Invalid format: " << strFilename << " is not a "
-				<< pMusicType->getFriendlyName() << "\n"
+				<< pMusicType->friendlyName() << "\n"
 				<< "Use the -f option to try anyway." << std::endl;
-			throw RET_BE_MORE_SPECIFIC;
+			return RET_BE_MORE_SPECIFIC;
 		}
 	}
 
 	// See if the format requires any supplemental files
-	camoto::SuppFilenames suppList = pMusicType->getRequiredSupps(psMusic, strFilename);
+	auto suppList = pMusicType->getRequiredSupps(content, strFilename);
 	camoto::SuppData suppData;
-	if (suppList.size() > 0) {
-		for (camoto::SuppFilenames::iterator i = suppList.begin(); i != suppList.end(); i++) {
-			stream::file_sptr suppStream(new stream::file());
-			try {
-				suppStream->open(i->second);
-				suppData[i->first] = suppStream;
-			} catch (stream::open_error& e) {
-				std::cerr << "Error opening supplemental file " << i->second << ": " << e.what()
-					<< std::endl;
-				throw RET_SHOWSTOPPER;
-			}
+	for (const auto& s : suppList) {
+		try {
+			std::cout << "Opening supplemental file " << s.second << std::endl;
+			auto suppStream = std::make_unique<stream::file>(s.second, false);
+			suppData[s.first] = std::move(suppStream);
+		} catch (const stream::open_error& e) {
+			std::cerr << "Error opening supplemental file " << s.second
+				<< ": " << e.what() << std::endl;
+			return RET_SHOWSTOPPER;
 		}
 	}
 
 	// Open the file
-	gm::MusicPtr pMusic = pMusicType->read(psMusic, suppData);
-	assert(pMusic);
+	try {
+		*pMusicOut = pMusicType->read(content, suppData);
+		assert(*pMusicOut);
+	} catch (const camoto::error& e) {
+		std::cerr << "Error opening music file: " << e.what() << std::endl;
+		return RET_SHOWSTOPPER;
+	}
 
 	*pMusicTypeOut = pMusicType;
-	return pMusic;
+	return RET_OK;
 }
 
 
@@ -204,8 +230,8 @@ struct PBCallback
 	PositionHistory position;
 	gm::Playback::Position lastPos;
 	PaTime waitUntil; // stream time the main thread is waiting for
-	boost::mutex mut;
-	boost::condition_variable wait;
+	std::mutex mut;
+	std::condition_variable wait;
 };
 
 #define FRAMES_TO_BUFFER 512
@@ -217,7 +243,7 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
 	PBCallback *pbcb = (PBCallback *)userData;
 	memset(outputBuffer, 0, framesPerBuffer * NUM_CHANNELS * 2);
 	{
-		boost::lock_guard<boost::mutex> lock(pbcb->mut);
+		std::lock_guard<std::mutex> lock(pbcb->mut);
 		pbcb->playback->mix((int16_t *)outputBuffer, framesPerBuffer * 2, &pbcb->position.pos);
 		pbcb->position.time = timeInfo->outputBufferDacTime;
 	}
@@ -250,8 +276,9 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
  * @param extraTime
  *   Number of seconds to linger after song finishes, to let notes fade out.
  */
-int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
-	unsigned int loopCount, unsigned int extraTime)
+int play(std::shared_ptr<gm::Music> music,
+	std::shared_ptr<const gm::PatchBank> bankMIDI, unsigned int loopCount,
+	unsigned int extraTime)
 {
 #ifdef USE_PORTAUDIO
 	// Init PA
@@ -295,9 +322,6 @@ int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
 		return RET_SHOWSTOPPER;
 	}
 
-	int16_t *output = new int16_t[FRAMES_TO_BUFFER * NUM_CHANNELS];
-	boost::shared_array<int16_t> output_sptr(output);
-
 	err = Pa_StartStream(stream);
 	pbcb.waitUntil = 0;
 	if (err != paNoError) {
@@ -325,7 +349,7 @@ int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
 	audiblePos.end = false;
 	PaTime lastTime;
 	{
-		boost::unique_lock<boost::mutex> lock(pbcb.mut);
+		std::unique_lock<std::mutex> lock(pbcb.mut);
 		while (!audiblePos.end) {
 			//if (!pbcb.position.pos.end)
 			pbcb.wait.wait(lock);
@@ -418,23 +442,14 @@ int play(const gm::MusicPtr& music, const gm::PatchBankPtr& bankMIDI,
  * @param extraTime
  *   Number of seconds to linger after song finishes, to let notes fade out.
  */
-int render(const std::string& wavFilename, const gm::MusicPtr& music,
-	const gm::PatchBankPtr& bankMIDI, unsigned int loopCount,
+int render(stream::output& wav, std::shared_ptr<gm::Music> music,
+	std::shared_ptr<gm::PatchBank> bankMIDI, unsigned int loopCount,
 	unsigned int extraTime)
 {
 	if (loopCount == 0) {
 		std::cerr << "Can't loop forever when writing to .wav or you will run out "
 			"of disk space!" << std::endl;
 		return RET_BADARGS;
-	}
-
-	stream::output_file_sptr wav(new stream::output_file());
-	try {
-		wav->create(wavFilename);
-	} catch (stream::open_error& e) {
-		std::cerr << "Error opening " << wavFilename << ": " << e.what()
-			<< std::endl;
-		return RET_SHOWSTOPPER;
 	}
 
 	unsigned int numChannels = NUM_CHANNELS;
@@ -464,12 +479,11 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	;
 
 	const unsigned long lenBuffer = FRAMES_TO_BUFFER * NUM_CHANNELS;
-	int16_t *output = new int16_t[lenBuffer];
+	std::vector<int16_t> output(lenBuffer);
 	const unsigned long lenBufferBytes = lenBuffer * 2;
-	boost::shared_array<int16_t> output_sptr(output);
 
 	std::cout << "Writing WAV at " << sampleRate << "Hz, " << bitDepth << "-bit, "
-		<< (numChannels == 1 ? "mono" : "stereo") << ": " << wavFilename
+		<< (numChannels == 1 ? "mono" : "stereo")
 		<< "\nExtra time: " << extraTime << " seconds, loop: ";
 	if (loopCount == 1) std::cout << "off"; else std::cout << loopCount - 1;
 	std::cout << std::endl;
@@ -479,13 +493,13 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	pos.end = false;
 	unsigned int numOrders = music->patternOrder.size();
 	while (!pos.end) {
-		memset(output, 0, lenBufferBytes);
-		playback.mix(output, lenBuffer, &pos);
+		memset(output.data(), 0, lenBufferBytes);
+		playback.mix(output.data(), lenBuffer, &pos);
 
 		// Make sure samples are little-endian
 		for (unsigned int i = 0; i < lenBuffer; i++) output[i] = htole16(output[i]);
 
-		wav->write((uint8_t *)output, lenBuffer * sizeof(int16_t));
+		wav.write((uint8_t *)output.data(), lenBuffer * sizeof(int16_t));
 
 		if (pos != lastPos) {
 			long pattern = -1;
@@ -515,25 +529,25 @@ int render(const std::string& wavFilename, const gm::MusicPtr& music,
 	if (extraTime) {
 		unsigned long extraSamples = extraTime * sampleRate * numChannels;
 		while (extraSamples >= lenBuffer) {
-			memset(output, 0, lenBufferBytes);
-			playback.mix(output, lenBuffer, &pos);
+			memset(output.data(), 0, lenBufferBytes);
+			playback.mix(output.data(), lenBuffer, &pos);
 			extraSamples -= lenBuffer;
 
 			// Make sure samples are little-endian
 			for (unsigned int i = 0; i < lenBuffer; i++) output[i] = htole16(output[i]);
 
-			wav->write((uint8_t *)output, lenBuffer * sizeof(int16_t));
+			wav.write((uint8_t *)output.data(), lenBuffer * sizeof(int16_t));
 		}
 	}
 	std::cout << "\n";
 
-	stream::pos lenTotal = wav->tellp();
+	stream::pos lenTotal = wav.tellp();
 
-	wav->seekp(4, stream::start);
+	wav.seekp(4, stream::start);
 	wav << u32le(lenTotal - 8);
-	wav->seekp(WAVE_HEADER_SIZE - 4, stream::start);
+	wav.seekp(WAVE_HEADER_SIZE - 4, stream::start);
 	wav << u32le(lenTotal - WAVE_HEADER_SIZE);
-	wav->flush();
+	wav.flush();
 
 	return RET_OK;
 }
@@ -543,16 +557,16 @@ std::string getTrackChannelText(const gm::TrackInfo& ti)
 {
 	std::string text;
 	switch (ti.channelType) {
-		case gm::TrackInfo::UnusedChannel:
+		case gm::TrackInfo::ChannelType::Unused:
 			text = "Unused";
 			break;
-		case gm::TrackInfo::AnyChannel:
+		case gm::TrackInfo::ChannelType::Any:
 			text = "Any";
 			break;
-		case gm::TrackInfo::OPLChannel:
+		case gm::TrackInfo::ChannelType::OPL:
 			text = createString("OPL " << ti.channelIndex);
 			break;
-		case gm::TrackInfo::OPLPercChannel:
+		case gm::TrackInfo::ChannelType::OPLPerc:
 			text = "OPL percussive ";
 			switch (ti.channelIndex) {
 				case 4: text += "bass drum"; break;
@@ -566,10 +580,10 @@ std::string getTrackChannelText(const gm::TrackInfo& ti)
 					break;
 			}
 			break;
-		case gm::TrackInfo::MIDIChannel:
+		case gm::TrackInfo::ChannelType::MIDI:
 			text = createString("MIDI " << ti.channelIndex);
 			break;
-		case gm::TrackInfo::PCMChannel:
+		case gm::TrackInfo::ChannelType::PCM:
 			text = createString("PCM " << ti.channelIndex);
 			break;
 	}
@@ -595,17 +609,14 @@ int main(int iArgC, char *cArgV[])
 		("list-instruments,i",
 			"list channel map and all instruments in the song")
 
-		("list-tags,a",
+		("metadata,m",
 			"list metadata tags (title, etc.)")
 
-		("remap-tracks,m", po::value<std::string>(),
+		("remap-tracks,k", po::value<std::string>(),
 			"change the target channel for each track")
 
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
-
-		("dump-tags,d",
-			"list all tags/metadata in the song")
 
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
@@ -674,9 +685,6 @@ int main(int iArgC, char *cArgV[])
 	std::string strFilename;
 	std::string strType;
 
-	// Get the format handler for this file format
-	gm::ManagerPtr pManager(gm::getManager());
-
 	bool bScript = false; // show output suitable for script parsing?
 	bool bForceOpen = false; // open anyway even if not in given format?
 	bool bUsePitchbends = true; // pass pitchbend events with -c
@@ -684,7 +692,7 @@ int main(int iArgC, char *cArgV[])
 	bool bForceOPL3 = false; // force OPL3 mode?
 	int userLoop = 1; // repeat once by default
 	int extraTime = 2; // two seconds extra by default
-	gm::PatchBankPtr bankMIDI; // instruments to use for MIDI notes
+	std::shared_ptr<gm::PatchBank> bankMIDI; // instruments to use for MIDI notes
 	try {
 		po::parsed_options pa = po::parse_command_line(iArgC, cArgV, poComplete);
 
@@ -716,16 +724,14 @@ int main(int iArgC, char *cArgV[])
 					<< std::endl;
 				return RET_OK;
 			} else if (i->string_key.compare("list-types") == 0) {
-				gm::MusicTypePtr nextType;
-				int i = 0;
-				while ((nextType = pManager->getMusicType(i++))) {
-					std::string code = nextType->getCode();
+				for (const auto& i : gm::MusicManager::formats()) {
+					std::string code = i->code();
 					std::cout << code;
 					int len = code.length();
-					if (len < 20) std::cout << std::string(20-len, ' ');
-					std::string desc = nextType->getFriendlyName();
+					if (len < 20) std::cout << std::string(20 - len, ' ');
+					std::string desc = i->friendlyName();
 					std::cout << ' ' << desc;
-					std::vector<std::string> exts = nextType->getFileExtensions();
+					std::vector<std::string> exts = i->fileExtensions();
 					if (exts.size() > 0) {
 						len = desc.length();
 						if (len < 40) std::cout << std::string(40-len, ' ');
@@ -798,13 +804,16 @@ int main(int iArgC, char *cArgV[])
 					strInstType.clear(); // no type given, autodetect
 				}
 
-				gm::MusicTypePtr pInstType;
-				gm::MusicPtr pInst;
+				gm::MusicManager::handler_t pInstType;
+				std::shared_ptr<gm::Music> pInst;
 				try {
-					pInst = openMusicFile(strInstFile, "-b/--midibank", strInstType,
-						pManager, bForceOpen, &pInstType);
-				} catch (int ret) {
-					return ret;
+					auto ret = openMusicFile(strInstFile, "-b/--midibank", strInstType,
+						bForceOpen, &pInst, &pInstType);
+					if (ret != RET_OK) return ret;
+				} catch (stream::open_error& e) {
+					std::cerr << "Error opening instrument bank " << strFilename
+						<< ": " << e.what() << std::endl;
+					return RET_SHOWSTOPPER;
 				}
 
 				if (!pInst->patches) {
@@ -828,81 +837,78 @@ int main(int iArgC, char *cArgV[])
 		if (!bScript) std::cout << "Opening " << strFilename << " as type "
 			<< (strType.empty() ? "<autodetect>" : strType) << std::endl;
 
-		gm::MusicTypePtr pMusicType;
-		gm::MusicPtr pMusic;
+		gm::MusicManager::handler_t pMusicType;
+		std::shared_ptr<gm::Music> pMusic;
 		try {
-			pMusic = openMusicFile(strFilename, "-t/--type", strType, pManager,
-				bForceOpen, &pMusicType);
-		} catch (int ret) {
-			return ret;
+			int ret = openMusicFile(strFilename, "-t/--type", strType, bForceOpen,
+				&pMusic, &pMusicType);
+			if (ret != RET_OK) return ret;
+		} catch (stream::open_error& e) {
+			std::cerr << "Error opening " << strFilename << ": " << e.what()
+				<< std::endl;
+			return RET_SHOWSTOPPER;
 		}
 
 		if (bForceOPL2 || bForceOPL3) {
 
 			unsigned int patternIndex = 0;
 			// For each pattern
-			for (std::vector<gm::PatternPtr>::iterator
-				pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++, patternIndex++
-			) {
+			for (auto& pp : pMusic->patterns) {
 				unsigned int trackIndex = 0;
 				// For each track
-				for (gm::Pattern::iterator
-					pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
-				) {
+				for (auto& pt : pp) {
 					// For each event in the track
-					for (gm::Track::iterator
-						ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-					) {
-						const gm::TrackEvent& te = *ev;
+					for (auto ev = pt.begin(); ev != pt.end(); ev++) {
+						auto& te = *ev;
 						gm::ConfigurationEvent *cev = dynamic_cast<gm::ConfigurationEvent *>(te.event.get());
 						if (cev) {
 							switch (cev->configType) {
-								case gm::ConfigurationEvent::EmptyEvent:
+								case gm::ConfigurationEvent::Type::EmptyEvent:
 									// Nothing to do
 									break;
-								case gm::ConfigurationEvent::EnableOPL3:
+								case gm::ConfigurationEvent::Type::EnableOPL3:
 									// Got an OPL3 mode change event, nullify it.  This is easier
 									// than deleting it because we don't have to handle merging
 									// the delay in with a following event (or creating a None
 									// event anyway if there is no event following this one.)
 									cev->value = bForceOPL3 ? 1 : 0;
 									break;
-								case gm::ConfigurationEvent::EnableDeepTremolo: {
+								case gm::ConfigurationEvent::Type::EnableDeepTremolo: {
 									if (bForceOPL3) {
 										// Duplicate this event for the other chip
 										gm::TrackEvent te2;
 										te2.delay = 0;
-										gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
-										te2.event = gm::EventPtr(ev2);
-										ev2->configType = gm::ConfigurationEvent::EnableDeepTremolo;
-										ev2->value = 2 | cev->value; // 2| == chip index 1
-										ev = (*pt)->insert(ev+1, te2);
+										auto ev2 = std::make_shared<gm::ConfigurationEvent>(*cev);
+										te2.event = ev2;
+										ev2->value |= 2; // "|=2" == chip index 1
+										ev = pt.insert(ev+1, te2);
 									}
 									break;
 								}
-								case gm::ConfigurationEvent::EnableDeepVibrato: {
+								case gm::ConfigurationEvent::Type::EnableDeepVibrato: {
 									if (bForceOPL3) {
 										// Duplicate this event for the other chip
 										gm::TrackEvent te2;
 										te2.delay = 0;
-										gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
-										te2.event = gm::EventPtr(ev2);
-										ev2->configType = gm::ConfigurationEvent::EnableDeepVibrato;
-										ev2->value = 2 | cev->value; // 2| == chip index 1
-										ev = (*pt)->insert(ev+1, te2);
+										auto ev2 = std::make_shared<gm::ConfigurationEvent>(*cev);
+										te2.event = ev2;
+										ev2->value |= 2; // "|=2" == chip index 1
+										ev = pt.insert(ev+1, te2);
 									}
 									break;
 								}
-								case gm::ConfigurationEvent::EnableRhythm:
+								case gm::ConfigurationEvent::Type::EnableRhythm:
 									// Not sure how to deal with this yet
 									break;
-								case gm::ConfigurationEvent::EnableWaveSel:
+								case gm::ConfigurationEvent::Type::EnableWaveSel:
 									// Always enabled on OPL3, no need to do anything
 									break;
 							}
 						}
 					} // end of track
+					trackIndex++;
 				} // end of pattern
+				patternIndex++;
 			} // end of song
 
 			// Insert an OPL 2/3 switch event at the start of the first track
@@ -911,45 +917,39 @@ int main(int iArgC, char *cArgV[])
 			// @todo: Find first order number and put it in that pattern instead.
 			// @todo: But only if that pattern doesn't already have an OPL event at the start
 			if (pMusic->patterns.size() > 0) {
-				const gm::PatternPtr& pattern = pMusic->patterns.at(0);
-				if (pattern->size() > 0) {
-					const gm::TrackPtr& track = pattern->at(0);
+				auto& pattern = pMusic->patterns.at(0);
+				if (pattern.size() > 0) {
+					auto& track = pattern.at(0);
 
 					gm::TrackEvent te2;
 					te2.delay = 0;
-					gm::ConfigurationEvent *ev2 = new gm::ConfigurationEvent();
-					te2.event = gm::EventPtr(ev2);
-					ev2->configType = gm::ConfigurationEvent::EnableOPL3;
+					auto ev2 = std::make_shared<gm::ConfigurationEvent>();
+					te2.event = ev2;
+					ev2->configType = gm::ConfigurationEvent::Type::EnableOPL3;
 					ev2->value = bForceOPL3 ? 1 : 0;
-					track->insert(track->begin(), te2);
+					track.insert(track.begin(), te2);
 				}
 			}
 		} // if force opl2/3
 
 		// Run through the actions on the command line
-		for (std::vector<po::option>::iterator i = pa.options.begin(); i != pa.options.end(); i++) {
+		for (auto& i : pa.options) {
 
-			if (i->string_key.compare("list-events") == 0) {
+			if (i.string_key.compare("list-events") == 0) {
 				if (!bScript) {
 					std::cout << "Song has " << pMusic->patterns.size() << " patterns\n";
 				}
 				unsigned int totalEvents = 0;
 				unsigned int patternIndex = 0;
-				for (std::vector<gm::PatternPtr>::const_iterator
-					pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++, patternIndex++
-				) {
+				for (auto& pp : pMusic->patterns) {
 					unsigned int trackIndex = 0;
-					for (gm::Pattern::const_iterator
-						pt = (*pp)->begin(); pt != (*pp)->end(); pt++, trackIndex++
-					) {
+					for (auto& pt : pp) {
 						if (!bScript) {
 							std::cout << ">> Pattern " << patternIndex << ", track "
 								<< trackIndex << "\n";
 						}
 						unsigned int eventIndex = 0;
-						for (gm::Track::const_iterator
-							ev = (*pt)->begin(); ev != (*pt)->end(); ev++, eventIndex++, totalEvents++
-						) {
+						for (auto ev = pt.begin(); ev != pt.end(); ev++, eventIndex++, totalEvents++) {
 							if (bScript) {
 								std::cout << "pattern=" << patternIndex << ";track="
 									<< trackIndex << ";index=" << eventIndex << ";";
@@ -959,28 +959,29 @@ int main(int iArgC, char *cArgV[])
 							std::cout << "delay=" << ev->delay << ";"
 								<< ev->event->getContent() << "\n";
 						}
+						trackIndex++;
 					}
+					patternIndex++;
 				}
 				if (!bScript) std::cout << totalEvents << " events listed." << std::endl;
 
-			} else if (i->string_key.compare("dump-tags") == 0) {
-				for (camoto::Metadata::TypeMap::const_iterator
-					i = pMusic->metadata.begin(); i != pMusic->metadata.end(); i++
-				) {
-					switch (i->first) {
-						case camoto::Metadata::Description: std::cout << "comment"; break;
-						case camoto::Metadata::PaletteFilename: std::cout << "palette"; break;
-						case camoto::Metadata::Version: std::cout << "version"; break;
-						case camoto::Metadata::Title: std::cout << "title"; break;
-						case camoto::Metadata::Author: std::cout << "artist"; break;
-					}
-					std::cout << "=" << i->second << "\n";
-				}
+			} else if (i.string_key.compare("metadata") == 0) {
+				listAttributes(pMusic.get(), bScript);
 
-			} else if (i->string_key.compare("convert") == 0) {
+			} else if (i.string_key.compare("set-metadata") == 0) {
+				std::string strIndex, strValue;
+				if (!split(i.value[0], '=', &strIndex, &strValue)) {
+					std::cerr << PROGNAME ": -e/--set-metadata requires an index and "
+						"a value (e.g. --set-metadata 0=example)" << std::endl;
+					return RET_BADARGS;
+				}
+				unsigned int index = strtoul(strIndex.c_str(), nullptr, 0);
+				setAttribute(pMusic.get(), bScript, index, strValue);
+
+			} else if (i.string_key.compare("convert") == 0) {
 				std::string strOutFile;
 				std::string strOutType;
-				if (!split(i->value[0], ':', &strOutType, &strOutFile)) {
+				if (!split(i.value[0], ':', &strOutType, &strOutFile)) {
 					std::cerr << "-c/--convert requires a type and a filename, "
 						"e.g. -c raw-rdos:out.raw" << std::endl;
 					return RET_BADARGS;
@@ -992,90 +993,58 @@ int main(int iArgC, char *cArgV[])
 					return RET_SHOWSTOPPER;
 				}
 
-				stream::output_file_sptr psMusicOut(new stream::output_file());
 				try {
-					psMusicOut->create(strOutFile.c_str());
+					stream::output_file contentOut(strOutFile, true);
+
+					auto pMusicOutType = gm::MusicManager::byCode(strOutType);
+					if (!pMusicOutType) {
+						std::cerr << "Unknown file type given to -c/--convert: " << strOutType
+							<< std::endl;
+						return RET_BADARGS;
+					}
+
+					assert(pMusicOutType != NULL);
+
+					// TODO: figure out whether we need to open any supplemental files
+					// (e.g. Vinyl will need to create an external instrument file, whereas
+					// Kenslab has one but won't need to use it for this.)
+					camoto::SuppData suppData;
+					gm::MusicType::WriteFlags flags = gm::MusicType::WriteFlags::Default;
+
+					if (!bUsePitchbends) flags |= gm::MusicType::WriteFlags::IntegerNotesOnly;
+
+					try {
+						pMusicOutType->write(contentOut, suppData, *pMusic, flags);
+						std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
+					} catch (const gm::format_limitation& e) {
+						std::cerr << PROGNAME ": Unable to write this song in format "
+							<< strOutType << " - " << e.what() << std::endl;
+						// Delete empty output file
+						contentOut.remove();
+						return RET_UNCOMMON_FAILURE;
+					}
 				} catch (stream::open_error& e) {
 					std::cerr << "Error creating " << strOutFile << ": " << e.what()
 						<< std::endl;
-					throw RET_SHOWSTOPPER;
+					return RET_SHOWSTOPPER;
 				}
 
-				gm::MusicTypePtr pMusicOutType(pManager->getMusicTypeByCode(strOutType));
-				if (!pMusicOutType) {
-					std::cerr << "Unknown file type given to -c/--convert: " << strOutType
-						<< std::endl;
-					return RET_BADARGS;
-				}
-
-				assert(pMusicOutType != NULL);
-
-				// TODO: figure out whether we need to open any supplemental files
-				// (e.g. Vinyl will need to create an external instrument file, whereas
-				// Kenslab has one but won't need to use it for this.)
-				camoto::SuppData suppData;
-				unsigned int flags = 0;
-
-				if (!bUsePitchbends) flags |= gm::MusicType::IntegerNotesOnly;
-
-				try {
-					pMusicOutType->write(psMusicOut, suppData, pMusic, flags);
-					std::cout << "Wrote " << strOutFile << " as " << strOutType << std::endl;
-				} catch (const gm::format_limitation& e) {
-					std::cerr << PROGNAME ": Unable to write this song in format "
-						<< strOutType << " - " << e.what() << std::endl;
-					// Delete empty output file
-					psMusicOut->remove();
-					return RET_UNCOMMON_FAILURE;
-				}
-
-			} else if (i->string_key.compare("list-tags") == 0) {
-				bool listed = false;
-				camoto::Metadata::MetadataTypes availableTypes = pMusicType->getMetadataList();
-				for (camoto::Metadata::TypeMap::const_iterator
-					i = pMusic->metadata.begin(); i != pMusic->metadata.end(); i++
-				) {
-					std::cout << i->first << ": \"" << i->second << "\"";
-					camoto::Metadata::MetadataTypes::iterator a =
-						std::find(availableTypes.begin(), availableTypes.end(), i->first);
-					if (a == availableTypes.end()) {
-						std::cout << " [*** Metadata item not included in getMetadataList() ***]";
-					} else {
-						availableTypes.erase(a);
-					}
-					std::cout << "\n";
-					listed = true;
-				}
-				for (camoto::Metadata::MetadataTypes::const_iterator
-					i = availableTypes.begin(); i != availableTypes.end(); i++
-				) {
-					std::cout << *i << ": [empty]\n";
-					listed = true;
-				}
-				if (!listed) std::cout << "No tags.\n";
-
-			} else if (i->string_key.compare("list-instruments") == 0) {
+			} else if (i.string_key.compare("list-instruments") == 0) {
 				std::cout << "Loop return: ";
 				if (pMusic->loopDest == -1) std::cout << "[no loop]\n";
 				else std::cout << "Order " << pMusic->loopDest << "\n";
 				std::cout << "Channel map:\n";
 				unsigned int j = 0;
-				for (std::vector<gm::TrackInfo>::const_iterator
-					i = pMusic->trackInfo.begin(); i != pMusic->trackInfo.end(); i++, j++
-				) {
-					std::cout << "Track " << j << ": " << getTrackChannelText(*i)
+				for (auto& ti : pMusic->trackInfo) {
+					std::cout << "Track " << j << ": " << getTrackChannelText(ti)
 						<< " (inst:";
+
 					// Figure out which instruments play on this channel
 					std::map<unsigned int, bool> printed;
-					for (std::vector<gm::PatternPtr>::const_iterator
-						pp = pMusic->patterns.begin(); pp != pMusic->patterns.end(); pp++
-					) {
-						gm::TrackPtr& pt = (*pp)->at(j);
-						for (gm::Track::const_iterator
-							tev = pt->begin(); tev != pt->end(); tev++
-						) {
-							const gm::TrackEvent& te = *tev;
-							const gm::NoteOnEvent *ev = dynamic_cast<const gm::NoteOnEvent *>(te.event.get());
+					for (auto& pp : pMusic->patterns) {
+						auto& pt = pp.at(j);
+						for (auto& te : pt) {
+							const gm::NoteOnEvent *ev = dynamic_cast<const gm::NoteOnEvent*>(te.event.get());
 							if (!ev) continue;
 
 							// If we are here, this is a note-on event
@@ -1087,20 +1056,19 @@ int main(int iArgC, char *cArgV[])
 					}
 					if (printed.size() == 0) std::cout << " none";
 					std::cout << ")\n";
+					j++;
 				}
 				std::cout << std::endl;
 
 				std::cout << "Listing " << pMusic->patches->size() << " instruments:\n";
 				j = 0;
-				for (gm::PatchBank::const_iterator
-					i = pMusic->patches->begin(); i != pMusic->patches->end(); i++, j++
-				) {
+				for (auto& i : *pMusic->patches) {
 					std::cout << " #" << j << ": ";
-					gm::OPLPatchPtr oplNext = boost::dynamic_pointer_cast<gm::OPLPatch>(*i);
+					auto oplNext = dynamic_cast<gm::OPLPatch*>(i.get());
 					if (oplNext) {
 						std::cout << "OPL " << oplNext;
 					} else {
-						gm::MIDIPatchPtr midiNext = boost::dynamic_pointer_cast<gm::MIDIPatch>(*i);
+						auto midiNext = dynamic_cast<gm::MIDIPatch*>(i.get());
 						if (midiNext) {
 							std::cout << "MIDI ";
 							if (midiNext->percussion) {
@@ -1109,32 +1077,33 @@ int main(int iArgC, char *cArgV[])
 								std::cout << "patch " << (int)midiNext->midiPatch;
 							}
 						} else {
-							gm::PCMPatchPtr pcmNext = boost::dynamic_pointer_cast<gm::PCMPatch>(*i);
+							auto pcmNext = dynamic_cast<gm::PCMPatch*>(i.get());
 							if (pcmNext) {
 								std::cout << "PCM " << pcmNext->sampleRate << "/"
 									<< (int)pcmNext->bitDepth << "/" << (int)pcmNext->numChannels << " "
 									<< (pcmNext->loopEnd ? '+' : '-') << "Loop ";
-								if (pcmNext->lenData < 1024) std::cout << pcmNext->lenData << "B ";
-								else if (pcmNext->lenData < 1024*1024) std::cout << pcmNext->lenData / 1024 << "kB ";
-								else std::cout << pcmNext->lenData / 1048576 << "MB ";
+								if (pcmNext->data.size() < 1024) std::cout << pcmNext->data.size() << "B ";
+								else if (pcmNext->data.size() < 1024*1024) std::cout << pcmNext->data.size() / 1024 << "kB ";
+								else std::cout << pcmNext->data.size() / 1048576 << "MB ";
 							} else {
 								std::cout << "--- "; // empty patch
 							}
 						}
 					}
-					if (!(*i)->name.empty()) {
-						std::cout << " \"" << (*i)->name << '"';
+					if (!i->name.empty()) {
+						std::cout << " \"" << i->name << '"';
 					}
 					std::cout << "\n";
+					j++;
 				}
 
-			} else if (i->string_key.compare("remap-tracks") == 0) {
-				if (i->value[0].empty()) {
+			} else if (i.string_key.compare("remap-tracks") == 0) {
+				if (i.value[0].empty()) {
 					std::cerr << "-m/--remap-tracks requires a parameter" << std::endl;
 					return RET_BADARGS;
 				}
 				std::string strTrack, strChan;
-				if (!split(i->value[0], '=', &strTrack, &strChan)) {
+				if (!split(i.value[0], '=', &strTrack, &strChan)) {
 					std::cerr << "-m/--remap-tracks must be of the form track=channel, "
 						"e.g. 4=m0 (to map track 4 to MIDI channel 0)" << std::endl;
 					return RET_BADARGS;
@@ -1146,29 +1115,29 @@ int main(int iArgC, char *cArgV[])
 						<< pMusic->trackInfo.size() - 1 << std::endl;
 					return RET_BADARGS;
 				}
-				gm::TrackInfo& ti = pMusic->trackInfo[track];
+				auto& ti = pMusic->trackInfo[track];
 				switch (strChan[0]) {
 					case 'm':
 					case 'M':
-						ti.channelType = gm::TrackInfo::MIDIChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::MIDI;
 						break;
 					case 'p':
 					case 'P':
-						ti.channelType = gm::TrackInfo::PCMChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::PCM;
 						break;
 					case 'o':
 					case 'O':
-						ti.channelType = gm::TrackInfo::OPLChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::OPL;
 						break;
 					case 'r':
 					case 'R':
-						ti.channelType = gm::TrackInfo::OPLPercChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::OPLPerc;
 						break;
 					case '-':
-						ti.channelType = gm::TrackInfo::UnusedChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::Unused;
 						break;
 					case '*':
-						ti.channelType = gm::TrackInfo::AnyChannel;
+						ti.channelType = gm::TrackInfo::ChannelType::Any;
 						break;
 					default:
 						std::cerr << "Unknown channel type \"" << strChan[0]
@@ -1180,20 +1149,20 @@ int main(int iArgC, char *cArgV[])
 				std::cout << "Mapping track " << track << " to "
 					<< getTrackChannelText(ti) << "\n";
 
-			} else if (i->string_key.compare("rename-instrument") == 0) {
-				if (i->value[0].empty()) {
+			} else if (i.string_key.compare("rename-instrument") == 0) {
+				if (i.value[0].empty()) {
 					std::cerr << "-e/--rename-instrument requires a parameter" << std::endl;
 					return RET_BADARGS;
 				}
 				std::string strIndex, strName;
-				if (!split(i->value[0], '=', &strIndex, &strName)) {
+				if (!split(i.value[0], '=', &strIndex, &strName)) {
 					std::cerr << "-e/--rename-instrument must be of the form index=name, "
 						"e.g. 0=test (to rename the first instrument to 'test')"
 						<< std::endl;
 					return RET_BADARGS;
 				}
 				unsigned int index = strtod(strIndex.c_str(), NULL);
-				gm::PatchPtr inst;
+				std::shared_ptr<gm::Patch> inst;
 				if (pMusic->patches->size() < index) {
 					std::cerr << "-e/--rename-instrument parameter out of range: cannot "
 						"change instrument " << index << " as the last instrument in the "
@@ -1201,7 +1170,7 @@ int main(int iArgC, char *cArgV[])
 					return RET_BADARGS;
 				} else if (pMusic->patches->size() == index) {
 					// Trying to add one past the end, append a blank
-					inst.reset(new gm::Patch);
+					inst = std::make_shared<gm::Patch>();
 					pMusic->patches->push_back(inst);
 					std::cout << "Added empty";
 				} else {
@@ -1211,24 +1180,27 @@ int main(int iArgC, char *cArgV[])
 				inst->name = strName;
 				std::cout << " instrument " << index << " as " << inst->name << "\n";
 
-			} else if (i->string_key.compare("newinst") == 0) {
-				if (i->value[0].empty()) {
+			} else if (i.string_key.compare("newinst") == 0) {
+				if (i.value[0].empty()) {
 					std::cerr << "-n/--newinst requires filename" << std::endl;
 					return RET_BADARGS;
 				}
 				std::string strInstFile, strInstType;
-				if (!split(i->value[0], ':', &strInstType, &strInstFile)) {
-					strInstFile = i->value[0];
+				if (!split(i.value[0], ':', &strInstType, &strInstFile)) {
+					strInstFile = i.value[0];
 					strInstType.clear();
 				}
 
-				gm::MusicTypePtr pInstType;
-				gm::MusicPtr pInst;
+				gm::MusicManager::handler_t pInstType;
+				std::shared_ptr<gm::Music> pInst;
 				try {
-					pInst = openMusicFile(strInstFile, "-n/--newinst", strInstType,
-						pManager, bForceOpen, &pInstType);
-				} catch (int ret) {
-					return ret;
+					int ret = openMusicFile(strInstFile, "-n/--newinst", strInstType,
+						bForceOpen, &pInst, &pInstType);
+					if (ret != RET_OK) return ret;
+				} catch (stream::open_error& e) {
+					std::cerr << "Error opening new instrument file " << strFilename
+						<< ": " << e.what() << std::endl;
+					return RET_SHOWSTOPPER;
 				}
 
 				if (!pInst->patches) {
@@ -1270,14 +1242,14 @@ int main(int iArgC, char *cArgV[])
 				std::cout << "Loaded replacement instruments from " << strInstFile
 					<< std::endl;
 
-			} else if (i->string_key.compare("repeat-instruments") == 0) {
+			} else if (i.string_key.compare("repeat-instruments") == 0) {
 				if (!pMusic->patches) {
 					std::cerr << "No instruments available to repeat with "
 						"-r/--repeat-instruments" << std::endl;
 					return RET_BADARGS;
 				}
 
-				unsigned int instrumentRepeat = strtod(i->value[0].c_str(), NULL);
+				unsigned int instrumentRepeat = strtod(i.value[0].c_str(), NULL);
 
 				unsigned int oldCount = pMusic->patches->size();
 				pMusic->patches->reserve(instrumentRepeat);
@@ -1292,7 +1264,7 @@ int main(int iArgC, char *cArgV[])
 					pMusic->patches->push_back(pMusic->patches->at(srcInst));
 				}
 
-			} else if (i->string_key.compare("play") == 0) {
+			} else if (i.string_key.compare("play") == 0) {
 				if (!pMusic->patches) {
 					std::cerr << "This song has no instruments - please specify an "
 						"external instrument bank with -n/--newinst before -p/--play"
@@ -1303,73 +1275,39 @@ int main(int iArgC, char *cArgV[])
 				int ret = play(pMusic, bankMIDI, userLoop+1, extraTime);
 				if (ret != RET_OK) return ret;
 
-			} else if (i->string_key.compare("wav") == 0) {
+			} else if (i.string_key.compare("wav") == 0) {
 				if (!pMusic->patches) {
 					std::cerr << "This song has no instruments - please specify an "
 						"external instrument bank with -n/--newinst before -w/--wav"
 						<< std::endl;
 					return RET_BADARGS;
 				}
-				if (i->value[0].empty()) {
+				if (i.value[0].empty()) {
 					std::cerr << "-w/--wav requires filename" << std::endl;
 					return RET_BADARGS;
 				}
-				std::string wavFilename = i->value[0];
+				std::string wavFilename = i.value[0];
 
-				int ret = render(wavFilename, pMusic, bankMIDI, userLoop+1, extraTime);
-				if (ret != RET_OK) return ret;
-
-			} else if (
-				(i->string_key.compare("tag-title") == 0)
-			) {
-				if (i->value.size() == 0) {
-					std::cerr << PROGNAME ": --tag-title requires a parameter."
+				try {
+					stream::output_file wav(wavFilename, true);
+					std::cout << "Creating " << wavFilename << "\n";
+					int ret = render(wav, pMusic, bankMIDI, userLoop+1, extraTime);
+					if (ret != RET_OK) return ret;
+				} catch (stream::open_error& e) {
+					std::cerr << "Error opening " << wavFilename << ": " << e.what()
 						<< std::endl;
-					return RET_BADARGS;
-				}
-				if (i->value[0].empty()) {
-					pMusic->metadata.erase(Metadata::Title);
-				} else {
-					pMusic->metadata[Metadata::Title] = i->value[0];
-				}
-
-			} else if (
-				(i->string_key.compare("tag-artist") == 0)
-			) {
-				if (i->value.size() == 0) {
-					std::cerr << PROGNAME ": --tag-artist requires a parameter."
-						<< std::endl;
-					return RET_BADARGS;
-				}
-				if (i->value[0].empty()) {
-					pMusic->metadata.erase(Metadata::Author);
-				} else {
-					pMusic->metadata[Metadata::Author] = i->value[0];
-				}
-
-			} else if (
-				(i->string_key.compare("tag-comment") == 0)
-			) {
-				if (i->value.size() == 0) {
-					std::cerr << PROGNAME ": --tag-comment requires a parameter."
-						<< std::endl;
-					return RET_BADARGS;
-				}
-				if (i->value[0].empty()) {
-					pMusic->metadata.erase(Metadata::Description);
-				} else {
-					pMusic->metadata[Metadata::Description] = i->value[0];
+					return RET_SHOWSTOPPER;
 				}
 
 			// Ignore --type/-t
-			} else if (i->string_key.compare("type") == 0) {
-			} else if (i->string_key.compare("t") == 0) {
+			} else if (i.string_key.compare("type") == 0) {
+			} else if (i.string_key.compare("t") == 0) {
 			// Ignore --script/-s
-			} else if (i->string_key.compare("script") == 0) {
-			} else if (i->string_key.compare("s") == 0) {
+			} else if (i.string_key.compare("script") == 0) {
+			} else if (i.string_key.compare("s") == 0) {
 			// Ignore --force/-f
-			} else if (i->string_key.compare("force") == 0) {
-			} else if (i->string_key.compare("f") == 0) {
+			} else if (i.string_key.compare("force") == 0) {
+			} else if (i.string_key.compare("f") == 0) {
 			}
 
 			// Make sure output doesn't get mixed in with PortAudio messages

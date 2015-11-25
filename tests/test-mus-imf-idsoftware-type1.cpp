@@ -38,48 +38,48 @@ class test_imf_idsoftware_type1: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00"
 			));
 
 			// c02: Invalid register
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x08\x00"
 				"\x00\x00\x00\x00"
 				"\xF9\x00\x00\x00"
 			));
 
 			// c03: Delay too large
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x08\x00"
 				"\x00\x00\x00\x00"
 				"\xBD\x20\x00\xF0"
 			));
 
 			// c04: Type-1 file with wrong length
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x01"
 				"\x00\x00\x00\x00"
 				"\x12\x34\x56\x78"
 			));
 
 			// c05: Short but valid file
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"\x04\x00"
 				"\x00\x00\x00\x00"
 			));
 
 			// c06: Truncated file
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00\x00\x00"
 				"\xBD\x20\x00"
 			));
 
 			// c07: Make sure weird short files don't get picked up
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x01\x00"
 				"\x00"
 			));

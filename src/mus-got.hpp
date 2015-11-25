@@ -30,17 +30,17 @@ namespace gamemusic {
 class MusicType_GOT: virtual public MusicType
 {
 	public:
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
-		virtual unsigned long getCaps() const;
-		virtual Certainty isInstance(stream::input_sptr input) const;
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const;
-		virtual void write(stream::output_sptr output, SuppData& suppData,
-			MusicPtr music, unsigned int flags) const;
-		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
-			const std::string& filenameMusic) const;
-		virtual Metadata::MetadataTypes getMetadataList() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
+		virtual Caps caps() const;
+		virtual Certainty isInstance(stream::input& content) const;
+		virtual std::unique_ptr<Music> read(stream::input& content, SuppData& suppData) const;
+		virtual void write(stream::output& content, SuppData& suppData,
+			const Music& music, WriteFlags flags) const;
+		virtual SuppFilenames getRequiredSupps(stream::input& content,
+			const std::string& filename) const;
+		virtual std::vector<Attribute> supportedAttributes() const;
 };
 
 } // namespace gamemusic

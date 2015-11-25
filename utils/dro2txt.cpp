@@ -269,7 +269,7 @@ bool diffPercState(uint8_t *o, uint8_t *n, int p, int chip, unsigned long& nextD
 
 int main(void)
 {
-	stream::input_sptr cin = stream::open_stdin();
+	auto cin = stream::open_stdin();
 	uint8_t cmdShortDelay, cmdLongDelay, lenCodemap;
 	try {
 		char sig[8];
@@ -279,17 +279,17 @@ int main(void)
 			return 1;
 		}
 		uint16_t verMajor, verMinor;
-		cin >> u16le(verMajor) >> u16le(verMinor);
+		*cin >> u16le(verMajor) >> u16le(verMinor);
 		if ((verMajor != 2) || (verMinor != 0)) {
 			std::cerr << "ERROR: Only DOSBox .dro version 2.0 files are supported." << std::endl;
 			return 1;
 		}
 		cin->seekg(11, stream::cur);
-		cin
+		*cin
 			>> u8(cmdShortDelay)
-				>> u8(cmdLongDelay)
-				>> u8(lenCodemap)
-			;
+			>> u8(cmdLongDelay)
+			>> u8(lenCodemap)
+		;
 	} catch (const stream::incomplete_read&) {
 		std::cerr << "ERROR: Input file is not in DOSBox .dro format (short read)."
 			<< std::endl;
@@ -315,20 +315,20 @@ int main(void)
 
 		for (;;) {
 			uint8_t code;
-			cin >> u8(code);
+			*cin >> u8(code);
 			if (code == cmdShortDelay) {
 				uint8_t delay;
-				cin >> u8(delay);
+				*cin >> u8(delay);
 				nextDelay += delay + 1;
 			} else if (code == cmdLongDelay) {
 				uint8_t delay;
-				cin >> u8(delay);
+				*cin >> u8(delay);
 				nextDelay += (delay + 1) << 8;
 			} else {
 				int chip = code >> 7; // high bit
 				uint8_t reg = codeMap[code & 0x7F];
 				uint8_t val;
-				cin >> u8(val);
+				*cin >> u8(val);
 
 				// Cache this value
 				nextOplState[chip][reg] = val;

@@ -38,10 +38,10 @@ class test_dsm_dsik: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Invalid RIFF
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"RUFF" "\x7A\x01\x00\x00" "DSMF"
 				"SONG" "\xC0\x00\x00\x00"
 				"Test DSM song\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -74,7 +74,7 @@ class test_dsm_dsik: public test_music
 			));
 
 			// c02: Invalid DSMF signature
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"RIFF" "\x7A\x01\x00\x00" "DSFM"
 				"SONG" "\xC0\x00\x00\x00"
 				"Test DSM song\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"
@@ -107,7 +107,7 @@ class test_dsm_dsik: public test_music
 			));
 
 			// c03: File truncated
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"RIFF" "\x7A\x02\x00\x00" "DSMF"
 				"SONG" "\xC0\x00\x00\x00"
 				"Test DSM song\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0"

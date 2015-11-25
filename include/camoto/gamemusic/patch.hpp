@@ -22,10 +22,9 @@
 #define _CAMOTO_GAMEMUSIC_PATCH_HPP_
 
 #include <string>
-#include <boost/shared_ptr.hpp>
 
-#ifndef DLL_EXPORT
-#define DLL_EXPORT
+#ifndef CAMOTO_GAMEMUSIC_API
+#define CAMOTO_GAMEMUSIC_API
 #endif
 
 namespace camoto {
@@ -37,7 +36,7 @@ namespace gamemusic {
  * the sound of an instrument.  It is specialised for the particular type of
  * patch (OPL, sampled, etc.)
  */
-struct DLL_EXPORT Patch
+struct CAMOTO_GAMEMUSIC_API Patch
 {
 	/// Title of the instrument.
 	std::string name;
@@ -52,13 +51,6 @@ struct DLL_EXPORT Patch
 	Patch();
 	virtual ~Patch();
 };
-
-/// Shared pointer to a Patch.
-typedef boost::shared_ptr<Patch> PatchPtr;
-
-// There is no vector of Patch pointers as this is what a PatchBank is for.
-/// Vector of Patch shared pointers.
-//typedef std::vector<PatchPtr> VC_PATCH;
 
 } // namespace gamemusic
 } // namespace camoto

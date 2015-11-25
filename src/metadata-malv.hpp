@@ -21,7 +21,7 @@
 #ifndef _CAMOTO_GAMEMUSIC_METADATA_MALV_HPP_
 #define _CAMOTO_GAMEMUSIC_METADATA_MALV_HPP_
 
-#include <camoto/metadata.hpp>
+#include <camoto/attribute.hpp>
 #include <camoto/stream.hpp>
 #include <camoto/gamemusic/musictype.hpp>
 
@@ -33,22 +33,22 @@ namespace gamemusic {
  * @param input
  *   Stream to read tags from.
  *
- * @param metadata
- *   Map to store tags in.
+ * @param music
+ *   Music instance to append tags to.
  *
  * @throw stream::error
  *   If there was an error reading from the stream, such as invalid or truncated
  *   tags.
  */
-void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata);
+void readMalvMetadata(stream::input& content, Music* music);
 
 /// Write tags to the stream in Malvineous' tag format.
 /**
  * @param output
  *   Stream to write tags to.
  *
- * @param metadata
- *   Map to get tags from.
+ * @param attributes
+ *   Vector to get tags from.  Tags are looked up by name rather than index.
  *
  * @throw stream::error
  *   If there was an error writing to the stream, such as insufficient disk
@@ -57,7 +57,11 @@ void readMalvMetadata(stream::input_sptr& input, Metadata::TypeMap& metadata);
  * @throw format_limitation
  *   If the tags were too long to be written.
  */
-void writeMalvMetadata(stream::output_sptr& output, const Metadata::TypeMap& metadata);
+void writeMalvMetadata(stream::output& content,
+	const std::vector<Attribute>& attributes);
+
+/// Return available fields for Malvineous' tag format.
+std::vector<Attribute> supportedMalvMetadata();
 
 } // namespace gamemusic
 } // namespace camoto

@@ -21,38 +21,42 @@
 #ifndef _CAMOTO_GAMEMUSIC_EVENTCONVERTER_OPL_HPP_
 #define _CAMOTO_GAMEMUSIC_EVENTCONVERTER_OPL_HPP_
 
-#include <camoto/gamemusic/tempo.hpp>
+#include <camoto/error.hpp>
+#include <camoto/enum-ops.hpp>
 #include <camoto/gamemusic/events.hpp>
+#include <camoto/gamemusic/eventhandler.hpp>
+#include <camoto/gamemusic/musictype.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
-#include <camoto/stream.hpp>
+#include <camoto/gamemusic/tempo.hpp>
 
 namespace camoto {
 namespace gamemusic {
 
 /// Flag for delay type
-enum DelayType {
+enum class DelayType {
 	DelayIsPreData,  ///< The delay should occur before using the register value
 	DelayIsPostData, ///< The delay should happen after the reg val is used
 };
 
 /// Flags that control the conversion to OPL data.
-struct OPLWriteFlags
+enum class OPLWriteFlags
 {
-	/// Data type that can hold these values
-	typedef unsigned int type;
-
 	/// No special treatment
-	static const type Default          = 0x00;
+	Default          = 0x00,
 
 	/// Disable pitchbends
-	static const type IntegerNotesOnly = 0x01;
+	IntegerNotesOnly = 0x01,
 
 	/// Don't use the first channel (reserve it for e.g. Adlib SFX in a game)
-	static const type ReserveFirstChan = 0x02;
+	ReserveFirstChan = 0x02,
 
 	/// Set: OPL2 chip only, unset: supports OPL3/dual OPL2
-	static const type OPL2Only         = 0x04;
+	OPL2Only         = 0x04,
 };
+
+IMPLEMENT_ENUM_OPERATORS(OPLWriteFlags);
+
+CAMOTO_GAMEMUSIC_API OPLWriteFlags toOPLFlags(MusicType::WriteFlags wf);
 
 /// Information about a single OPL reg/val pair.
 struct OPLEvent
@@ -130,7 +134,7 @@ const unsigned int OPL_MAX_CHANNELS = 18;
 const unsigned int OPL_TRACK_COUNT = 9 * OPL_NUM_CHIPS + 5;
 
 /// Callback used to do something with the OPL data supplied by oplEncode().
-class DLL_EXPORT OPLWriterCallback
+class CAMOTO_GAMEMUSIC_API OPLWriterCallback
 {
 	public:
 		/// Handle the next OPL register/value pair.
@@ -162,7 +166,7 @@ class DLL_EXPORT OPLWriterCallback
  * @note This class does no optimisation of the OPL data.  Multiple redundant
  *   writes will occur.  The OPLEncoder class does however perform optimisation.
  */
-class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
+class CAMOTO_GAMEMUSIC_API EventConverter_OPL: virtual public EventHandler
 {
 	public:
 		/// Set encoding parameters.
@@ -182,8 +186,9 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *   Conversion constant to use when converting Hertz into OPL frequency
 		 *   numbers.  Can be one of OPL_FNUM_* or a raw value.
 		 */
-		EventConverter_OPL(OPLWriterCallback *cb, ConstMusicPtr music,
-			double fnumConversion, OPLWriteFlags::type flags);
+		EventConverter_OPL(OPLWriterCallback *cb,
+			std::shared_ptr<const Music> music, double fnumConversion,
+			OPLWriteFlags flags);
 
 		/// Destructor.
 		virtual ~EventConverter_OPL();
@@ -198,7 +203,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 *   Entries 0 to 127 inclusive are for GM instruments, entries 128 to 255
 		 *   are for percussion (128=note 0, 129=note 1, etc.)
 		 */
-		void setBankMIDI(PatchBankPtr bankMIDI);
+		void setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI);
 
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
@@ -219,10 +224,10 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 
 	private:
 		OPLWriterCallback *cb;      ///< Callback to handle the generated OPL data
-		ConstMusicPtr music;        ///< Song to convert
+		std::shared_ptr<const Music> music; ///< Song to convert
 		double fnumConversion;      ///< Conversion value to use in Hz -> fnum calc
-		OPLWriteFlags::type flags;  ///< One or more OPLWriteFlags
-		PatchBankPtr bankMIDI;      ///< Optional patch bank for MIDI notes
+		OPLWriteFlags flags;        ///< One or more OPLWriteFlags
+		std::shared_ptr<const PatchBank> bankMIDI; ///< Optional patch bank for MIDI notes
 
 		unsigned long cachedDelay;  ///< Delay to add on to next reg write
 		bool oplSet[2][256];        ///< Has this register been set yet?
@@ -245,7 +250,7 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 * @param val
 		 *   Value to write to the OPL register.
 		 *
-		 * @throw stream::error
+		 * @throw camoto::error
 		 *   The data could not be processed.
 		 *
 		 * @post A delay of value this->cachedDelay is inserted before the event,
@@ -270,11 +275,11 @@ class DLL_EXPORT EventConverter_OPL: virtual public EventHandler
 		 * @param velocity
 		 *   Velocity value to set.
 		 *
-		 * @throw stream::error
+		 * @throw camoto::error
 		 *   The data could not be processed.
 		 */
 		void writeOpSettings(int chipIndex, int oplChannel, int opNum,
-			OPLPatchPtr i, int velocity);
+			const OPLPatch& i, int velocity);
 
 		/// Get the OPL channel to use for the given track.
 		/**

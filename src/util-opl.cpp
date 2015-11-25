@@ -1,5 +1,5 @@
 /**
- * @file  opl-util.cpp
+ * @file  util-opl.cpp
  * @brief Utility functions related to OPL chips.
  *
  * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <camoto/util.hpp> // make_unique
 #include <camoto/gamemusic/util-opl.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 
@@ -105,35 +106,36 @@ void milliHertzToFnum(unsigned int milliHertz,
 
 
 struct Purpose {
-	int rhythm;
+	OPLPatch::Rhythm rhythm;
 	int map[6];
 };
 
 void mapInstrument(std::vector<Purpose>& instPurpose, OPLPatch::Rhythm rhythm,
-	unsigned int *inst, PatchBankPtr& patches)
+	unsigned int *inst, std::shared_ptr<PatchBank>& patches)
 {
-	Purpose& p = instPurpose[*inst];
+	auto& p = instPurpose[*inst];
+	unsigned int rhythm_int = (unsigned int)rhythm;
 
-	if (p.map[rhythm] >= 0) {
+	if (p.map[rhythm_int] >= 0) {
 		// This instrument has been set already, use that
-		*inst = p.map[rhythm];
+		*inst = p.map[rhythm_int];
 	} else {
 		// This instrument hasn't been set
-		if (p.rhythm < 0) {
-			// This instrument hasn't been used yet, so keep the original def
-			p.map[rhythm] = *inst;
+		if ((int)p.rhythm < 0) {
+			// This instrument hasn't been used yet, so update the original def
+			p.map[rhythm_int] = *inst;
 			p.rhythm = rhythm;
-			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(*inst));
+			auto oplPatch = dynamic_cast<OPLPatch*>(patches->at(*inst).get());
 			oplPatch->rhythm = rhythm;
 		} else {
 			// This instrument has already been used for another purpose, so make a
 			// copy of it for this purpose.
-			OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(patches->at(*inst));
-			OPLPatchPtr copy(new OPLPatch(*oplPatch));
+			auto oplPatch = dynamic_cast<OPLPatch*>(patches->at(*inst).get());
+			auto copy = std::make_shared<OPLPatch>(*oplPatch);
 			copy->rhythm = rhythm;
 			// Update the original to map here, but only in this rhythm mode
 			*inst = patches->size();
-			p.map[rhythm] = *inst;
+			p.map[rhythm_int] = *inst;
 			patches->push_back(copy);
 
 			Purpose p2;
@@ -153,64 +155,54 @@ void mapInstrument(std::vector<Purpose>& instPurpose, OPLPatch::Rhythm rhythm,
 	return;
 }
 
-void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
+void oplDenormalisePerc(Music& music, OPLNormaliseType method)
 {
 	std::vector<Purpose> instPurpose;
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
+	for (unsigned int i = 0; i < music.patches->size(); i++) {
 		Purpose p;
-		p.rhythm = -1;
-		for (unsigned int i = 0; i < 6; i++) p.map[i] = -1;
+		p.rhythm = OPLPatch::Rhythm::Unknown;
+		for (unsigned int n = 0; n < 6; n++) p.map[n] = -1;
 		instPurpose.push_back(p);
 	}
 	// For each pattern
 	unsigned int patternIndex = 0;
-	for (std::vector<PatternPtr>::iterator
-		pp = music->patterns.begin(); pp != music->patterns.end(); pp++, patternIndex++
-	) {
-		PatternPtr& pattern = *pp;
+	for (auto& pattern : music.patterns) {
 
 		// For each track
 		unsigned int trackIndex = 0;
-		for (Pattern::iterator
-			pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++
-		) {
-			TrackInfo& ti = music->trackInfo[trackIndex];
+		for (auto& pt : pattern) {
+			auto& ti = music.trackInfo[trackIndex];
 
 			// For each event in the track
-			for (Track::iterator
-				tev = (*pt)->begin(); tev != (*pt)->end(); tev++
-			) {
-				TrackEvent& te = *tev;
+			for (auto& te : pt) {
 				NoteOnEvent *ev = dynamic_cast<NoteOnEvent *>(te.event.get());
 				if (!ev) continue;
 
 				// If we are here, this is a note-on event
-				if (ev->instrument > music->patches->size()) continue;
+				if (ev->instrument > music.patches->size()) continue;
 
 				//Purpose& p = instPurpose[ev->instrument];
-				OPLPatch::Rhythm rhythm = OPLPatch::Unknown;
-				if (ti.channelType == TrackInfo::OPLChannel) {
-					rhythm = OPLPatch::Melodic;
-				} else if (ti.channelType == TrackInfo::OPLPercChannel) {
+				OPLPatch::Rhythm rhythm = OPLPatch::Rhythm::Unknown;
+				if (ti.channelType == TrackInfo::ChannelType::OPL) {
+					rhythm = OPLPatch::Rhythm::Melodic;
+				} else if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
 					rhythm = (OPLPatch::Rhythm)(ti.channelIndex + 1);
 				}
-				if (rhythm >= OPLPatch::Melodic) {
-					mapInstrument(instPurpose, rhythm, &ev->instrument, music->patches);
+				if (rhythm >= OPLPatch::Rhythm::Melodic) {
+					mapInstrument(instPurpose, rhythm, &ev->instrument, music.patches);
 				}
 			}
+			trackIndex++;
 		}
+		patternIndex++;
 	}
 
 	// Swap the operators for those instruments used on one channel-type only
-	for (PatchBank::iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
-		OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(*i);
+	for (auto& i : *music.patches) {
+		auto oplPatch = dynamic_cast<OPLPatch*>(i.get());
 		if (!oplPatch) continue;
 		switch (method) {
-			case OPLPerc_CarFromMod:
+			case OPLNormaliseType::CarFromMod:
 				if (oplCarOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a carrier-only channel, and the
 					// format says the carrier should be loaded from the modulator
@@ -218,7 +210,7 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 					std::swap(oplPatch->c, oplPatch->m);
 				}
 				break;
-			case OPLPerc_ModFromCar:
+			case OPLNormaliseType::ModFromCar:
 				if (oplModOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a modulator-only channel, and the
 					// format says the modulator should be loaded from the carrier
@@ -226,31 +218,29 @@ void oplDenormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 					std::swap(oplPatch->m, oplPatch->c);
 				}
 				break;
-			case OPLPerc_MatchingOps:
+			case OPLNormaliseType::MatchingOps:
 				break;
 		}
 	}
 	return;
 }
 
-PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
+std::unique_ptr<PatchBank> oplNormalisePerc(const Music& music,
+	OPLNormaliseType method)
 {
-	PatchBankPtr newPatchBank(new PatchBank);
+	auto newPatchBank = std::make_unique<PatchBank>();
 
 	// Swap the operators if needed
-	for (PatchBank::iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
-		OPLPatchPtr oplPatchOrig = boost::dynamic_pointer_cast<OPLPatch>(*i);
+	for (auto& i : *music.patches) {
+		auto oplPatchOrig = dynamic_cast<OPLPatch*>(i.get());
 		if (!oplPatchOrig) {
-			newPatchBank->push_back(*i);
+			newPatchBank->push_back(i);
 			continue;
 		}
-		OPLPatchPtr oplPatch(new OPLPatch);
-		*oplPatch = *oplPatchOrig;
+		auto oplPatch = std::make_shared<OPLPatch>(*oplPatchOrig);
 		newPatchBank->push_back(oplPatch);
 		switch (method) {
-			case OPLPerc_CarFromMod:
+			case OPLNormaliseType::CarFromMod:
 				if (oplCarOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a carrier-only channel, and the
 					// format says the carrier should be loaded from the modulator
@@ -258,7 +248,7 @@ PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 					std::swap(oplPatch->c, oplPatch->m);
 				}
 				break;
-			case OPLPerc_ModFromCar:
+			case OPLNormaliseType::ModFromCar:
 				if (oplModOnly(oplPatch->rhythm)) {
 					// This instrument is only used on a modulator-only channel, and the
 					// format says the modulator should be loaded from the carrier
@@ -266,7 +256,7 @@ PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 					std::swap(oplPatch->m, oplPatch->c);
 				}
 				break;
-			case OPLPerc_MatchingOps:
+			case OPLNormaliseType::MatchingOps:
 				break;
 		}
 	}
@@ -347,7 +337,7 @@ PatchBankPtr oplNormalisePerc(MusicPtr music, OPL_NORMALISE_PERC method)
 		}
 	}
 */
-	return newPatchBank;
+	return std::move(newPatchBank);
 }
 
 } // namespace gamemusic

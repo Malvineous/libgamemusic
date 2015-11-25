@@ -30,69 +30,69 @@
 using namespace camoto;
 namespace gm = camoto::gamemusic;
 
+BOOST_TEST_DONT_PRINT_LOG_VALUE(gm::EffectEvent::Type);
+
 struct test_midi: public test_main
 {
-	stream::string_sptr base;
-	gm::MusicPtr music;
-	gm::PatternPtr pattern;
-	gm::TrackPtr track1, track2;
+	stream::string base;
+	std::unique_ptr<gm::Music> music;
+	gm::Pattern* pattern;
+	gm::Track* track1, * track2;
 
 	test_midi()
-		:	base(new stream::string())
+		:	pattern(nullptr),
+			track1(nullptr),
+			track2(nullptr)
 	{
 	}
 
 	void init_read(const std::string& data)
 	{
 		this->base << data;
-		this->base->seekg(0, stream::start);
-
-		stream::input_sptr s = this->base;
+		this->base.seekg(0, stream::start);
 
 		gm::Tempo initialTempo;
 		initialTempo.ticksPerQuarterNote(gm::MIDI_DEF_TICKS_PER_QUARTER_NOTE);
 		initialTempo.usPerQuarterNote(gm::MIDI_DEF_uS_PER_QUARTER_NOTE);
 
-		this->music = midiDecode(s, gm::MIDIFlags::Default, initialTempo);
+		this->music = midiDecode(this->base, gm::MIDIFlags::Default, initialTempo);
 	}
 
 	void init_write()
 	{
-		this->music.reset(new gm::Music());
-		this->pattern.reset(new gm::Pattern);
-		this->music->patterns.push_back(this->pattern);
+		this->music = std::make_unique<gm::Music>();
+		this->music->patterns.emplace_back();
+		this->pattern = &this->music->patterns.back();
 		this->music->patternOrder.push_back(0);
 
 		gm::TrackInfo ti;
-		ti.channelType = gm::TrackInfo::MIDIChannel;
+		ti.channelType = gm::TrackInfo::ChannelType::MIDI;
 		ti.channelIndex = 0;
 		this->music->trackInfo.push_back(ti);
 
-		ti.channelType = gm::TrackInfo::MIDIChannel;
+		ti.channelType = gm::TrackInfo::ChannelType::MIDI;
 		ti.channelIndex = 1;
 		this->music->trackInfo.push_back(ti);
 
-		this->track1.reset(new gm::Track);
-		this->track2.reset(new gm::Track);
-		this->pattern->push_back(this->track1);
-		this->pattern->push_back(this->track2);
+		this->pattern->emplace_back();
+		this->pattern->emplace_back();
+		this->track1 = &this->pattern->at(0);
+		this->track2 = &this->pattern->at(1);
 
-		gm::PatchBankPtr pb(new gm::PatchBank());
-		pb->reserve(1);
-		gm::MIDIPatchPtr p(new gm::MIDIPatch());
+		this->music->patches = std::make_shared<gm::PatchBank>();
+		this->music->patches->reserve(1);
+		auto p = std::make_shared<gm::MIDIPatch>();
 		p->midiPatch = 20; // Instrument #0 is MIDI patch #20
 		p->percussion = false;
-		pb->push_back(p);
-		this->music->patches = pb;
+		this->music->patches->push_back(p);
 	}
 
 	boost::test_tools::predicate_result is_equal(const std::string& strExpected)
 	{
-		stream::output_sptr s = this->base;
-		midiEncode(s, this->music, gm::MIDIFlags::Default, NULL,
+		midiEncode(this->base, *this->music, gm::MIDIFlags::Default, NULL,
 			gm::EventHandler::Order_Row_Track, NULL);
 
-		return this->test_main::is_equal(strExpected, *(this->base->str()));
+		return this->test_main::is_equal(strExpected, this->base.data);
 	}
 
 };
@@ -143,18 +143,18 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_read)
 
 	this->init_read(STRING_WITH_NULLS("\x00\x90\x45\x7f" "\x10\xe0\x00\x38"));
 
-	gm::PatternPtr pattern = this->music->patterns[0];
-	gm::TrackPtr track = pattern->at(0);
+	auto pattern = this->music->patterns[0];
+	auto track = pattern.at(0);
 
 	// Make sure enough events were generated
-	BOOST_REQUIRE_EQUAL(track->size(), 2);
-	gm::TrackEvent& te = track->at(1); // 0=note on,1=pitchbend
+	BOOST_REQUIRE_EQUAL(track.size(), 2);
+	auto& te = track.at(1); // 0=note on,1=pitchbend
 
-	gm::EffectEvent *pevTyped = dynamic_cast<gm::EffectEvent *>(te.event.get());
+	auto pevTyped = dynamic_cast<gm::EffectEvent *>(te.event.get());
 	BOOST_REQUIRE_MESSAGE(pevTyped, createString(
 		"Pitchbend event was wrongly interpreted as " << te.event->getContent()));
 
-	BOOST_REQUIRE_EQUAL(pevTyped->type, gm::EffectEvent::PitchbendNote);
+	BOOST_REQUIRE_EQUAL(pevTyped->type, gm::EffectEvent::Type::PitchbendNote);
 	BOOST_REQUIRE_CLOSE(pevTyped->data / 1000.0, 433.700, 0.01);
 }
 
@@ -163,24 +163,27 @@ BOOST_AUTO_TEST_CASE(midi_pitchbend_write)
 	BOOST_TEST_MESSAGE("Testing generation of pitchbend event");
 
 	this->init_write();
+	assert(this->track1);
 
 	{
-		gm::TrackEvent te;
-		te.delay = 0;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
 		ev->velocity = 255;
+
+		gm::TrackEvent te;
+		te.delay = 0;
+		te.event = ev;
 		this->track1->push_back(te);
 	}
 	{
+		auto ev = std::make_shared<gm::EffectEvent>();
+		ev->type = gm::EffectEvent::Type::PitchbendNote;
+		ev->data = 433700;
+
 		gm::TrackEvent te;
 		te.delay = 10;
-		gm::EffectEvent *ev = new gm::EffectEvent();
-		te.event.reset(ev);
-		ev->type = gm::EffectEvent::PitchbendNote;
-		ev->data = 433700;
+		te.event = ev;
 		this->track1->push_back(te);
 	}
 	this->music->ticksPerTrack = 10;
@@ -203,54 +206,60 @@ BOOST_AUTO_TEST_CASE(midi_runningstatus_write)
 	this->init_write();
 
 	{
-		gm::TrackEvent te;
-		te.delay = 0;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
 		ev->velocity = 255;
+
+		gm::TrackEvent te;
+		te.delay = 0;
+		te.event = ev;
 		this->track1->push_back(te);
 	}
 	{
+		auto ev = std::make_shared<gm::NoteOffEvent>();
+
 		gm::TrackEvent te;
 		te.delay = 0;
-		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
-		te.event.reset(ev);
+		te.event = ev;
 		this->track1->push_back(te);
 	}
 	{
-		gm::TrackEvent te;
-		te.delay = 0;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
 		ev->velocity = 255;
+
+		gm::TrackEvent te;
+		te.delay = 0;
+		te.event = ev;
 		this->track2->push_back(te);
 	}
 	{
+		auto ev = std::make_shared<gm::NoteOffEvent>();
+
 		gm::TrackEvent te;
 		te.delay = 0;
-		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
-		te.event.reset(ev);
+		te.event = ev;
 		this->track2->push_back(te);
 	}
 	{
-		gm::TrackEvent te;
-		te.delay = 0;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->milliHertz = 440000;
 		ev->instrument = 0;
 		ev->velocity = 255;
+
+		gm::TrackEvent te;
+		te.delay = 0;
+		te.event = ev;
 		this->track2->push_back(te);
 	}
 	{
+		auto ev = std::make_shared<gm::NoteOffEvent>();
+
 		gm::TrackEvent te;
 		te.delay = 0;
-		gm::NoteOffEvent *ev = new gm::NoteOffEvent();
-		te.event.reset(ev);
+		te.event = ev;
 		this->track2->push_back(te);
 	}
 	this->music->ticksPerTrack = 10;

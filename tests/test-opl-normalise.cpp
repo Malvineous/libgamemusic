@@ -19,137 +19,134 @@
  */
 
 #include <boost/test/unit_test.hpp>
-#include <boost/pointer_cast.hpp>
 #include <camoto/stream_string.hpp>
-#include <camoto/util.hpp> // createString()
+#include <camoto/util.hpp> // createString(), make_unique
 #include <camoto/gamemusic.hpp>
 #include "tests.hpp"
 
 using namespace camoto;
 namespace gm = camoto::gamemusic;
 
-gm::MusicPtr createDefaultMusic()
+std::unique_ptr<gm::Music> createDefaultMusic()
 {
-	gm::MusicPtr music(new gm::Music);
-	music->patches.reset(new gm::PatchBank);
+	auto music = std::make_unique<gm::Music>();
+	music->patches = std::make_shared<gm::PatchBank>();
 
 	music->patternOrder.push_back(0);
 
-	gm::PatternPtr pattern(new gm::Pattern());
-	music->patterns.push_back(pattern);
+	music->patterns.emplace_back();
+	auto& pattern = music->patterns.back();
 
 	for (unsigned int c = 0; c < 6; c++) {
-		gm::TrackInfo ti;
+		music->trackInfo.emplace_back();
+		auto& ti = music->trackInfo.back();
 		if (c < 1) {
-			ti.channelType = gm::TrackInfo::OPLChannel;
+			ti.channelType = gm::TrackInfo::ChannelType::OPL;
 			ti.channelIndex = c;
 		} else {
 			assert(c-1 < 5);
-			ti.channelType = gm::TrackInfo::OPLPercChannel;
+			ti.channelType = gm::TrackInfo::ChannelType::OPLPerc;
 			ti.channelIndex = c - 1;
 		}
-		music->trackInfo.push_back(ti);
 
-		gm::TrackPtr t(new gm::Track());
-		pattern->push_back(t);
-
+		pattern.emplace_back();
+		auto& t = pattern.back();
 		{
-			gm::TrackEvent te;
-			te.delay = 1;
-			gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-			te.event.reset(ev);
+			auto ev = std::make_shared<gm::NoteOnEvent>();
 			ev->instrument = c;
 			ev->milliHertz = 440000;
 			ev->velocity = 255;
-			t->push_back(te);
+
+			gm::TrackEvent te;
+			te.delay = 1;
+			te.event = ev;
+			t.push_back(te);
 		}
 	}
 
 	{
 		// Play perc inst (hihat/m) on normal channel
-		gm::TrackPtr t = pattern->at(0);
-		gm::TrackEvent te;
-		te.delay = 1;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->instrument = 1;
 		ev->milliHertz = 440000;
 		ev->velocity = 255;
-		t->push_back(te);
+
+		gm::TrackEvent te;
+		te.delay = 1;
+		te.event = ev;
+		pattern[0].push_back(te);
 	}
 	{
 		// Play perc inst (topcym/c) on normal channel
-		gm::TrackPtr t = pattern->at(0);
-		gm::TrackEvent te;
-		te.delay = 1;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->instrument = 2;
 		ev->milliHertz = 440000;
 		ev->velocity = 255;
-		t->push_back(te);
+
+		gm::TrackEvent te;
+		te.delay = 1;
+		te.event = ev;
+		pattern[0].push_back(te);
 	}
 	{
 		// Play normal inst on perc (hihat/m) channel
-		gm::TrackPtr t = pattern->at(1);
-		gm::TrackEvent te;
-		te.delay = 1;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->instrument = 0;
 		ev->milliHertz = 440000;
 		ev->velocity = 255;
-		t->push_back(te);
+
+		gm::TrackEvent te;
+		te.delay = 1;
+		te.event = ev;
+		pattern[1].push_back(te);
 	}
 	{
 		// Play normal inst on perc (topcym/c) channel
-		gm::TrackPtr t = pattern->at(2);
-		gm::TrackEvent te;
-		te.delay = 1;
-		gm::NoteOnEvent *ev = new gm::NoteOnEvent();
-		te.event.reset(ev);
+		auto ev = std::make_shared<gm::NoteOnEvent>();
 		ev->instrument = 0;
 		ev->milliHertz = 440000;
 		ev->velocity = 255;
-		t->push_back(te);
+
+		gm::TrackEvent te;
+		te.delay = 1;
+		te.event = ev;
+		pattern[2].push_back(te);
 	}
 
-	gm::OPLPatchPtr opl;
-
-	opl.reset(new gm::OPLPatch);
+	auto opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 1;
 	opl->m.attackRate = 2;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
-	opl.reset(new gm::OPLPatch);
+	opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 3;
 	opl->m.attackRate = 4;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
-	opl.reset(new gm::OPLPatch);
+	opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 5;
 	opl->m.attackRate = 6;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
-	opl.reset(new gm::OPLPatch);
+	opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 7;
 	opl->m.attackRate = 8;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
-	opl.reset(new gm::OPLPatch);
+	opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 9;
 	opl->m.attackRate = 10;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
-	opl.reset(new gm::OPLPatch);
+	opl = std::make_shared<gm::OPLPatch>();
 	opl->c.attackRate = 11;
 	opl->m.attackRate = 12;
-	opl->rhythm = gm::OPLPatch::Melodic;
+	opl->rhythm = gm::OPLPatch::Rhythm::Melodic;
 	music->patches->push_back(opl);
 
 	return music;
@@ -161,210 +158,210 @@ BOOST_AUTO_TEST_CASE(matching_ops)
 {
 	BOOST_TEST_MESSAGE("Testing denormalisation with matching operators");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_MatchingOps);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::MatchingOps);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 3);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TomTom);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 4);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::SnareDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 5);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::BassDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_CASE(car_from_mod)
 {
 	BOOST_TEST_MESSAGE("Testing denormalisation with carrier populated from modulator");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_CarFromMod);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::CarFromMod);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 3);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TomTom);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 10); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 9);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 4);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::SnareDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 5);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::BassDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 6); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 5);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 2); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 1);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_CASE(mod_from_car)
 {
 	BOOST_TEST_MESSAGE("Testing denormalisation with carrier populated from modulator");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_ModFromCar);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::ModFromCar);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 0); // got changed to normal inst
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Melodic); // got changed to normal inst
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 8); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 7);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 3);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TomTom);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 4);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::SnareDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 5);
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::BassDrum);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 4); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 3);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 2); // swapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 1);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -376,402 +373,402 @@ BOOST_AUTO_TEST_CASE(matching_ops)
 {
 	BOOST_TEST_MESSAGE("Testing normalisation with matching operators");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_MatchingOps);
-	gm::PatchBankPtr newPatchBank = gm::oplNormalisePerc(music, gm::OPLPerc_MatchingOps);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::MatchingOps);
+	auto newPatchBank = gm::oplNormalisePerc(*music, gm::OPLNormaliseType::MatchingOps);
 
 	//BOOST_CHECK_EQUAL(music->patches->size(), 6);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_CASE(car_from_mod)
 {
 	BOOST_TEST_MESSAGE("Testing normalisation with carrier populated from modulator");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_CarFromMod);
-	gm::PatchBankPtr newPatchBank = gm::oplNormalisePerc(music, gm::OPLPerc_CarFromMod);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::CarFromMod);
+	auto newPatchBank = gm::oplNormalisePerc(*music, gm::OPLNormaliseType::CarFromMod);
 
 	//BOOST_CHECK_EQUAL(music->patches->size(), 6);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 10); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 9);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 6); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 5);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 2); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 1);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_CASE(mod_from_car)
 {
 	BOOST_TEST_MESSAGE("Testing normalisation with carrier populated from modulator");
 
-	gm::MusicPtr music = createDefaultMusic();
-	gm::oplDenormalisePerc(music, gm::OPLPerc_ModFromCar);
-	gm::PatchBankPtr newPatchBank = gm::oplNormalisePerc(music, gm::OPLPerc_ModFromCar);
+	auto music = createDefaultMusic();
+	gm::oplDenormalisePerc(*music, gm::OPLNormaliseType::ModFromCar);
+	auto newPatchBank = gm::oplNormalisePerc(*music, gm::OPLNormaliseType::ModFromCar);
 
 	//BOOST_CHECK_EQUAL(music->patches->size(), 6);
 
-	gm::OPLPatchPtr oplPatch;
+	gm::OPLPatch* oplPatch;
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 8); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 7);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 4); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 3);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 2); // still swapped/orig unchanged
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 1);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(music->patches->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(music->patches->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(0));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(0).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(1));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(1).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(2));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(2).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(3));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(3).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 7); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 8);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(4));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(4).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 9);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 10);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(5));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(5).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 11);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 12);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, -1);
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::Unknown);
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(6));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(6).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 3); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 4);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // got copied from (1) and set to hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // got copied from (1) and set to hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(7));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(7).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1); // unswapped
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 1); // normal inst played as hihat
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::HiHat); // normal inst played as hihat
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(8));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(8).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 5);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 6);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // got copied from (2) and set to topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // got copied from (2) and set to topcym
 
-	oplPatch = boost::dynamic_pointer_cast<gm::OPLPatch>(newPatchBank->at(9));
+	oplPatch = dynamic_cast<gm::OPLPatch*>(newPatchBank->at(9).get());
 	assert(oplPatch);
 	BOOST_CHECK_EQUAL(oplPatch->c.attackRate, 1);
 	BOOST_CHECK_EQUAL(oplPatch->m.attackRate, 2);
-	//BOOST_CHECK_EQUAL(oplPatch->rhythm, 2); // normal inst played as topcym
+	//BOOST_CHECK_EQUAL(oplPatch->rhythm, gm::OPLPatch::Rhythm::TopCymbal); // normal inst played as topcym
 }
 
 BOOST_AUTO_TEST_SUITE_END()

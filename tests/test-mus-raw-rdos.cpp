@@ -37,20 +37,20 @@ class test_raw_rdos: public test_music
 			this->test_music::addTests();
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Wrong signature
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"RAWADATO" "\x50\x08"
 			));
 
 			// c02: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"RAWADATA"
 			));
 
 			// c03: Short but valid file
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"RAWADATA" "\x50\x08"
 			));
 		}

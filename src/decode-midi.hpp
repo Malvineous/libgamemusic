@@ -53,8 +53,8 @@ namespace gamemusic {
  *   particularly important for a MIDI file to get the beat/bar arrangement
  *   correct.
  */
-MusicPtr DLL_EXPORT midiDecode(stream::input_sptr input, unsigned int flags,
-	const Tempo& initialTempo);
+std::unique_ptr<Music> CAMOTO_GAMEMUSIC_API midiDecode(stream::input& input,
+	MIDIFlags flags, const Tempo& initialTempo);
 
 } // namespace gamemusic
 } // namespace camoto

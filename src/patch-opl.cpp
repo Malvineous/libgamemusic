@@ -23,13 +23,10 @@
 
 using namespace camoto::gamemusic;
 
-std::ostream& operator << (std::ostream& s, const OPLPatchPtr p)
-{
-	s << *(p.get());
-	return s;
-}
+namespace camoto {
+namespace gamemusic {
 
-std::ostream& operator << (std::ostream& s, const OPLOperator& o)
+std::ostream& operator<< (std::ostream& s, const OPLOperator& o)
 {
 	s
 		<< (o.enableTremolo ? 'T' : 't')
@@ -48,7 +45,10 @@ std::ostream& operator << (std::ostream& s, const OPLOperator& o)
 	return s;
 }
 
-std::ostream& operator << (std::ostream& s, const OPLPatch& p)
+} // namespace gamemusic
+} // namespace camoto
+
+std::ostream& camoto::gamemusic::operator<< (std::ostream& s, const OPLPatch& p)
 {
 	s << "[" << std::hex
 		<< (int)p.rhythm << ":"
@@ -75,17 +75,41 @@ std::ostream& operator << (std::ostream& s, const OPLPatch& p)
 	return s;
 }
 
+std::ostream& camoto::gamemusic::operator<< (std::ostream& s,
+	const OPLPatch::Rhythm& r)
+{
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch-enum"
+	s << "OPLPatch::Rhythm::";
+	switch (r) {
+		case OPLPatch::Rhythm::Unknown: s << "Unknown"; break;
+		case OPLPatch::Rhythm::Melodic: s << "Melodic"; break;
+		case OPLPatch::Rhythm::HiHat: s << "HiHat"; break;
+		case OPLPatch::Rhythm::TopCymbal: s << "TopCymbal"; break;
+		case OPLPatch::Rhythm::TomTom: s << "TomTom"; break;
+		case OPLPatch::Rhythm::SnareDrum: s << "SnareDrum"; break;
+		case OPLPatch::Rhythm::BassDrum: s << "BassDrum"; break;
+		default: s << "???"; break;
+	}
+#pragma GCC diagnostic pop
+	return s;
+}
+
 const char *camoto::gamemusic::rhythmToText(OPLPatch::Rhythm rhythm)
 {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic error "-Wswitch-enum"
 	switch (rhythm) {
-		case OPLPatch::Melodic: return "normal (non-rhythm) instrument";
-		case OPLPatch::HiHat: return "hi-hat";
-		case OPLPatch::TopCymbal: return "top cymbal";
-		case OPLPatch::TomTom: return "tom tom";
-		case OPLPatch::SnareDrum: return "snare drum";
-		case OPLPatch::BassDrum: return "bass drum";
+		case OPLPatch::Rhythm::Unknown: return "unknown/undefined instrument";
+		case OPLPatch::Rhythm::Melodic: return "normal (non-rhythm) instrument";
+		case OPLPatch::Rhythm::HiHat: return "hi-hat";
+		case OPLPatch::Rhythm::TopCymbal: return "top cymbal";
+		case OPLPatch::Rhythm::TomTom: return "tom tom";
+		case OPLPatch::Rhythm::SnareDrum: return "snare drum";
+		case OPLPatch::Rhythm::BassDrum: return "bass drum";
 		default: return "[unknown instrument type]";
 	}
+#pragma GCC diagnostic pop
 }
 
 OPLOperator::OPLOperator()
@@ -107,6 +131,6 @@ OPLOperator::OPLOperator()
 OPLPatch::OPLPatch()
 	:	feedback(0),
 		connection(false),
-		rhythm(OPLPatch::Melodic)
+		rhythm(OPLPatch::Rhythm::Melodic)
 {
 }

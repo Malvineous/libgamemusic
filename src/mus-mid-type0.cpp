@@ -27,61 +27,63 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-std::string MusicType_MID_Type0::getCode() const
+std::string MusicType_MID_Type0::code() const
 {
 	return "mid-type0";
 }
 
-std::string MusicType_MID_Type0::getFriendlyName() const
+std::string MusicType_MID_Type0::friendlyName() const
 {
 	return "Standard MIDI File (type-0/single track)";
 }
 
-std::vector<std::string> MusicType_MID_Type0::getFileExtensions() const
+std::vector<std::string> MusicType_MID_Type0::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("mid");
-	return vcExtensions;
+	return {
+		"mid",
+	};
 }
 
-unsigned long MusicType_MID_Type0::getCaps() const
+MusicType::Caps MusicType_MID_Type0::caps() const
 {
 	return
-		InstMIDI
-		| HasEvents
+		Caps::InstMIDI
+		| Caps::HasEvents
 	;
 }
 
-MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input& content)
+	const
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_mid_type0_isinstance_c01
 	char sig[4];
-	psMusic->seekg(0, stream::start);
-	psMusic->read(sig, 4);
-	if (strncmp(sig, "MThd", 4) != 0) return MusicType::DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 4);
+	if (strncmp(sig, "MThd", 4) != 0) return Certainty::DefinitelyNo;
 
 	// Skip over the length field
-	psMusic->seekg(4, stream::cur);
+	content.seekg(4, stream::cur);
 
 	// Make sure the header says it's a type-0 file
 	// TESTED BY: mus_mid_type0_isinstance_c02 (wrong type)
 	uint16_t type;
-	psMusic >> u16be(type);
-	if (type != 0) return MusicType::DefinitelyNo;
+	content >> u16be(type);
+	if (type != 0) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_mid_type0_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_MID_Type0::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Skip MThd header.
-	input->seekg(4, stream::start);
+	content.seekg(4, stream::start);
 
 	uint32_t len;
 	uint16_t type, numTracks, ticksPerQuarter;
-	input
+	content
 		>> u32be(len)
 		>> u16be(type)
 		>> u16be(numTracks)
@@ -89,29 +91,29 @@ MusicPtr MusicType_MID_Type0::read(stream::input_sptr input, SuppData& suppData)
 	;
 
 	// Skip over any remaining data in the MThd block (should be none)
-	input->seekg(len - 6, stream::cur);
+	content.seekg(len - 6, stream::cur);
 
 	// Read the MTrk header
-	input->seekg(4, stream::cur); // skip "MTrk", assume it's fine
+	content.seekg(4, stream::cur); // skip "MTrk", assume it's fine
 	uint32_t lenData;
-	input >> u32be(lenData);
+	content >> u32be(lenData);
 
-	/// @todo Clip input to lenData
+	/// @todo Clip content to lenData
 
 	Tempo initialTempo;
 	initialTempo.ticksPerQuarterNote(ticksPerQuarter);
 	initialTempo.usPerQuarterNote(MIDI_DEF_uS_PER_QUARTER_NOTE);
-	MusicPtr music = midiDecode(input, MIDIFlags::Default, initialTempo);
+	auto music = midiDecode(content, MIDIFlags::Default, initialTempo);
 
 	return music;
 }
 
-void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_MID_Type0::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<MIDIPatch>(music->patches);
+	requirePatches<MIDIPatch>(*music.patches);
 
-	output->write(
+	content.write(
 		"MThd"
 		"\x00\x00\x00\x06" // MThd block length (BE)
 		"\x00\x00" // type-0
@@ -121,33 +123,32 @@ void MusicType_MID_Type0::write(stream::output_sptr output, SuppData& suppData,
 		"\x00\x00\x00\x00" // MTrk block length placeholder
 	, 22);
 
-	unsigned long midiFlags = MIDIFlags::EmbedTempo;
-	if (flags & MusicType::IntegerNotesOnly) {
+	MIDIFlags midiFlags = MIDIFlags::EmbedTempo;
+	if (flags & MusicType::WriteFlags::IntegerNotesOnly) {
 		midiFlags |= MIDIFlags::IntegerNotesOnly;
 	}
 
-	midiEncode(output, music, midiFlags, NULL, EventHandler::Order_Row_Track,
+	midiEncode(content, music, midiFlags, NULL, EventHandler::Order_Row_Track,
 		NULL);
 
-	uint32_t mtrkLen = output->tellp();
+	uint32_t mtrkLen = content.tellp();
 	mtrkLen -= 22; // 22 == header from start()
 
-	output->seekp(12, stream::start);
-	output << u16be(music->initialTempo.ticksPerQuarterNote());
+	content.seekp(12, stream::start);
+	content << u16be(music.initialTempo.ticksPerQuarterNote());
 
-	output->seekp(18, stream::start);
-	output << u32be(mtrkLen);
+	content.seekp(18, stream::start);
+	content << u32be(mtrkLen);
 }
 
-SuppFilenames MusicType_MID_Type0::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_MID_Type0::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_MID_Type0::getMetadataList() const
+std::vector<Attribute> MusicType_MID_Type0::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	return types;
+	return {};
 }

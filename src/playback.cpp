@@ -83,13 +83,13 @@ Playback::~Playback()
 {
 }
 
-void Playback::setBankMIDI(PatchBankPtr bankMIDI)
+void Playback::setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI)
 {
 	this->bankMIDI = bankMIDI;
 	return;
 }
 
-void Playback::setSong(ConstMusicPtr music)
+void Playback::setSong(std::shared_ptr<const Music> music)
 {
 	this->music = music;
 	this->end = false;
@@ -120,34 +120,30 @@ void Playback::setSong(ConstMusicPtr music)
 		OPL_FNUM_DEFAULT, OPLWriteFlags::Default));
 	this->oplConvMIDI->setBankMIDI(this->bankMIDI);
 
-	this->pcm.reset(&this->music->trackInfo, this->music->patches);
-	this->pcmMIDI.reset(&this->music->trackInfo, this->music->patches);
+	this->pcm.reset(this->music->trackInfo, this->music->patches);
+	this->pcmMIDI.reset(this->music->trackInfo, this->music->patches);
 	this->pcmMIDI.setBankMIDI(this->bankMIDI);
 
 	// Turn rhythm mode on or off depending on the presence of rhythm tracks
 	bool rhythm = false;
-	for (TrackInfoVector::const_iterator
-		i = music->trackInfo.begin(); i != music->trackInfo.end(); i++
-	) {
-		if (i->channelType == TrackInfo::OPLPercChannel) {
+	for (auto& i : music->trackInfo) {
+		if (i.channelType == TrackInfo::ChannelType::OPLPerc) {
 			rhythm = true;
 			break;
 		}
 	}
 	ConfigurationEvent rhythmEvent;
-	rhythmEvent.configType = ConfigurationEvent::EnableRhythm;
+	rhythmEvent.configType = ConfigurationEvent::Type::EnableRhythm;
 	rhythmEvent.value = rhythm ? 1 : 0;
 	this->oplConverter->handleEvent(0, 0, 0, &rhythmEvent);
 
 	// Some safety checks to assist with debugging
-	for (PatchBank::const_iterator
-		i = music->patches->begin(); i != music->patches->end(); i++
-	) {
-		const PCMPatch *pcmPatch = dynamic_cast<const PCMPatch *>(i->get());
+	for (auto& i : *music->patches) {
+		auto pcmPatch = dynamic_cast<const PCMPatch*>(i.get());
 		if (pcmPatch) {
 			// Make sure the loop end is clipped to be within the sample data
-			assert((pcmPatch->lenData == 0) || (pcmPatch->loopStart < pcmPatch->lenData));
-			assert(pcmPatch->loopEnd <= pcmPatch->lenData);
+			assert((pcmPatch->data.size() == 0) || (pcmPatch->loopStart < pcmPatch->data.size()));
+			assert(pcmPatch->loopEnd <= pcmPatch->data.size());
 		}
 	}
 	return;
@@ -218,34 +214,33 @@ void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *p
 
 void Playback::allNotesOff()
 {
-	const PatternPtr& pattern = this->music->patterns.at(this->pattern);
+	auto& pattern = this->music->patterns.at(this->pattern);
 	unsigned int trackIndex = 0;
-	TrackInfoVector::const_iterator ti = this->music->trackInfo.begin();
-	for (Pattern::const_iterator
-		pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++, ti++
-	) {
-		NoteOffEvent *ev = new NoteOffEvent();
-		EventPtr event(ev);
+	auto ti = this->music->trackInfo.begin();
+	for (auto& pt : pattern) {
+		auto event = std::make_shared<NoteOffEvent>();
 		if (
-			(ti->channelType == TrackInfo::AnyChannel)
-			|| (ti->channelType == TrackInfo::OPLChannel)
-			|| (ti->channelType == TrackInfo::OPLPercChannel)
+			(ti->channelType == TrackInfo::ChannelType::Any)
+			|| (ti->channelType == TrackInfo::ChannelType::OPL)
+			|| (ti->channelType == TrackInfo::ChannelType::OPLPerc)
 		) {
 			event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
 		}
 		if (
-			(ti->channelType == TrackInfo::AnyChannel)
-			|| (ti->channelType == TrackInfo::MIDIChannel)
+			(ti->channelType == TrackInfo::ChannelType::Any)
+			|| (ti->channelType == TrackInfo::ChannelType::MIDI)
 		) {
 			event->processEvent(0, trackIndex, this->pattern, this->oplConvMIDI.get());
 			event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
 		}
 		if (
-			(ti->channelType == TrackInfo::AnyChannel)
-			|| (ti->channelType == TrackInfo::PCMChannel)
+			(ti->channelType == TrackInfo::ChannelType::Any)
+			|| (ti->channelType == TrackInfo::ChannelType::PCM)
 		) {
 			event->processEvent(0, trackIndex, this->pattern, &this->pcm);
 		}
+		trackIndex++;
+		ti++;
 	}
 	return;
 }
@@ -257,41 +252,36 @@ void Playback::nextFrame()
 	// Trigger the next event
 	if (!this->end) {
 		if (this->frame == 0) {
-			const PatternPtr& pattern = this->music->patterns.at(this->pattern);
+			auto& pattern = this->music->patterns.at(this->pattern);
 			unsigned int trackIndex = 0;
 			// For each track
-			TrackInfoVector::const_iterator ti = this->music->trackInfo.begin();
-			for (Pattern::const_iterator
-				pt = pattern->begin(); pt != pattern->end(); pt++, trackIndex++, ti++
-			) {
+			auto ti = this->music->trackInfo.begin();
+			for (auto& pt : pattern) {
 				unsigned int trackPos = 0; // current track position in ticks
 				// For each event in the track
-				for (Track::const_iterator
-					ev = (*pt)->begin(); ev != (*pt)->end(); ev++
-				) {
-					const TrackEvent& te = *ev;
+				for (auto& te : pt) {
 					trackPos += te.delay;
 					// Right at this event
 					if (trackPos == this->row) {
 						// delay is zero here because we want it to sound immediately (not
 						// that is really matters as the delay is ignored later anyway)
 						if (
-							(ti->channelType == TrackInfo::AnyChannel)
-							|| (ti->channelType == TrackInfo::OPLChannel)
-							|| (ti->channelType == TrackInfo::OPLPercChannel)
+							(ti->channelType == TrackInfo::ChannelType::Any)
+							|| (ti->channelType == TrackInfo::ChannelType::OPL)
+							|| (ti->channelType == TrackInfo::ChannelType::OPLPerc)
 						) {
 							te.event->processEvent(0, trackIndex, this->pattern, this->oplConverter.get());
 						}
 						if (
-							(ti->channelType == TrackInfo::AnyChannel)
-							|| (ti->channelType == TrackInfo::MIDIChannel)
+							(ti->channelType == TrackInfo::ChannelType::Any)
+							|| (ti->channelType == TrackInfo::ChannelType::MIDI)
 						) {
 							te.event->processEvent(0, trackIndex, this->pattern, this->oplConvMIDI.get());
 							te.event->processEvent(0, trackIndex, this->pattern, &this->pcmMIDI);
 						}
 						if (
-							(ti->channelType == TrackInfo::AnyChannel)
-							|| (ti->channelType == TrackInfo::PCMChannel)
+							(ti->channelType == TrackInfo::ChannelType::Any)
+							|| (ti->channelType == TrackInfo::ChannelType::PCM)
 						) {
 							te.event->processEvent(0, trackIndex, this->pattern, &this->pcm);
 						}
@@ -299,15 +289,15 @@ void Playback::nextFrame()
 						GotoEvent *jump = dynamic_cast<GotoEvent *>(te.event.get());
 						if (jump) {
 							switch (jump->type) {
-								case GotoEvent::CurrentPattern:
+								case GotoEvent::Type::CurrentPattern:
 									this->nextRow = jump->targetRow;
 									break;
-								case GotoEvent::NextPattern:
+								case GotoEvent::Type::NextPattern:
 									this->nextOrder++;
 									this->nextRow = jump->targetRow;
 									loadNextOrder = true;
 									break;
-								case GotoEvent::SpecificOrder:
+								case GotoEvent::Type::SpecificOrder:
 									this->nextOrder = jump->targetOrder;
 									this->nextRow = jump->targetRow;
 									loadNextOrder = true;
@@ -320,6 +310,8 @@ void Playback::nextFrame()
 						break;
 					}
 				}
+				trackIndex++;
+				ti++;
 			}
 		} else {
 			// Update any effects currently in progress

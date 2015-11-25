@@ -22,6 +22,7 @@
 #define _CAMOTO_GAMEMUSIC_TEMPO_HPP_
 
 #include <math.h>
+#include <cassert>
 
 namespace camoto {
 namespace gamemusic {

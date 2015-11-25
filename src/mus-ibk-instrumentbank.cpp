@@ -21,6 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <camoto/util.hpp> // make_unique
 #include <camoto/gamemusic/patch-opl.hpp>
 #include "mus-ibk-instrumentbank.hpp"
 
@@ -39,63 +40,64 @@ const unsigned int IBK_INST_LEN = 16;
 /// Length of each instrument title, in bytes
 const unsigned int IBK_NAME_LEN = 9;
 
-std::string MusicType_IBK::getCode() const
+std::string MusicType_IBK::code() const
 {
 	return "ibk-instrumentbank";
 }
 
-std::string MusicType_IBK::getFriendlyName() const
+std::string MusicType_IBK::friendlyName() const
 {
 	return "IBK Instrument Bank";
 }
 
-std::vector<std::string> MusicType_IBK::getFileExtensions() const
+std::vector<std::string> MusicType_IBK::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("ibk");
-	return vcExtensions;
+	return {
+		"ibk",
+	};
 }
 
-unsigned long MusicType_IBK::getCaps() const
+MusicType::Caps MusicType_IBK::caps() const
 {
 	return
-		InstOPL
+		Caps::InstOPL
 	;
 }
 
-MusicType::Certainty MusicType_IBK::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_IBK::isInstance(stream::input& content) const
 {
 	// Make sure the signature matches
 	// TESTED BY: mus_ibk_isinstance_c01
 	char sig[4];
-	psMusic->seekg(0, stream::start);
-	psMusic->read(sig, 4);
-	if (strncmp(sig, "IBK\x1A", 4) != 0) return MusicType::DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 4);
+	if (strncmp(sig, "IBK\x1A", 4) != 0) return Certainty::DefinitelyNo;
 
 	// All files are the same size
 	// TESTED BY: mus_ibk_isinstance_c02
-	if (psMusic->size() != IBK_LENGTH) return MusicType::DefinitelyNo;
+	if (content.size() != IBK_LENGTH) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_ibk_isinstance_c00
-	return MusicType::DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_IBK::read(stream::input& content,
+	SuppData& suppData) const
 {
-	MusicPtr music(new Music());
+	auto music = std::make_unique<Music>();
 	music->patches.reset(new PatchBank());
 
 	uint8_t names[IBK_INST_COUNT * IBK_NAME_LEN];
-	input->seekg(4 + IBK_INST_COUNT * IBK_INST_LEN, stream::start);
-	input->read(names, IBK_INST_COUNT * IBK_NAME_LEN);
+	content.seekg(4 + IBK_INST_COUNT * IBK_INST_LEN, stream::start);
+	content.read(names, IBK_INST_COUNT * IBK_NAME_LEN);
 
 	// Read the instruments
 	music->patches->reserve(IBK_INST_COUNT);
-	input->seekg(4, stream::start);
+	content.seekg(4, stream::start);
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
-		OPLPatchPtr patch(new OPLPatch());
+		auto patch = std::make_shared<OPLPatch>();
 		uint8_t inst[IBK_INST_LEN];
-		input->read((char *)inst, IBK_INST_LEN);
+		content.read((char *)inst, IBK_INST_LEN);
 
 		OPLOperator *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
@@ -115,7 +117,7 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 		}
 		patch->feedback    = (inst[10] >> 1) & 0x07;
 		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Melodic;
+		patch->rhythm      = OPLPatch::Rhythm::Melodic;
 
 		uint8_t *name = &names[i * IBK_NAME_LEN];
 		unsigned int namelen = 9;
@@ -133,24 +135,24 @@ MusicPtr MusicType_IBK::read(stream::input_sptr input, SuppData& suppData) const
 	return music;
 }
 
-void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_IBK::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->size() >= IBK_INST_COUNT) {
+	requirePatches<OPLPatch>(*music.patches);
+	if (music.patches->size() >= IBK_INST_COUNT) {
 		throw bad_patch("IBK files have a maximum of 128 instruments.");
 	}
 
-	output->write("IBK\x1A", 4);
+	content.write("IBK\x1A", 4);
 
 	uint8_t names[IBK_INST_COUNT * IBK_NAME_LEN];
 	memset(names, 0, sizeof(names));
 
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
 		uint8_t inst[16];
-		OPLPatchPtr patch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(i));
+		auto patch = dynamic_cast<OPLPatch*>(music.patches->at(i).get());
 		assert(patch);
-		OPLOperator *o = &patch->m;
+		auto *o = &patch->m;
 		for (int op = 0; op < 2; op++) {
 			inst[0 + op] =
 				((o->enableTremolo & 1) << 7) |
@@ -173,28 +175,27 @@ void MusicType_IBK::write(stream::output_sptr output, SuppData& suppData,
 		//patch->deepTremolo = false;
 		//patch->deepVibrato = false;
 
-		output->write((char *)inst, 16);
+		content.write((char *)inst, 16);
 
 		strncpy((char *)&names[i * IBK_NAME_LEN], patch->name.c_str(), 9);
 	}
 
-	output->write(names, IBK_INST_COUNT * IBK_NAME_LEN);
+	content.write(names, IBK_INST_COUNT * IBK_NAME_LEN);
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_IBK::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_IBK::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_IBK::getMetadataList() const
+std::vector<Attribute> MusicType_IBK::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	return types;
+	return {};
 }

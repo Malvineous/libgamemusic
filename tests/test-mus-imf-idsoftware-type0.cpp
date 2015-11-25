@@ -42,38 +42,38 @@ class test_imf_idsoftware_type0: public test_music
 #warning TODO: need a tempo change with postdata to ensure the old/new tempo is supplied in the correct order
 
 			// c00: Normal
-			this->isInstance(MusicType::DefinitelyYes, this->standard());
+			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
 			// c01: Too short
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00" "\x00"
 			));
 
 			// c02: Invalid register
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00\x00\x00"
 				"\xF9\x00\x00\x00"
 			));
 
 			// c03: Delay too large
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00\x00\x00"
 				"\xBD\x20\x00\xF0"
 			));
 
 			// c04: Type-0 file with nonzero length
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x04\x00\x00\x00"
 				"\x12\x34\x56\x78"
 			));
 
 			// c05: Short but valid file
-			this->isInstance(MusicType::DefinitelyYes, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyYes, STRING_WITH_NULLS(
 				"\x00\x00\x00\x00"
 			));
 
 			// c06: Truncated file
-			this->isInstance(MusicType::DefinitelyNo, STRING_WITH_NULLS(
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
 				"\x00\x00\x00\x00"
 				"\xBD\x20\x00"
 			));
@@ -107,7 +107,8 @@ class test_imf_idsoftware_type0: public test_music
 		/// just a convenient place to put it!)
 		void test_opl_volume()
 		{
-			this->base.reset(new stream::string());
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
 			this->base << STRING_WITH_NULLS(
 				"\x00\x00" "\x00\x00"
 				"\x21\xae" "\x00\x00"
@@ -144,10 +145,11 @@ class test_imf_idsoftware_type0: public test_music
 			);
 
 			// Read the above file
-			MusicPtr music(this->pType->read(this->base, this->suppData));
+			auto music = this->pType->read(this->base, this->suppData);
 			// Write it out again
-			this->base.reset(new stream::string());
-			this->pType->write(this->base, this->suppData, music, this->writeFlags);
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+			this->pType->write(this->base, this->suppData, *music, this->writeFlags);
 
 			// Make sure it matches what we read
 			std::string target = STRING_WITH_NULLS(

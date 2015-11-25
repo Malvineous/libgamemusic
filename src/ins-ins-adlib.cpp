@@ -21,6 +21,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <camoto/util.hpp> // make_unique
 #include <camoto/gamemusic/patch-opl.hpp>
 #include "patch-adlib.hpp"
 #include "ins-ins-adlib.hpp"
@@ -28,37 +29,37 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-/// Length of instrument title, in bytes
+/// Length of instrument title, in bytes.
 const unsigned int INS_TITLE_LEN = 20;
 
-std::string MusicType_INS_AdLib::getCode() const
+std::string MusicType_INS_AdLib::code() const
 {
 	return "ins-adlib";
 }
 
-std::string MusicType_INS_AdLib::getFriendlyName() const
+std::string MusicType_INS_AdLib::friendlyName() const
 {
 	return "Ad Lib INS instrument";
 }
 
-std::vector<std::string> MusicType_INS_AdLib::getFileExtensions() const
+std::vector<std::string> MusicType_INS_AdLib::fileExtensions() const
 {
-	std::vector<std::string> vcExtensions;
-	vcExtensions.push_back("ins");
-	return vcExtensions;
+	return {
+		"ins",
+	};
 }
 
-unsigned long MusicType_INS_AdLib::getCaps() const
+MusicType::Caps MusicType_INS_AdLib::caps() const
 {
 	return
-		InstOPL
+		Caps::InstOPL
 	;
 }
 
-MusicType::Certainty MusicType_INS_AdLib::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_INS_AdLib::isInstance(stream::input& content) const
 {
-	stream::len lenFile = psMusic->size();
-	psMusic->seekg(0, stream::start);
+	stream::len lenFile = content.size();
+	content.seekg(0, stream::start);
 
 	// Unknown length
 	// TESTED BY: ins_ins_adlib_isinstance_c01
@@ -66,26 +67,27 @@ MusicType::Certainty MusicType_INS_AdLib::isInstance(stream::input_sptr psMusic)
 		(lenFile != 54)
 		&& (lenFile != 78)
 		&& (lenFile != 80)
-	) return MusicType::DefinitelyNo;
+	) return Certainty::DefinitelyNo;
 
 	for (unsigned int i = 0; i < 14; i++) {
 		uint16_t next;
-		psMusic >> u16le(next);
+		content >> u16le(next);
 		// Out of range value
 		// TESTED BY: ins_ins_adlib_isinstance_c02
-		if (next > 255) return MusicType::DefinitelyNo;
+		if (next > 255) return Certainty::DefinitelyNo;
 	}
 
 	// TESTED BY: ins_ins_adlib_isinstance_c00
-	return MusicType::PossiblyYes;
+	return Certainty::PossiblyYes;
 }
 
-MusicPtr MusicType_INS_AdLib::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_INS_AdLib::read(stream::input& content,
+	SuppData& suppData) const
 {
-	stream::len lenFile = input->size();
-	input->seekg(0, stream::start);
-	MusicPtr music(new Music());
-	music->patches.reset(new PatchBank());
+	stream::len lenFile = content.size();
+	content.seekg(0, stream::start);
+	auto music = std::make_unique<Music>();
+	music->patches = std::make_shared<PatchBank>();
 
 	int op;
 	bool wavesel;
@@ -108,69 +110,90 @@ MusicPtr MusicType_INS_AdLib::read(stream::input_sptr input, SuppData& suppData)
 	}
 
 	uint16_t unknown;
-	input >> u16le(unknown);
+	content >> u16le(unknown);
 
-	OPLPatchPtr oplPatch(new OPLPatch());
-	readAdLibOperator<uint16_t>(input, &oplPatch->m, &oplPatch->feedback, &oplPatch->connection);
+	auto oplPatch = std::make_shared<OPLPatch>();
+
+	content >> adlibOperator<uint16_t>(oplPatch->m, oplPatch->feedback,
+		oplPatch->connection);
 	if (op > 1) {
-		readAdLibOperator<uint16_t>(input, &oplPatch->c, NULL, NULL);
+		uint8_t dummyFeedback;
+		bool dummyConnection;
+		content >> adlibOperator<uint16_t>(oplPatch->c, dummyFeedback,
+			dummyConnection);
 	}
 
-	std::string title;
-	input >> nullPadded(title, INS_TITLE_LEN);
-	if (!title.empty()) music->metadata[Metadata::Title] = title;
+	// Add metadata item for title, and read content into it
+	{
+		auto& a = music->addAttribute();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = INS_TITLE_LEN;
+		content >> nullPadded(a.textValue, INS_TITLE_LEN);
+	}
 
 	if (wavesel) {
-		readAdLibWaveSel<uint16_t>(input, &oplPatch->m);
+		content >> u16le(oplPatch->m.waveSelect);
 		if (op > 1) {
-			readAdLibWaveSel<uint16_t>(input, &oplPatch->c);
+			content >> u16le(oplPatch->c.waveSelect);
 		}
 	}
+
 	music->patches->push_back(oplPatch);
 
 	return music;
 }
 
-void MusicType_INS_AdLib::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_INS_AdLib::write(stream::output& output, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	requirePatches<OPLPatch>(music->patches);
-	if (music->patches->size() != 1) {
+	requirePatches<OPLPatch>(*music.patches);
+	if (music.patches->size() != 1) {
 		throw bad_patch("AdLib INS files can only have exactly one instrument.");
 	}
 
-	OPLPatchPtr oplPatch = boost::dynamic_pointer_cast<OPLPatch>(music->patches->at(0));
+	auto oplPatch = dynamic_cast<const OPLPatch *>(music.patches->at(0).get());
 
 	uint16_t unknown = 0;
 	output << u16le(unknown);
 
-	writeAdLibOperator<uint16_t>(output, oplPatch->m, oplPatch->feedback, oplPatch->connection);
-	writeAdLibOperator<uint16_t>(output, oplPatch->c, oplPatch->feedback, oplPatch->connection);
-
-	output << nullPadded(music->metadata[Metadata::Title], INS_TITLE_LEN);
-
-	writeAdLibWaveSel<uint16_t>(output, oplPatch->m);
-	writeAdLibWaveSel<uint16_t>(output, oplPatch->c);
+	output
+		<< adlibOperator<uint16_t>(oplPatch->m, oplPatch->feedback, oplPatch->connection)
+		<< adlibOperator<uint16_t>(oplPatch->c, oplPatch->feedback, oplPatch->connection)
+		<< nullPadded(music.attributes().at(0).textValue, INS_TITLE_LEN)
+		<< u16le(oplPatch->m.waveSelect)
+		<< u16le(oplPatch->c.waveSelect)
+	;
 
 	uint16_t unknown2 = 1;
 	output << u16le(unknown2);
 
 	// Set final filesize to this
-	output->truncate_here();
+	output.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_INS_AdLib::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_INS_AdLib::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_INS_AdLib::getMetadataList() const
+std::vector<Attribute> MusicType_INS_AdLib::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	return types;
+	std::vector<Attribute> items;
+	{
+		items.emplace_back();
+		auto& a = items.back();
+		a.changed = false;
+		a.type = Attribute::Type::Text;
+		a.name = CAMOTO_ATTRIBUTE_TITLE;
+		a.desc = "Song title";
+		a.textMaxLength = INS_TITLE_LEN;
+	}
+	return items;
 }

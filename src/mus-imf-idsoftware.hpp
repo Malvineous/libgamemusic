@@ -31,14 +31,14 @@ class MusicType_IMF_Common: virtual public MusicType
 {
 	public:
 		MusicType_IMF_Common(unsigned int imfType, unsigned int speed);
-		virtual unsigned long getCaps() const;
-		virtual Certainty isInstance(stream::input_sptr input) const;
-		virtual MusicPtr read(stream::input_sptr input, SuppData& suppData) const;
-		virtual void write(stream::output_sptr output, SuppData& suppData,
-			MusicPtr music, unsigned int flags) const;
-		virtual SuppFilenames getRequiredSupps(stream::input_sptr input,
-			const std::string& filenameMusic) const;
-		virtual Metadata::MetadataTypes getMetadataList() const;
+		virtual Caps caps() const;
+		virtual Certainty isInstance(stream::input& content) const;
+		virtual std::unique_ptr<Music> read(stream::input& content, SuppData& suppData) const;
+		virtual void write(stream::output& content, SuppData& suppData,
+			const Music& music, WriteFlags flags) const;
+		virtual SuppFilenames getRequiredSupps(stream::input& content,
+			const std::string& filename) const;
+		virtual std::vector<Attribute> supportedAttributes() const;
 
 	protected:
 		unsigned int imfType;  ///< IMF format type; 0 or 1
@@ -51,9 +51,9 @@ class MusicType_IMF_Type0: virtual public MusicType_IMF_Common
 	public:
 		MusicType_IMF_Type0();
 
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
 };
 
 /// IMF 560Hz Type-1 handler
@@ -62,9 +62,9 @@ class MusicType_IMF_Type1: virtual public MusicType_IMF_Common
 	public:
 		MusicType_IMF_Type1();
 
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
 };
 
 /// WLF 700Hz Type-0 handler
@@ -73,9 +73,9 @@ class MusicType_WLF_Type0: virtual public MusicType_IMF_Common
 	public:
 		MusicType_WLF_Type0();
 
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
 };
 
 /// WLF 700Hz Type-1 handler (Wolf3D variant)
@@ -84,9 +84,9 @@ class MusicType_WLF_Type1: virtual public MusicType_IMF_Common
 	public:
 		MusicType_WLF_Type1();
 
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
 };
 
 /// IMF 280Hz Type-0 handler (Duke Nukem II variant)
@@ -95,9 +95,9 @@ class MusicType_IMF_Duke2: virtual public MusicType_IMF_Common
 	public:
 		MusicType_IMF_Duke2();
 
-		virtual std::string getCode() const;
-		virtual std::string getFriendlyName() const;
-		virtual std::vector<std::string> getFileExtensions() const;
+		virtual std::string code() const;
+		virtual std::string friendlyName() const;
+		virtual std::vector<std::string> fileExtensions() const;
 };
 
 } // namespace gamemusic

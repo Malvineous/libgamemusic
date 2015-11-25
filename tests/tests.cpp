@@ -32,6 +32,21 @@
 
 using namespace camoto;
 
+std::unique_ptr<stream::sub> stream_wrap(std::shared_ptr<stream::inout> base)
+{
+	return std::make_unique<stream::sub>(
+		base,
+		0,
+		base->size(),
+		[base](stream::output_sub* sub, stream::len newSize) {
+			// Adjust underlying stream
+			base->truncate(newSize);
+			// Update substream
+			sub->resize(newSize);
+		}
+	);
+}
+
 test_main::test_main()
 	: outputWidth(32)
 {

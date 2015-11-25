@@ -51,14 +51,14 @@ using namespace camoto::gamemusic;
 class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 {
 	public:
-		OPLReaderCallback_DRO_v2(stream::input_sptr input)
-			:	input(input)
+		OPLReaderCallback_DRO_v2(stream::input& content)
+			:	content(content)
 		{
-			this->input->seekg(12, stream::start);
-			this->input >> u32le(this->lenData);
-			this->input->seekg(6, stream::cur);
+			this->content.seekg(12, stream::start);
+			this->content >> u32le(this->lenData);
+			this->content.seekg(6, stream::cur);
 			uint8_t compression;
-			this->input
+			this->content
 				>> u8(compression)
 				>> u8(this->codeShortDelay)
 				>> u8(this->codeLongDelay)
@@ -67,7 +67,7 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 			if (compression != 0) throw stream::error("Compressed DRO files are not implemented (didn't even know they existed)");
 			if (this->codemapLength > 127) throw stream::error("DRO code map too large");
 			memset(this->codemap, 0xFF, sizeof(this->codemap));
-			this->input->read(this->codemap, this->codemapLength);
+			this->content.read(this->codemap, this->codemapLength);
 			// Seek pointer is now at start of OPL data
 		}
 
@@ -79,7 +79,7 @@ class OPLReaderCallback_DRO_v2: virtual public OPLReaderCallback
 			try {
 				uint8_t code, arg;
 nextCode:
-				this->input >> u8(code) >> u8(arg);
+				this->content >> u8(code) >> u8(arg);
 				this->lenData--;
 				if (code == this->codeShortDelay) {
 					oplEvent->delay += arg + 1;
@@ -111,7 +111,7 @@ nextCode:
 		}
 
 	protected:
-		stream::input_sptr input;   ///< Input .raw file
+		stream::input& content;   ///< Input .raw file
 		bool first;                 ///< Is this the first time readNextPair() has been called?
 		unsigned long lenData;      ///< Length of song data (where song stops and tags start)
 
@@ -127,8 +127,7 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 {
 	public:
 		OPLWriterCallback_DRO_v2()
-			:	buffer(new stream::string()),
-				oplType(DRO2_OPLTYPE_OPL2),
+			:	oplType(DRO2_OPLTYPE_OPL2),
 				codemapLength(0),
 				cachedDelay(0),
 				numPairs(0),
@@ -166,8 +165,8 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 					assert(delay <= 256);
 					this->buffer
 						<< u8(DRO2_CMD_SHORTDELAY)
-							<< u8(delay - 1) // delay value
-						;
+						<< u8(delay - 1) // delay value
+					;
 					this->numPairs++;
 					break; // delay would == 0
 				}
@@ -230,12 +229,12 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		}
 
 		/// Write out all the cached data.
-		void write(stream::output_sptr output)
+		void write(stream::output& content)
 		{
-			assert(output->tellp() == 12);
+			assert(content.tellp() == 12);
 
 			// Write out the header
-			output
+			content
 				<< u32le(this->numPairs)     // Song length in pairs
 				<< u32le(this->msSongLength) // Song length in milliseconds
 				<< u8(this->oplType)         // Hardware type (0=OPL2, 1=dual OPL2, 2=OPL3)
@@ -248,18 +247,18 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 			for (unsigned int c = 0; c < this->codemapLength; c++) {
 				for (unsigned int i = 0; i < sizeof(this->codemap); i++) {
 					if (this->codemap[i] == c) {
-						output << u8(i);
+						content << u8(i);
 					}
 				}
 			}
 			// Write the actual OPL data from the buffer
-			output->write(this->buffer->str()->c_str(), this->numPairs << 1);
+			content.write(this->buffer.data.c_str(), this->numPairs << 1);
 
 			return;
 		}
 
 	protected:
-		stream::string_sptr buffer; ///< Buffer to store output data until finish()
+		stream::string buffer;      ///< Buffer to store content data until finish()
 		uint8_t oplType;            ///< OPL hardware type to write into DRO header
 		uint8_t codemapLength;      ///< Number of valid entries in codemap array
 		uint8_t codemap[256];       ///< Map DRO code values to OPL registers
@@ -268,105 +267,104 @@ class OPLWriterCallback_DRO_v2: virtual public OPLWriterCallback
 		uint32_t msSongLength;      ///< Song length in milliseconds
 };
 
-std::string MusicType_DRO_v2::getCode() const
+std::string MusicType_DRO_v2::code() const
 {
 	return "dro-dosbox-v2";
 }
 
-std::string MusicType_DRO_v2::getFriendlyName() const
+std::string MusicType_DRO_v2::friendlyName() const
 {
 	return "DOSBox Raw OPL version 2";
 }
 
-std::vector<std::string> MusicType_DRO_v2::getFileExtensions() const
+std::vector<std::string> MusicType_DRO_v2::fileExtensions() const
 {
 	std::vector<std::string> vcExtensions;
 	vcExtensions.push_back("dro");
 	return vcExtensions;
 }
 
-unsigned long MusicType_DRO_v2::getCaps() const
+MusicType::Caps MusicType_DRO_v2::caps() const
 {
 	return
-		InstOPL
-		| HasEvents
-		| HardwareOPL3
+		Caps::InstOPL
+		| Caps::HasEvents
+		| Caps::HardwareOPL3
 	;
 }
 
-MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input_sptr psMusic) const
+MusicType::Certainty MusicType_DRO_v2::isInstance(stream::input& content) const
 {
 	// Too short
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c03
-	if (psMusic->size() < 12) return DefinitelyNo;
+	if (content.size() < 12) return Certainty::DefinitelyNo;
 
 	// Make sure the signature matches
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c01
 	char sig[8];
-	psMusic->seekg(0, stream::start);
-	psMusic->read(sig, 8);
-	if (strncmp(sig, "DBRAWOPL", 8) != 0) return DefinitelyNo;
+	content.seekg(0, stream::start);
+	content.read(sig, 8);
+	if (strncmp(sig, "DBRAWOPL", 8) != 0) return Certainty::DefinitelyNo;
 
 	// Make sure the header says it's version 2.0
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c02
 	uint16_t verMajor, verMinor;
-	psMusic >> u16le(verMajor) >> u16le(verMinor);
-	if ((verMajor != 2) || (verMinor != 0)) return DefinitelyNo;
+	content >> u16le(verMajor) >> u16le(verMinor);
+	if ((verMajor != 2) || (verMinor != 0)) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c00
 	// TESTED BY: mus_dro_dosbox_v2_isinstance_c04
-	return DefinitelyYes;
+	return Certainty::DefinitelyYes;
 }
 
-MusicPtr MusicType_DRO_v2::read(stream::input_sptr input, SuppData& suppData) const
+std::unique_ptr<Music> MusicType_DRO_v2::read(stream::input& content,
+	SuppData& suppData) const
 {
 	// Make sure we're at the start, as we'll often be near the end if
 	// isInstance() was just called.
-	input->seekg(0, stream::start);
+	content.seekg(0, stream::start);
 
 	Tempo initialTempo;
 	initialTempo.usPerTick = DRO_CLOCK;
 
-	OPLReaderCallback_DRO_v2 cb(input);
-	MusicPtr music = oplDecode(&cb, DelayIsPreData, OPL_FNUM_DEFAULT, initialTempo);
+	OPLReaderCallback_DRO_v2 cb(content);
+	auto music = oplDecode(&cb, DelayType::DelayIsPreData,
+		OPL_FNUM_DEFAULT, initialTempo);
 
 	// See if there are any tags present
-	readMalvMetadata(input, music->metadata);
+	readMalvMetadata(content, music.get());
 
 	return music;
 }
 
-void MusicType_DRO_v2::write(stream::output_sptr output, SuppData& suppData,
-	MusicPtr music, unsigned int flags) const
+void MusicType_DRO_v2::write(stream::output& content, SuppData& suppData,
+	const Music& music, WriteFlags flags) const
 {
-	output->write("DBRAWOPL\x02\x00\x00\x00", 12);
+	content.write("DBRAWOPL\x02\x00\x00\x00", 12);
 
 	// Call the generic OPL writer.
 	OPLWriterCallback_DRO_v2 cb;
-	oplEncode(&cb, music, DelayIsPreData, OPL_FNUM_DEFAULT, flags);
-	cb.write(output);
+	auto oplFlags = toOPLFlags(flags);
+	oplEncode(&cb, music, DelayType::DelayIsPreData, OPL_FNUM_DEFAULT, oplFlags);
+	cb.write(content);
 
 	// Write out any metadata
-	writeMalvMetadata(output, music->metadata);
+	writeMalvMetadata(content, music.attributes());
 
 	// Set final filesize to this
-	output->truncate_here();
+	content.truncate_here();
 
 	return;
 }
 
-SuppFilenames MusicType_DRO_v2::getRequiredSupps(stream::input_sptr input,
-	const std::string& filenameMusic) const
+SuppFilenames MusicType_DRO_v2::getRequiredSupps(stream::input& content,
+	const std::string& filename) const
 {
 	// No supplemental types/empty list
-	return SuppFilenames();
+	return {};
 }
 
-Metadata::MetadataTypes MusicType_DRO_v2::getMetadataList() const
+std::vector<Attribute> MusicType_DRO_v2::supportedAttributes() const
 {
-	Metadata::MetadataTypes types;
-	types.push_back(Metadata::Title);
-	types.push_back(Metadata::Author);
-	types.push_back(Metadata::Description);
-	return types;
+	return supportedMalvMetadata();
 }

@@ -27,7 +27,7 @@ namespace camoto {
 namespace gamemusic {
 
 /// Just one note on this channel is silenced.
-struct DLL_EXPORT SpecificNoteOffEvent: virtual public NoteOffEvent
+struct CAMOTO_GAMEMUSIC_API SpecificNoteOffEvent: virtual public NoteOffEvent
 {
 	virtual std::string getContent() const;
 
@@ -39,7 +39,7 @@ struct DLL_EXPORT SpecificNoteOffEvent: virtual public NoteOffEvent
 };
 
 /// Just one note on this channel is having an effect applied.
-struct DLL_EXPORT SpecificNoteEffectEvent: virtual public EffectEvent
+struct CAMOTO_GAMEMUSIC_API SpecificNoteEffectEvent: virtual public EffectEvent
 {
 	virtual std::string getContent() const;
 
@@ -52,9 +52,9 @@ struct DLL_EXPORT SpecificNoteEffectEvent: virtual public EffectEvent
 
 /// Similar to effect event but data stored differently to apply to all notes
 /// in the track.
-struct DLL_EXPORT PolyphonicEffectEvent: virtual public EffectEvent
+struct CAMOTO_GAMEMUSIC_API PolyphonicEffectEvent: virtual public EffectEvent
 {
-	enum PolyphonicEffectType {
+	enum class Type {
 		PitchbendChannel, ///< Change note freq of all current notes: data=0..8192..16384 for -2..0..+2 semitones
 		VolumeChannel, ///< Change volume (velocity aftertouch) of all current notes: data 0-255
 	};
@@ -70,7 +70,7 @@ struct DLL_EXPORT PolyphonicEffectEvent: virtual public EffectEvent
  * Run through all tracks in the song and move any polyphonic notes onto
  * separate tracks so that only monophonic tracks exist upon return.
  */
-void DLL_EXPORT splitPolyphonicTracks(MusicPtr& music);
+void CAMOTO_GAMEMUSIC_API splitPolyphonicTracks(Music& music);
 
 } // namespace gamemusic
 } // namespace camoto
