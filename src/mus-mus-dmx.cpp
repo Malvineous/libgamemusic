@@ -416,11 +416,18 @@ void MusicType_MUS::write(stream::output& content, SuppData& suppData,
 
 	// Count the number of unique MIDI channels in use
 	std::map<unsigned int, bool> activeChannels;
-	unsigned int channelCount = 0;
+	unsigned int primaryChannels = 0;
+	unsigned int secondaryChannels = 0;
 	for (auto& i : music.trackInfo) {
 		if (i.channelType != TrackInfo::ChannelType::MIDI) continue;
 		activeChannels[i.channelIndex] = true;
-		channelCount++;
+		if (i.channelIndex < 9) {
+			// Primary channel
+			primaryChannels = std::max(primaryChannels, i.channelIndex + 1);
+		} else if ((i.channelIndex > 9) && (i.channelIndex < 15)) {
+			// Secondary channel
+			secondaryChannels = std::max(secondaryChannels, (i.channelIndex - 10) + 1);
+		} // else channels 9 or 15, percussion, not counted
 	}
 
 	stream::pos offSong = 4 + 2*6 + 2*music.patches->size();
@@ -428,8 +435,8 @@ void MusicType_MUS::write(stream::output& content, SuppData& suppData,
 		<< nullPadded("MUS\x1A", 4)
 		<< u16le(0xFFFF) // song length placeholder
 		<< u16le(offSong)
-		<< u16le(channelCount) // primary channel count
-		<< u16le(0) // secondary channel count
+		<< u16le(primaryChannels) // primary channel count
+		<< u16le(secondaryChannels) // secondary channel count
 		<< u16le(music.patches->size())
 		<< u16le(0) // reserved
 	;
