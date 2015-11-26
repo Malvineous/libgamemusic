@@ -357,7 +357,8 @@ int play(std::shared_ptr<gm::Music> music,
 			// The values returned by PortAudio don't include the output latency
 			// so we have to add that now to make this position change slightly
 			// further in the future.
-			pbcb.position.time += info->outputLatency;
+			// 2015-11-26: Apparently this is no longer needed?
+			//pbcb.position.time += info->outputLatency;
 
 			lastTime = pbcb.position.time;
 
