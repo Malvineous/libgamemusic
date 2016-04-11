@@ -144,7 +144,7 @@ int openMusicFile(const std::string& strFilename,
 						} catch (const stream::open_error&) {
 							bSuppOK = false;
 							std::cout << "  * Could not find/open " << s.second
-								<< ", archive is probably not " << i->code() << std::endl;
+								<< ", format is probably not " << i->code() << std::endl;
 							break;
 						}
 					}
