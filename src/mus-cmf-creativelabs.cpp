@@ -87,6 +87,10 @@ MusicType::Caps MusicType_CMF::caps() const
 
 MusicType::Certainty MusicType_CMF::isInstance(stream::input& content) const
 {
+	// File too short
+	// TESTED BY: mus_cmf_creativelabs_isinstance_c04
+	if (content.size() < 4+2+2+2+2+2+2+2+2+2) return Certainty::DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_cmf_creativelabs_isinstance_c01
 	char sig[4];

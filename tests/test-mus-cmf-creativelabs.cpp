@@ -217,6 +217,11 @@ class test_cmf_creativelabs: public test_music
 				"\x20" "\xff\x2f\x00" // trailing delay
 			));
 
+			// c04: Too short
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"CTMF\x00\x01"
+			));
+
 			// a01: Change title
 			this->changeAttribute(0, "Replaced", STRING_WITH_NULLS(
 				"CTMF\x01\x01"
