@@ -173,10 +173,10 @@ void Playback::seekByOrder(unsigned int destOrder)
 	return;
 }
 
-void Playback::seekByTime(unsigned long ms)
+unsigned long Playback::seekByTime(unsigned long ms)
 {
 	/// @todo: Implement this
-	return;
+	return ms;
 }
 
 void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *pos)

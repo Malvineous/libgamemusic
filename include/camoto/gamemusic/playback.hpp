@@ -127,8 +127,11 @@ class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 		 *   will always be at the start of a row, so the playback time may not
 		 *   be exactly at this number of milliseconds, but will be as close to
 		 *   it as possible.
+		 *
+		 * @return Actual seek position, in milliseconds.  Will be similar to the
+		 *   input parameter, just rounded to the start of the row.
 		 */
-		void seekByTime(unsigned long ms);
+		unsigned long seekByTime(unsigned long ms);
 
 		/// Synthesize and mix audio into the given buffer.
 		/**
