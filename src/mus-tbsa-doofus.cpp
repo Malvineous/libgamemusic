@@ -461,23 +461,13 @@ std::unique_ptr<Music> MusicType_TBSA::read(stream::input& content,
 				}
 			} // for each byte in the pattern segment data
 
-			// If there's a trailing delay, include it in the calculation of the
-			// longest pattern length.  We don't need to add a dummy event because
-			// the format is fixed at 64 rows per pattern.
-			if (delay) {
-				patsegLength += delay;
-				delay = 0;
-				/*
-				// Put a final placeholder to ensure the track is the correct length
-				TrackEvent te;
-				te.delay = delay;
-				patsegLength += delay;
-				delay = 0;
-				ConfigurationEvent *ev = new ConfigurationEvent();
-				te.event.reset(ev);
-				t->push_back(te);
-				*/
-			}
+			// There could be a trailing delay here, but it's not actually used
+			// unless there's another event (so technically it's not really a
+			// trailing delay.)  Since we're at the end of the track, there's no
+			// other event coming so we can disregard this delay.
+			// If we don't do this, the pattern-break events after every pattern
+			// in Doofus episode 2 won't appear and there will be a two-row delay
+			// after every pattern.
 
 			if (patsegLength > patternLength) patternLength = patsegLength;
 			trackIndex++;
