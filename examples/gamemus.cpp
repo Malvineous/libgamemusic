@@ -22,7 +22,9 @@
 #include <mutex>
 #include <condition_variable>
 #include <boost/program_options.hpp>
+#ifdef USE_PORTAUDIO
 #include <portaudio.h>
+#endif
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
 #include <camoto/stream_file.hpp>
@@ -41,6 +43,12 @@ namespace gm = camoto::gamemusic;
 using namespace camoto;
 
 #define PROGNAME "gamemus"
+
+/// Number of audio frames to generate at one time
+#define FRAMES_TO_BUFFER 512
+
+/// Number of channels in audio output
+#define NUM_CHANNELS 2
 
 /*** Return values ***/
 // All is good
@@ -219,6 +227,7 @@ finishTesting:
 }
 
 
+#ifdef USE_PORTAUDIO
 struct PositionHistory {
 	PaTime time;
 	gm::Playback::Position pos;
@@ -234,8 +243,6 @@ struct PBCallback
 	std::condition_variable wait;
 };
 
-#define FRAMES_TO_BUFFER 512
-#define NUM_CHANNELS 2
 static int paCallback(const void *inputBuffer, void *outputBuffer,
 	unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo *timeInfo,
 	PaStreamCallbackFlags statusFlags, void *userData)
@@ -259,6 +266,7 @@ static int paCallback(const void *inputBuffer, void *outputBuffer,
 	}
 	return paContinue;
 }
+#endif // USE_PORTAUDIO
 
 /// Play the given song.
 /**
