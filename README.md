@@ -1,11 +1,13 @@
 Camoto: Classic-game Modding Tools
-Copyright 2010-2015 Adam Nielsen <malvineous@shikadi.net>
-http://www.shikadi.net/camoto/
+==================================
+Copyright 2010-2016 Adam Nielsen <<malvineous@shikadi.net>>  
+http://www.shikadi.net/camoto/  
+[![Build Status](https://travis-ci.org/Malvineous/libgamemusic.svg?branch=master)](https://travis-ci.org/Malvineous/libgamemusic)
 
-Camoto is a collection of utilities for editing (modding) "classic games",
-those from the early to mid 1990s running under DOS.
+Camoto is a collection of utilities for editing (modding) "classic" PC
+games - those running under MS-DOS from the 1980s and 1990s.
 
-This is libgamemusic, one component of the Camoto suite.  libgamemusic is a
+This is **libgamemusic**, one component of the Camoto suite.  libgamemusic is a
 library that can read and write many different music file formats, with a focus
 on formats used by DOS games.
 
@@ -63,21 +65,26 @@ Many more formats are planned.
 
 The library is compiled and installed in the usual way:
 
-  ./configure && make
-  sudo make install
-  sudo ldconfig
+    ./autogen.sh          # Only if compiling from git
+    ./configure && make
+    make check            # Optional, compile and run tests
+    sudo make install
+    sudo ldconfig
 
-You will need libgamecommon installed first.  If you downloaded the git
-release, run ./autogen.sh before the commands above.  You can also run
-"make check" to compile and run the tests.
+You will need the following prerequisites already installed:
 
-This distribution includes an example program "gamemus" which serves as both
+  * [libgamecommon](https://github.com/Malvineous/libgamecommon) >= 2.0
+  * Boost >= 1.59 (Boost >= 1.46 will work if not using `make check`)
+  * PortAudio (optional, required only for playback with `gamemus --play`)
+  * xmlto (optional for tarball releases, required for git version and if
+    manpages are to be changed)
+
+This distribution includes an example program `gamemus` which serves as both
 a command-line interface to the library as well as an example of how to use
-the library.  This program is installed as part of the "make install" process.
-See "man gamemus" for full details.
+the library.  This program is installed as part of the `make install` process.
+See `man gamemus` for full details.
 
-All supported file formats are fully documented on the ModdingWiki - see:
-
- * http://www.shikadi.net/moddingwiki/Category:Music_formats
+All supported file formats are fully documented on the
+[ModdingWiki](http://www.shikadi.net/moddingwiki/Category:Music_formats).
 
 This library is released under the GPLv3 license.
