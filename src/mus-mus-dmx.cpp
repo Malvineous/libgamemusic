@@ -591,7 +591,7 @@ void MUSEncoder::midiController(uint32_t delay, uint8_t channel,
 			std::cerr << "mus-dmx: Dropping unsupported MIDI controller "
 				<< controller << "\n";
 			// Replace with (hopefully) unused controller
-			controller = 255;
+			musController = 255;
 			value = 0;
 			break;
 	}
