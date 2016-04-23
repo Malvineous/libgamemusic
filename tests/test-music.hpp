@@ -22,8 +22,8 @@
 #define _CAMOTO_GAMEMUSIC_TEST_MUSIC_HPP_
 
 #include <map>
+#include <functional>
 #include <boost/test/unit_test.hpp>
-#include <boost/bind.hpp>
 #include <camoto/stream_string.hpp>
 #include <camoto/gamemusic.hpp>
 #include "tests.hpp"
@@ -70,7 +70,7 @@ class test_music: public test_main
 		virtual std::string standard() = 0;
 
 		/// Add a test to the suite.  Used by ADD_MUSIC_TEST().
-		void addBoundTest(boost::function<void()> fnTest,
+		void addBoundTest(std::function<void()> fnTest,
 			boost::unit_test::const_string file, std::size_t line,
 			boost::unit_test::const_string name);
 
@@ -79,7 +79,7 @@ class test_music: public test_main
 		 * @param fnTest
 		 *   Function to call once music is back to initial state.
 		 */
-		void runTest(boost::function<void()> fnTest);
+		void runTest(std::function<void()> fnTest);
 
 		/// Populate suppBase with default content.
 		/**

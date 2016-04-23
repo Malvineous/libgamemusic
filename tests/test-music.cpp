@@ -20,7 +20,6 @@
 
 #include <iomanip>
 #include <iostream>
-#include <boost/bind.hpp>
 #include <camoto/util.hpp>
 #include "test-music.hpp"
 
@@ -206,7 +205,7 @@ void test_music::addTests()
 	return;
 }
 
-void test_music::addBoundTest(boost::function<void()> fnTest,
+void test_music::addBoundTest(std::function<void()> fnTest,
 	boost::unit_test::const_string file, std::size_t line,
 	boost::unit_test::const_string name)
 {
@@ -220,7 +219,7 @@ void test_music::addBoundTest(boost::function<void()> fnTest,
 	return;
 }
 
-void test_music::runTest(boost::function<void()> fnTest)
+void test_music::runTest(std::function<void()> fnTest)
 {
 	this->prepareTest();
 	fnTest();
