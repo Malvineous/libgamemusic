@@ -61,7 +61,13 @@ fi
 dnl Check whether xmlto exists for manpage generation
 AC_CHECK_PROG(XMLTO_CHECK,xmlto,yes)
 if test x"$XMLTO_CHECK" != x"yes"; then
-	AC_MSG_ERROR([xmlto not found - see <https://fedorahosted.org/xmlto/>.])
+	AC_CHECK_FILES([doc/gamemus.1 doc/dro2txt.1], [
+		dnl This is a source release so the manpages will already be present
+		AC_MSG_WARN([xmlto not found - compile will fail if man pages are modified])
+	], [
+		dnl This is a git repo so the manpages have to be generated
+		AC_MSG_ERROR([xmlto not found - see <https://fedorahosted.org/xmlto/>.])
+	])
 fi
 
 case "$host_os" in
