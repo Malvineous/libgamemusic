@@ -26,7 +26,7 @@
 namespace camoto {
 namespace gamemusic {
 
-class Music;
+struct Music;
 
 } // namespace gamemusic
 } // namespace camoto
