@@ -35,7 +35,7 @@ std::string SpecificNoteOffEvent::getContent() const
 }
 
 void SpecificNoteOffEvent::processEvent(unsigned long delay,
-	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
@@ -52,7 +52,7 @@ std::string SpecificNoteEffectEvent::getContent() const
 }
 
 void SpecificNoteEffectEvent::processEvent(unsigned long delay,
-	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;
@@ -70,7 +70,7 @@ std::string PolyphonicEffectEvent::getContent() const
 }
 
 void PolyphonicEffectEvent::processEvent(unsigned long delay,
-	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler)
+	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
 	handler->handleEvent(delay, trackIndex, patternIndex, this);
 	return;

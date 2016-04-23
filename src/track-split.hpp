@@ -32,7 +32,7 @@ struct CAMOTO_GAMEMUSIC_API SpecificNoteOffEvent: virtual public NoteOffEvent
 	virtual std::string getContent() const;
 
 	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
-		unsigned int patternIndex, EventHandler *handler);
+		unsigned int patternIndex, EventHandler *handler) const;
 
 	/// Note frequency (440000 == 440Hz)
 	unsigned int milliHertz;
@@ -44,7 +44,7 @@ struct CAMOTO_GAMEMUSIC_API SpecificNoteEffectEvent: virtual public EffectEvent
 	virtual std::string getContent() const;
 
 	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
-		unsigned int patternIndex, EventHandler *handler);
+		unsigned int patternIndex, EventHandler *handler) const;
 
 	/// Note frequency (440000 == 440Hz)
 	unsigned int milliHertz;
@@ -62,7 +62,7 @@ struct CAMOTO_GAMEMUSIC_API PolyphonicEffectEvent: virtual public EffectEvent
 	virtual std::string getContent() const;
 
 	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
-		unsigned int patternIndex, EventHandler *handler);
+		unsigned int patternIndex, EventHandler *handler) const;
 };
 
 /// Split tracks as needed to ensure only one note at a time is on each track.
