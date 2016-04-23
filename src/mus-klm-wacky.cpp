@@ -205,9 +205,6 @@ std::unique_ptr<Music> MusicType_KLM::read(stream::input& content,
 	memset(volMap, 0xFF, sizeof(volMap));
 	memset(noteOn, 0, sizeof(noteOn));
 
-	freqMap[12] = 142;
-	freqMap[13] = 142;
-
 	uint16_t tempo;
 	uint8_t unk1;
 	uint16_t offSong;
