@@ -133,7 +133,7 @@ class test_music: public test_main
 		void test_invalidContent(const std::string& content,
 			unsigned int testNumber);
 
-		/// Add an changeAttribute check to run later.
+		/// Add a changeAttribute check to run later.
 		/**
 		 * These checks make sure attribute alterations work correctly.
 		 *

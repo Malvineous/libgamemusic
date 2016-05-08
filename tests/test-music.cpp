@@ -399,7 +399,7 @@ void test_music::test_changeAttribute(unsigned int attributeIndex,
 	auto music = this->pType->read(this->base, this->suppData);
 	music->attribute(attributeIndex, newValue);
 
-	// Write modified map
+	// Write modified file
 	this->base.seekp(0, stream::start);
 	this->base.data.clear();
 
@@ -424,7 +424,7 @@ void test_music::test_changeAttribute(unsigned int attributeIndex,
 	auto music = this->pType->read(this->base, this->suppData);
 	music->attribute(attributeIndex, newValue);
 
-	// Write modified map
+	// Write modified file
 	this->base.seekp(0, stream::start);
 	this->base.data.clear();
 
@@ -625,6 +625,10 @@ void test_music::test_attributes()
 	BOOST_TEST_MESSAGE(this->basename << ": Test attributes");
 
 	auto attrAll = this->pType->supportedAttributes();
+	// Allow this to proceed so tests can be written without having all attributes
+	// in place from the start.
+	BOOST_CHECK_EQUAL(this->attributes.size(), attrAll.size());
+
 	int i = 0;
 	for (auto& attrExpected : this->attributes) {
 		BOOST_REQUIRE_MESSAGE(i < attrAll.size(),
