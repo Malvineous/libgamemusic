@@ -31,8 +31,6 @@ class CAMOTO_GAMEMUSIC_API SynthPCMCallback: virtual public TempoCallback
 {
 };
 
-typedef boost::shared_ptr<SynthPCMCallback> SynthPCMCallbackPtr;
-
 /// Interface to an PCM/FM/Adlib synthesizer.
 class CAMOTO_GAMEMUSIC_API SynthPCM: virtual public EventHandler
 {

@@ -21,7 +21,7 @@
 #ifndef _CAMOTO_GAMEMUSIC_PATCH_PCM_HPP_
 #define _CAMOTO_GAMEMUSIC_PATCH_PCM_HPP_
 
-#include <boost/shared_array.hpp>
+#include <vector>
 #include <camoto/gamemusic/patch.hpp>
 #include <stdint.h>
 
@@ -51,9 +51,6 @@ struct CAMOTO_GAMEMUSIC_API PCMPatch: public Patch
 	 */
 	std::vector<uint8_t> data;
 };
-
-/// Shared pointer to a Patch.
-typedef boost::shared_ptr<PCMPatch> PCMPatchPtr;
 
 } // namespace gamemusic
 } // namespace camoto
