@@ -639,25 +639,25 @@ void test_music::test_attributes()
 
 		switch (attrExpected.type) {
 			case Attribute::Type::Integer:
-				BOOST_REQUIRE_EQUAL(attrExpected.integerValue, attrMusic.integerValue);
+				BOOST_CHECK_EQUAL(attrExpected.integerValue, attrMusic.integerValue);
 				break;
 			case Attribute::Type::Enum:
-				BOOST_REQUIRE_EQUAL(attrExpected.enumValue, attrMusic.enumValue);
+				BOOST_CHECK_EQUAL(attrExpected.enumValue, attrMusic.enumValue);
 				break;
 			case Attribute::Type::Filename:
-				BOOST_REQUIRE_MESSAGE(
+				BOOST_CHECK_MESSAGE(
 					this->is_equal(attrExpected.filenameValue, attrMusic.filenameValue),
 					"Error getting filename attribute"
 				);
 				break;
 			case Attribute::Type::Text:
-				BOOST_REQUIRE_MESSAGE(
+				BOOST_CHECK_MESSAGE(
 					this->is_equal(attrExpected.textValue, attrMusic.textValue),
 					"Error getting text attribute"
 				);
 				break;
 			case Attribute::Type::Image:
-				BOOST_REQUIRE_EQUAL(attrExpected.imageIndex, attrMusic.imageIndex);
+				BOOST_CHECK_EQUAL(attrExpected.imageIndex, attrMusic.imageIndex);
 		}
 		i++;
 	}
