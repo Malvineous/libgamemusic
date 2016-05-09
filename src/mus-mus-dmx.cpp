@@ -32,6 +32,9 @@ using namespace camoto::gamemusic;
 /// Total channels (even if they're not all used)
 #define MUS_CHANNEL_COUNT 16
 
+/// Maximum number of valid MUS instruments (actually 0..127, 135..181)
+#define MUS_MAX_INST 256
+
 /// Class taking MIDI events and producing MUS data.
 class MUSEncoder: virtual private MIDIEventCallback
 {
@@ -182,8 +185,8 @@ std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
 
 	unsigned long lastDelay[MUS_CHANNEL_COUNT];
 	uint8_t musActivePatch[MUS_CHANNEL_COUNT]; ///< Which instruments are in use on which channel
-	uint8_t volMap[MUS_CHANNEL_COUNT];   ///< Volume set on each channel
-	int instMap[256];                    ///< MIDI patch to libgamemusic instrument map
+	uint8_t volMap[MUS_CHANNEL_COUNT]; ///< Volume set on each channel
+	int instMap[MUS_MAX_INST]; ///< MIDI patch to libgamemusic instrument map
 
 	memset(musActivePatch, 0xFF, sizeof(musActivePatch));
 	memset(volMap, 0, sizeof(volMap));
@@ -220,7 +223,14 @@ std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
 	music->patches->reserve(numInst);
 	for (int i = 0; i < numInst; i++) {
 		auto patch = std::make_shared<MIDIPatch>();
-		content >> u16le(patch->midiPatch);
+		uint16_t pnum;
+		content >> u16le(pnum);
+		if (pnum >= MUS_MAX_INST) {
+			std::cout << "mus-dmx: MIDI patch " << pnum
+				<< " is out of range, using 0.\n";
+			pnum = 0;
+		}
+		patch->midiPatch = pnum;
 		patch->percussion = false;
 		music->patches->push_back(patch);
 		instMap[patch->midiPatch] = i;
@@ -278,7 +288,7 @@ std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
 					libPatch = instMap[128 + n];
 				} else {
 					if (instMap[musActivePatch[channel]] < 0) {
-						std::cout << "mus-dmx: Instrument " << musActivePatch[channel]
+						std::cout << "mus-dmx: Instrument " << (int)musActivePatch[channel]
 							<< " was selected but not listed in the file's instrument list!"
 							<< std::endl;
 						auto patch = std::make_shared<MIDIPatch>();
@@ -344,7 +354,7 @@ std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
 				content >> u8(controller) >> u8(value);
 				switch (controller) {
 					case 0: // patch change
-						musActivePatch[channel] = value & 0x7F;
+						musActivePatch[channel] = value;
 						break;
 					case 3: // volume change
 						volMap[channel] = ((value & 0xFF) << 1) || (value & 1);
@@ -358,6 +368,10 @@ std::unique_ptr<Music> MusicType_MUS::read(stream::input& content,
 			}
 			case 0x6: // end of song
 				eof = true;
+				break;
+			case 0x7: // unassigned
+				uint8_t unused;
+				content >> u8(unused);
 				break;
 			default:
 				std::cerr << "mus-dmx: unknown event type 0x" << std::hex << (int)event
