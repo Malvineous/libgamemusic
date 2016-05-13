@@ -34,11 +34,10 @@ std::string SpecificNoteOffEvent::getContent() const
 	return ss.str();
 }
 
-void SpecificNoteOffEvent::processEvent(unsigned long delay,
+bool SpecificNoteOffEvent::processEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string SpecificNoteEffectEvent::getContent() const
@@ -51,11 +50,10 @@ std::string SpecificNoteEffectEvent::getContent() const
 	return ss.str();
 }
 
-void SpecificNoteEffectEvent::processEvent(unsigned long delay,
+bool SpecificNoteEffectEvent::processEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string PolyphonicEffectEvent::getContent() const
@@ -69,11 +67,10 @@ std::string PolyphonicEffectEvent::getContent() const
 	return ss.str();
 }
 
-void PolyphonicEffectEvent::processEvent(unsigned long delay,
+bool PolyphonicEffectEvent::processEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 void camoto::gamemusic::splitPolyphonicTracks(Music& music)

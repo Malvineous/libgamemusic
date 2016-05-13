@@ -67,17 +67,17 @@ class EventConverter_TBSA: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::pos> offPatSeg; ///< Offset of each pattern
@@ -721,15 +721,15 @@ void EventConverter_TBSA::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->cachedDelay += delay;
 	std::cerr << "TBSA: Does not support tempo changes\n";
-	return;
+	return true;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -764,10 +764,10 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 	this->cachedEvent
 		<< u8(midiNoteMain)
 	;
-	return;
+	return true;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -776,10 +776,10 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 	this->cachedEvent
 		<< u8(0xFE)
 	;
-	return;
+	return true;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -792,18 +792,18 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 			this->setVolume(ev->data);
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	this->cachedDelay += delay;
 	// Not supported by this format?
-	return;
+	return true;
 }
 
-void EventConverter_TBSA::handleEvent(unsigned long delay,
+bool EventConverter_TBSA::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -827,7 +827,7 @@ void EventConverter_TBSA::handleEvent(unsigned long delay,
 			if (ev->value != 1) std::cerr << "TBSA: Wave selection registers cannot be disabled, ignoring event.\n";
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_TBSA::flushEvent(bool final)

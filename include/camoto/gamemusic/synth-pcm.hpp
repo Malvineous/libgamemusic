@@ -84,17 +84,17 @@ class CAMOTO_GAMEMUSIC_API SynthPCM: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:

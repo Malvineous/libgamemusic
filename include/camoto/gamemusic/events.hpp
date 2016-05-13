@@ -49,7 +49,7 @@ struct CAMOTO_GAMEMUSIC_API Event
 
 	/// Call the handleEvent() function in an EventHandler class, passing this
 	/// event as the parameter.
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const = 0;
 };
 
@@ -79,7 +79,7 @@ struct CAMOTO_GAMEMUSIC_API TempoEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 
@@ -94,7 +94,7 @@ struct CAMOTO_GAMEMUSIC_API NoteOnEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 
 	/// Instrument to play this note with.  This is an index into the vector
@@ -115,7 +115,7 @@ struct CAMOTO_GAMEMUSIC_API NoteOffEvent: virtual public Event
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 
@@ -140,7 +140,7 @@ struct CAMOTO_GAMEMUSIC_API EffectEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 
@@ -179,7 +179,7 @@ struct CAMOTO_GAMEMUSIC_API GotoEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 
@@ -247,7 +247,7 @@ struct CAMOTO_GAMEMUSIC_API ConfigurationEvent: virtual public Event
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 

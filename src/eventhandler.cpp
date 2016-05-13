@@ -98,8 +98,8 @@ void EventHandler::handleAllEvents(EventHandler::EventOrder eventOrder,
 	return;
 }
 
-void EventHandler::processPattern_mergeTracks(const Music& music,
-	const Pattern& pattern, unsigned int patternIndex)
+bool EventHandler::processPattern_mergeTracks(const Music& music,
+	const Pattern& pattern, Position *pos)
 {
 	// Merge all the tracks together into one big track, with all events in
 	// chronological order
@@ -136,11 +136,11 @@ void EventHandler::processPattern_mergeTracks(const Music& music,
 	}
 	assert(trackTime <= music.ticksPerTrack);
 	this->endOfPattern(music.ticksPerTrack - trackTime);
-	return;
+	return true;
 }
 
-void EventHandler::processPattern_separateTracks(const Music& music,
-	const Pattern& pattern, unsigned int patternIndex)
+bool EventHandler::processPattern_separateTracks(const Music& music,
+	const Pattern& pattern, Position *pos)
 {
 	unsigned int trackIndex = 0;
 	unsigned long maxTrackTime = 0;
@@ -157,5 +157,5 @@ void EventHandler::processPattern_separateTracks(const Music& music,
 		trackIndex++;
 	}
 	this->endOfPattern(music.ticksPerTrack - maxTrackTime);
-	return;
+	return true;
 }

@@ -89,7 +89,7 @@ void EventConverter_OPL::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay,
+bool EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	assert(ev->tempo.usPerTick > 0);
@@ -104,10 +104,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 	oplev.valid |= OPLEvent::Tempo;
 	oplev.tempo = ev->tempo;
 	this->cb->writeNextPair(&oplev);
-	return;
+	return true;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay,
+bool EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	assert(this->music->patches);
@@ -132,10 +132,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a MIDI track
-			return;
+			return true;
 		}
 		auto instMIDI = dynamic_cast<MIDIPatch*>(patch.get());
-		if (!instMIDI) return; // non-MIDI instrument on a MIDI channel, ignore
+		if (!instMIDI) return true; // non-MIDI instrument on a MIDI channel, ignore
 		unsigned long target = instMIDI->midiPatch;
 		if (instMIDI->percussion) {
 			target += MIDI_PATCHES;
@@ -147,7 +147,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			std::cout << "Dropping MIDI note, no entry in MIDI bank for "
 				<< (instMIDI->percussion ? "percussion" : "")
 				<< " patch #" << (int)instMIDI->midiPatch << "\n";
-			return;
+			return true;
 		}
 	} else {
 		// We are handling OPL events
@@ -157,7 +157,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not an OPL track
-			return;
+			return true;
 		}
 
 		if (
@@ -165,7 +165,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			&& (!this->modeRhythm)
 		) {
 			std::cerr << "OPL: Ignoring rhythm channel in non-rhythm mode" << std::endl;
-			return;
+			return true;
 		}
 
 		if (
@@ -174,20 +174,20 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			&& (ti.channelIndex >= 9)
 		) {
 			std::cerr << "OPL: Ignoring OPL3 channels in OPL2 mode" << std::endl;
-			return;
+			return true;
 		}
 	}
 	auto inst = dynamic_cast<OPLPatch*>(patch.get());
 
 	// Don't play this note if there's no patch for it
-	if (!inst) return;
+	if (!inst) return true;
 
 	unsigned int oplChannel, chipIndex;
 	bool mod, car;
 	this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
 
 	// No free channels
-	if (chipIndex == OPL_INVALID_CHIP) return;
+	if (chipIndex == OPL_INVALID_CHIP) return true;
 
 	// If the note is already playing, turn it off first before we update the
 	// instrument parameters.  This makes a clean note and prevents it from
@@ -253,10 +253,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			this->oplState[chipIndex][0xBD] | keyBit
 		);
 	}
-	return;
+	return true;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay,
+bool EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -273,7 +273,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		)
 	) {
 		// This isn't an OPL track, so ignore it
-		return;
+		return true;
 	}
 
 	if (ti.channelType == TrackInfo::ChannelType::OPLPerc) {
@@ -287,7 +287,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
 
 		// No free channels
-		if (chipIndex == OPL_INVALID_CHIP) return;
+		if (chipIndex == OPL_INVALID_CHIP) return true;
 
 		// Write 0xB0 w/ keyon bit disabled
 		this->processNextPair(chipIndex, 0xB0 | oplChannel,
@@ -296,10 +296,10 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 
 		this->clearOPLChannel(trackIndex);
 	}
-	return;
+	return true;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -316,7 +316,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 		)
 	) {
 		// This isn't an OPL track, so ignore it
-		return;
+		return true;
 	}
 
 	unsigned int oplChannel, chipIndex;
@@ -324,7 +324,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 	this->getOPLChannel(ti, trackIndex, &oplChannel, &chipIndex, &mod, &car);
 
 	// No free channels
-	if (chipIndex == OPL_INVALID_CHIP) return;
+	if (chipIndex == OPL_INVALID_CHIP) return true;
 
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote: {
@@ -361,19 +361,23 @@ void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 			}
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const GotoEvent *ev)
 {
 	// We'll do something here when we encounter the first raw OPL format that
 	// supports jumps.
 	this->cachedDelay += delay;
-	return;
+	// In the meantime, just jump and keep processing.  This might cause problems
+	// when writing a tracked format and the jump doesn't line up on a track
+	// boundary, but in that case, a jump event should exist and be used instead.
+	this->performGoto(ev);
+	return true;
 }
 
-void EventConverter_OPL::handleEvent(unsigned long delay,
+bool EventConverter_OPL::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -391,7 +395,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 		)
 	) {
 		// This isn't an OPL track, so ignore it
-		return;
+		return true;
 	}
 
 	switch (ev->configType) {
@@ -443,7 +447,7 @@ void EventConverter_OPL::handleEvent(unsigned long delay,
 			this->processNextPair(0, 0x01, ev->value ? 0x20 : 0x00);
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_OPL::processNextPair(uint8_t chipIndex, uint8_t reg,

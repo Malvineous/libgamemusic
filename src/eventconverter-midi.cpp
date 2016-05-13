@@ -115,7 +115,7 @@ void EventConverter_MIDI::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->cachedDelay += delay;
@@ -128,10 +128,10 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		}
 		this->usPerTick = ev->tempo.usPerTick;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	assert(ev->velocity < 256);
@@ -140,7 +140,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
 		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
-	) return;
+	) return true;
 	auto& midiChannel = trackInfo.channelIndex;
 	this->cachedDelay += delay;
 
@@ -152,7 +152,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	} else {
 		auto patch =
 			dynamic_cast<MIDIPatch*>(this->music->patches->at(ev->instrument).get());
-		if (!patch) return;
+		if (!patch) return true;
 		targetPatch = patch->midiPatch;
 	}
 
@@ -210,17 +210,17 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 	this->cachedDelay = 0;
 
 	this->activeNote[trackIndex] = note;
-	return;
+	return true;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	auto& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
 		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
-	) return;
+	) return true;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
 	this->cachedDelay += delay;
 
@@ -228,34 +228,34 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		std::cerr << "eventconverter-midi: Tried to switch off note on track "
 			<< trackIndex << " in pattern " << patternIndex
 			<< " but there was no note playing!\n";
-		return;
+		return true;
 	}
 	this->cb->midiNoteOff(this->cachedDelay, midiChannel,
 		this->activeNote[trackIndex], MIDI_DEFAULT_RELEASE_VELOCITY);
 	this->cachedDelay = 0;
 	this->activeNote[trackIndex] = ACTIVE_NOTE_NONE;
 
-	return;
+	return true;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	auto& trackInfo = this->music->trackInfo[trackIndex];
 	if (
 		!(this->midiFlags & MIDIFlags::UsePatchIndex) &&
 		(trackInfo.channelType != TrackInfo::ChannelType::MIDI)
-	) return;
+	) return true;
 	const unsigned int& midiChannel = trackInfo.channelIndex;
 	assert(midiChannel < MIDI_CHANNEL_COUNT);
 	this->cachedDelay += delay;
 
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote: {
-			if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return;
+			if (this->midiFlags & MIDIFlags::IntegerNotesOnly) return true;
 			// If there's no note playing, don't do a pitchbend because it'll get done
 			// when the next note-on happens.
-			if (this->activeNote[trackIndex] == ACTIVE_NOTE_NONE) return;
+			if (this->activeNote[trackIndex] == ACTIVE_NOTE_NONE) return true;
 
 			// We have to bend the whole channel because of MIDI limitations.  We
 			// remember the bend though, so that it will be reset on the next note.
@@ -274,18 +274,18 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		//case EffectEvent::Volume:
 		//	break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	// MIDI doesn't really have a concept of jumps, EMIDI notwithstanding
 	this->cachedDelay += delay;
-	return;
+	return true;
 }
 
-void EventConverter_MIDI::handleEvent(unsigned long delay,
+bool EventConverter_MIDI::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -318,7 +318,7 @@ void EventConverter_MIDI::handleEvent(unsigned long delay,
 		default:
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_MIDI::handleAllEvents(EventHandler::EventOrder eventOrder)

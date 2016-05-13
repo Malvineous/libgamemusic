@@ -65,17 +65,17 @@ class EventConverter_S3M: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::len> lenPattern; ///< Offset of each pattern
@@ -966,7 +966,7 @@ void EventConverter_S3M::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->writeDelay(delay);
@@ -980,10 +980,10 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 		*this->patBufPos++ = ev->tempo.module_tempo(); // new tempo
 	}
 	this->lastTempo = ev->tempo;
-	return;
+	return true;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	this->writeDelay(delay);
@@ -996,7 +996,7 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 	if (oct > 0) oct--;
 	else {
 		std::cerr << "S3M: Dropping note in octave -1.\n";
-		return;
+		return true;
 	}
 
 	uint8_t velFlag = 0;
@@ -1008,10 +1008,10 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 	*this->patBufPos++ = (oct << 4) | note;
 	*this->patBufPos++ = ev->instrument + 1; // +1 because 0 means no/prev instrument
 	if (velFlag) *this->patBufPos++ = ev->velocity >> 2;
-	return;
+	return true;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->writeDelay(delay);
@@ -1019,16 +1019,16 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 	*this->patBufPos++ = 0xFE; // note off
 	*this->patBufPos++ = 0x00; // no instrument
 
-	return;
+	return true;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote:
-			//if (this->flags & IntegerNotesOnly) return;
+			//if (this->flags & IntegerNotesOnly) return true;
 			std::cout << "S3M: TODO - implement pitch bends\n";
 			break;
 		case EffectEvent::Type::Volume:
@@ -1036,10 +1036,10 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 			*this->patBufPos++ = ev->data >> 2; // volume value
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	this->writeDelay(delay);
@@ -1055,10 +1055,10 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 			*this->patBufPos++ = ev->targetOrder;
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_S3M::handleEvent(unsigned long delay,
+bool EventConverter_S3M::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -1082,7 +1082,7 @@ void EventConverter_S3M::handleEvent(unsigned long delay,
 			if (ev->value != 1) std::cerr << "Wave selection registers cannot be disabled in this format, ignoring event.\n";
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_S3M::writeDelay(unsigned long delay)

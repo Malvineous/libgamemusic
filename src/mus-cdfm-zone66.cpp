@@ -55,17 +55,17 @@ class EventConverter_CDFM: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<unsigned int> instMapPCM, instMapOPL;
@@ -654,20 +654,20 @@ void EventConverter_CDFM::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->writeDelay(delay);
 	std::cerr << "CDFM: Does not support tempo changes\n";
-	return;
+	return true;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	this->writeDelay(delay);
 	int channel = this->getCDFMChannel(trackIndex);
-	if (channel < 0) return;
+	if (channel < 0) return true;
 
 	unsigned int midiNote = round(freqToMIDI(ev->milliHertz));
 
@@ -679,18 +679,18 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 		inst = this->instMapOPL[ev->instrument];
 		if (oct < 1) {
 			std::cerr << "CDFM: Dropping OPL note in octave < 1\n";
-			return;
+			return true;
 		}
 		oct -= 1;
 	} else {
 		inst = this->instMapPCM[ev->instrument];
 		if (oct < 3) {
 			std::cerr << "CDFM: Dropping PCM note in octave < 3\n";
-			return;
+			return true;
 		}
 		oct -= 3;
 	}
-	if (inst < 0) return; // non-PCM/OPL instrument
+	if (inst < 0) return true; // non-PCM/OPL instrument
 
 	assert(ev->velocity < 256);
 	unsigned int velocity;
@@ -705,30 +705,30 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 		<< u8((oct << 4) | note)
 		<< u8((inst << 4) | (velocity >> 4))
 	;
-	return;
+	return true;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->writeDelay(delay);
 	int channel = this->getCDFMChannel(trackIndex);
-	if (channel < 0) return;
+	if (channel < 0) return true;
 
 	// Fake a note-off by setting the volume to zero
 	this->content
 		<< u8(0x20 | channel)
 		<< u8(0)
 	;
-	return;
+	return true;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->writeDelay(delay);
 	int channel = this->getCDFMChannel(trackIndex);
-	if (channel < 0) return;
+	if (channel < 0) return true;
 
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote:
@@ -741,18 +741,18 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 			;
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	this->writeDelay(delay);
 	// Not supported by this format?
-	return;
+	return true;
 }
 
-void EventConverter_CDFM::handleEvent(unsigned long delay,
+bool EventConverter_CDFM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -776,7 +776,7 @@ void EventConverter_CDFM::handleEvent(unsigned long delay,
 			if (ev->value != 1) std::cerr << "CDFM: Wave selection registers cannot be disabled, ignoring event.\n";
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_CDFM::writeDelay(unsigned long delay)

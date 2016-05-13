@@ -49,17 +49,17 @@ class EventConverter_KLM: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 	protected:
@@ -654,7 +654,7 @@ void EventConverter_KLM::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	// TODO: Set current multiplier for future delay modifications
@@ -691,10 +691,10 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 		this->usPerQuarterNote = n;
 	}
 */
-	return;
+	return true;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	if (trackIndex >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");
@@ -742,10 +742,10 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 		<< u8(b0)
 	;
 
-	return;
+	return true;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	if (trackIndex >= KLM_CHANNEL_COUNT) throw stream::error("Too many channels");
@@ -755,10 +755,10 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 	uint8_t code = 0x00 | trackIndex;
 	this->content << u8(code);
 
-	return;
+	return true;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 /*
@@ -786,18 +786,18 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 */
 	this->lastDelay += delay;
 	//this->lastEvent[midiChannel] = ev->absTime;
-	return;
+	return true;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	// Nothing to do
 	this->lastDelay += delay;
-	return;
+	return true;
 }
 
-void EventConverter_KLM::handleEvent(unsigned long delay,
+bool EventConverter_KLM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const ConfigurationEvent *ev)
 {
 	this->lastDelay += delay;
@@ -814,7 +814,7 @@ void EventConverter_KLM::handleEvent(unsigned long delay,
 		default:
 			break;
 	}
-	return;
+	return true;
 }
 
 void EventConverter_KLM::writeDelay()

@@ -43,11 +43,10 @@ std::string TempoEvent::getContent() const
 	return ss.str();
 }
 
-void TempoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool TempoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string NoteOnEvent::getContent() const
@@ -65,11 +64,10 @@ std::string NoteOnEvent::getContent() const
 	return ss.str();
 }
 
-void NoteOnEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool NoteOnEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string NoteOffEvent::getContent() const
@@ -82,11 +80,10 @@ std::string NoteOffEvent::getContent() const
 	return ss.str();
 }
 
-void NoteOffEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool NoteOffEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string EffectEvent::getContent() const
@@ -99,11 +96,10 @@ std::string EffectEvent::getContent() const
 	return ss.str();
 }
 
-void EffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool EffectEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string GotoEvent::getContent() const
@@ -119,11 +115,10 @@ std::string GotoEvent::getContent() const
 	return ss.str();
 }
 
-void GotoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool GotoEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }
 
 std::string ConfigurationEvent::getContent() const
@@ -157,9 +152,8 @@ std::string ConfigurationEvent::getContent() const
 	return ss.str();
 }
 
-void ConfigurationEvent::processEvent(unsigned long delay, unsigned int trackIndex,
+bool ConfigurationEvent::processEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, EventHandler *handler) const
 {
-	handler->handleEvent(delay, trackIndex, patternIndex, this);
-	return;
+	return handler->handleEvent(delay, trackIndex, patternIndex, this);
 }

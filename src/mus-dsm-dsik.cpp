@@ -74,17 +74,17 @@ class EventConverter_DSM: virtual public EventHandler
 		// EventHandler overrides
 		virtual void endOfTrack(unsigned long delay);
 		virtual void endOfPattern(unsigned long delay);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev);
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev);
 
 		std::vector<stream::len> lenPattern; ///< Offset of each pattern
@@ -597,7 +597,7 @@ void EventConverter_DSM::endOfPattern(unsigned long delay)
 	return;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->writeDelay(delay);
@@ -611,10 +611,10 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 		*this->patBufPos++ = ev->tempo.module_tempo(); // new tempo
 	}
 	this->lastTempo = ev->tempo;
-	return;
+	return true;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	this->writeDelay(delay);
@@ -624,13 +624,13 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 
 	if (midiNote <= 11) {
 		std::cerr << "DSM: Dropping note in octave -1.\n";
-		return;
+		return true;
 	}
 
 	if (ev->instrument >= this->patches.size()) {
 		std::cerr << "DSM: Dropping note with out-of-range instrument #"
 			<< ev->instrument << "\n";
-		return;
+		return true;
 	}
 	uint8_t velFlag = 0;
 	if (
@@ -641,10 +641,10 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 	*this->patBufPos++ = midiNote - 11;
 	*this->patBufPos++ = ev->instrument + 1; // +1 because 0 means no/prev instrument
 	if (velFlag) *this->patBufPos++ = ev->velocity >> 2;
-	return;
+	return true;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->writeDelay(delay);
@@ -652,16 +652,16 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 	*this->patBufPos++ = 0xFE; // note off
 	*this->patBufPos++ = 0x00; // no instrument
 
-	return;
+	return true;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const EffectEvent *ev)
 {
 	this->writeDelay(delay);
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote:
-			//if (this->flags & IntegerNotesOnly) return;
+			//if (this->flags & IntegerNotesOnly) return true;
 			std::cout << "DSM: TODO - implement pitch bends\n";
 			break;
 		case EffectEvent::Type::Volume:
@@ -669,10 +669,10 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 			*this->patBufPos++ = ev->data >> 2; // volume value
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const GotoEvent *ev)
 {
 	this->writeDelay(delay);
@@ -681,10 +681,10 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 			std::cout << "DSM: TODO - implement pattern breaks\n";
 			break;
 	}
-	return;
+	return true;
 }
 
-void EventConverter_DSM::handleEvent(unsigned long delay,
+bool EventConverter_DSM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex,
 	const ConfigurationEvent *ev)
 {
@@ -699,7 +699,7 @@ void EventConverter_DSM::handleEvent(unsigned long delay,
 		case ConfigurationEvent::Type::EnableWaveSel:
 			throw format_limitation("This format cannot store OPL events.");
 	}
-	return;
+	return true;
 }
 
 void EventConverter_DSM::writeDelay(unsigned long delay)

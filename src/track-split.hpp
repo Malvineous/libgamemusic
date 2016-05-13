@@ -31,7 +31,7 @@ struct CAMOTO_GAMEMUSIC_API SpecificNoteOffEvent: virtual public NoteOffEvent
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 
 	/// Note frequency (440000 == 440Hz)
@@ -43,7 +43,7 @@ struct CAMOTO_GAMEMUSIC_API SpecificNoteEffectEvent: virtual public EffectEvent
 {
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 
 	/// Note frequency (440000 == 440Hz)
@@ -61,7 +61,7 @@ struct CAMOTO_GAMEMUSIC_API PolyphonicEffectEvent: virtual public EffectEvent
 
 	virtual std::string getContent() const;
 
-	virtual void processEvent(unsigned long delay, unsigned int trackIndex,
+	virtual bool processEvent(unsigned long delay, unsigned int trackIndex,
 		unsigned int patternIndex, EventHandler *handler) const;
 };
 

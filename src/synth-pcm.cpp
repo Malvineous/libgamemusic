@@ -141,14 +141,14 @@ void SynthPCM::endOfPattern(unsigned long delay)
 	return;
 }
 
-void SynthPCM::handleEvent(unsigned long delay,
+bool SynthPCM::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const TempoEvent *ev)
 {
 	this->cb->tempoChange(ev->tempo);
-	return;
+	return true;
 }
 
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const NoteOnEvent *ev)
 {
 	assert(this->patches);
@@ -171,10 +171,10 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a MIDI track
-			return;
+			return true;
 		}
 		auto instMIDI = dynamic_cast<MIDIPatch*>(patch.get());
-		if (!instMIDI) return; // non-MIDI instrument on a MIDI channel, ignore
+		if (!instMIDI) return true; // non-MIDI instrument on a MIDI channel, ignore
 		unsigned long target = instMIDI->midiPatch;
 		if (instMIDI->percussion) {
 			target += MIDI_PATCHES;
@@ -183,7 +183,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			patch = this->bankMIDI->at(target);
 		} else {
 			// No patch, bank too small
-			return;
+			return true;
 		}
 	} else {
 		// We are handling PCM events
@@ -192,13 +192,13 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			&& (ti.channelType != TrackInfo::ChannelType::Any)
 		) {
 			// Not a PCM track
-			return;
+			return true;
 		}
 	}
 	auto inst = std::dynamic_pointer_cast<PCMPatch>(patch);
 
 	// Don't play this note if there's no patch for it
-	if (!inst) return;
+	if (!inst) return true;
 
 	this->noteOff(trackIndex);
 
@@ -215,17 +215,17 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	}
 
 	this->activeSamples.push_back(n);
-	return;
+	return true;
 }
 
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const NoteOffEvent *ev)
 {
 	this->noteOff(trackIndex);
-	return;
+	return true;
 }
 
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const EffectEvent *ev)
 {
 	// TODO: Lock mutex
@@ -237,7 +237,7 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 		}
 	}
 	// TODO: Release mutex
-	if (!activeSample) return; // no note to affect
+	if (!activeSample) return true; // no note to affect
 
 	switch (ev->type) {
 		case EffectEvent::Type::PitchbendNote:
@@ -248,19 +248,19 @@ void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 			activeSample->vol = ev->data;
 			break;
 	}
-	return;
+	return true;
 }
 
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const GotoEvent *ev)
 {
-	return;
+	return true;
 }
 
-void SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
+bool SynthPCM::handleEvent(unsigned long delay, unsigned int trackIndex,
 	unsigned int patternIndex, const ConfigurationEvent *ev)
 {
-	return;
+	return true;
 }
 
 void SynthPCM::noteOff(unsigned int trackIndex)

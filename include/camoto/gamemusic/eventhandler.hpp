@@ -133,8 +133,11 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 		 *
 		 * @param ev
 		 *   The event to process.
+		 *
+		 * @return true to keep processing subsequent events, false to stop
+		 *   processing further events.
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const TempoEvent *ev) = 0;
 
 		/// A note is being played.
@@ -145,35 +148,35 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 		 *
 		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOnEvent *ev) = 0;
 
 		/// A note has finished playing.
 		/**
 		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const NoteOffEvent *ev) = 0;
 
 		/// An effect is being applied.
 		/**
 		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const EffectEvent *ev) = 0;
 
 		/// An jump is being performed.
 		/**
 		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const GotoEvent *ev) = 0;
 
 		/// A global song parameter is being changed.
 		/**
 		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
 		 */
-		virtual void handleEvent(unsigned long delay, unsigned int trackIndex,
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
 			unsigned int patternIndex, const ConfigurationEvent *ev) = 0;
 
 		/// Process all the events in a given song.
@@ -193,16 +196,18 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 		 *
 		 * @param patternIndex
 		 *   Zero-based index of \a pattern.
+		 *
+		 * @return true to keep processing events, false to stop.
 		 */
-		void processPattern_mergeTracks(const Music& music, const Pattern& pattern,
-			unsigned int patternIndex);
+		bool processPattern_mergeTracks(const Music& music,
+			const Pattern& pattern, Position *pos);
 
 		/// Process the events in each track, track by track.
 		/**
 		 * @copydetails processPattern_mergeTracks
 		 */
-		void processPattern_separateTracks(const Music& music,
-			const Pattern& pattern, unsigned int patternIndex);
+		bool processPattern_separateTracks(const Music& music,
+			const Pattern& pattern, Position *pos);
 
 	protected:
 		std::shared_ptr<const Music> music;  ///< Song being converted
