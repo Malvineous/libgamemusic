@@ -111,6 +111,12 @@ class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 		 */
 		void setLoopCount(unsigned int count);
 
+		/// Get the length of the song, in milliseconds.
+		/**
+		 * @return The length of the song in milliseconds.
+		 */
+		unsigned long getLength();
+
 		/// Jump to a specific point in the song, specified by order number.
 		/**
 		 * @param destOrder

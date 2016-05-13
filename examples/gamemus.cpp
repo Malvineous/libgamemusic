@@ -352,6 +352,14 @@ int play(std::shared_ptr<gm::Music> music,
 	}
 	std::cout << "Adjusting for output latency: " << info->outputLatency << " sec\n";
 
+	auto msTotal = playback.getLength();
+	auto min = msTotal / 60000;
+	auto sec = (msTotal % 60000) / 1000;
+	auto ms = (msTotal % 1000) / 100;
+	std::cout << "Calculated song length: " << min << ":" << std::setw(2)
+		<< std::setfill('0') << sec << "." << ms << " (" << msTotal << " ms)"
+		<< std::endl;
+
 	std::queue<PositionHistory> queuePos;
 	gm::Playback::Position lastPos;
 	gm::Playback::Position audiblePos, lastAudiblePos;

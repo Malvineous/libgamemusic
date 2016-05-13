@@ -21,6 +21,7 @@
 #include <iostream>
 #include <camoto/gamemusic/playback.hpp>
 #include <camoto/gamemusic/util-pcm.hpp>
+#include "eventhandler-playback-seek.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
@@ -155,6 +156,12 @@ void Playback::setLoopCount(unsigned int count)
 	return;
 }
 
+unsigned long Playback::getLength()
+{
+	EventHandler_Playback_Seek seek(this->music, this->loopCount);
+	return seek.getTotalLength();
+}
+
 void Playback::seekByOrder(unsigned int destOrder)
 {
 	this->row = 0;
@@ -175,8 +182,20 @@ void Playback::seekByOrder(unsigned int destOrder)
 
 unsigned long Playback::seekByTime(unsigned long ms)
 {
-	/// @todo: Implement this
-	return ms;
+	this->allNotesOff();
+
+	EventHandler_Playback_Seek seek(this->music, this->loopCount);
+	auto pos = seek.seekTo(ms);
+
+	this->frame = 0;
+	this->row = pos.row;
+	this->nextRow = pos.row + 1;
+	this->order = pos.orderIndex;
+	this->nextOrder = pos.nextOrderIndex - 1; // Gets incremented at end of pattern
+	this->pattern = this->music->patternOrder[pos.patternIndex];
+	this->end = this->music->patternOrder.size() <= this->order;
+	this->loop = pos.loop;
+	return pos.us / 1000;
 }
 
 void Playback::mix(int16_t *output, unsigned long samples, Playback::Position *pos)
@@ -263,7 +282,7 @@ void Playback::nextFrame()
 					trackPos += te.delay;
 					// Right at this event
 					if (trackPos == this->row) {
-						// delay is zero here because we want it to sound immediately (not
+						// delay is zero below because we want it to sound immediately (not
 						// that is really matters as the delay is ignored later anyway)
 						if (
 							(ti->channelType == TrackInfo::ChannelType::Any)
