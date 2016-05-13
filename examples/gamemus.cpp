@@ -22,9 +22,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <boost/program_options.hpp>
-#ifdef USE_PORTAUDIO
-#include <portaudio.h>
-#endif
 #include <camoto/gamemusic.hpp>
 #include <camoto/util.hpp>
 #include <camoto/stream_file.hpp>
@@ -35,6 +32,10 @@
 #include <queue>
 #ifndef _MSC_VER
 #include <config.h>
+#endif
+#ifdef USE_PORTAUDIO
+// Must be after config.h
+#include <portaudio.h>
 #endif
 #include "common-attributes.hpp"
 
