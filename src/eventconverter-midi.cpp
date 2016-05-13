@@ -323,7 +323,8 @@ bool EventConverter_MIDI::handleEvent(unsigned long delay,
 
 void EventConverter_MIDI::handleAllEvents(EventHandler::EventOrder eventOrder)
 {
-	this->EventHandler::handleAllEvents(eventOrder, *this->music);
+	this->EventHandler::handleAllEvents(eventOrder, *this->music, 1);
 	this->cb->endOfSong(this->cachedDelay);
 	this->cachedDelay = 0;
+	return;
 }

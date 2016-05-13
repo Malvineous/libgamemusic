@@ -68,7 +68,7 @@ void EventConverter_OPL::setBankMIDI(std::shared_ptr<const PatchBank> bankMIDI)
 
 void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
 {
-	this->EventHandler::handleAllEvents(eventOrder, *this->music);
+	this->EventHandler::handleAllEvents(eventOrder, *this->music, 1);
 
 	// Write out any trailing delay
 	OPLEvent oplev;
@@ -76,6 +76,7 @@ void EventConverter_OPL::handleAllEvents(EventHandler::EventOrder eventOrder)
 	oplev.delay = this->cachedDelay;
 	this->cachedDelay = 0;
 	this->cb->writeNextPair(&oplev);
+	return;
 }
 
 void EventConverter_OPL::endOfTrack(unsigned long delay)

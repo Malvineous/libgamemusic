@@ -524,7 +524,7 @@ void MusicType_DSM::write(stream::output& content, SuppData& suppData,
 	// Write out the patterns
 	EventConverter_DSM conv(&iff, content, *music.patches);
 	conv.lastTempo = music.initialTempo;
-	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
+	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music, 1);
 
 	iff.end(); // RIFF
 

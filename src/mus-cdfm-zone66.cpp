@@ -585,7 +585,7 @@ void MusicType_CDFM::write(stream::output& content, SuppData& suppData,
 
 	// Write the pattern data
 	stream::pos offPatternStart = content.tellp();
-	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
+	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music, 1);
 
 	// Write the PCM sample data
 	stream::pos offSample = content.tellp();

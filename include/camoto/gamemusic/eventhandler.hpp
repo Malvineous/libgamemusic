@@ -88,6 +88,66 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 			Order_Track_Row,
 		};
 
+		/// Position within the song.
+		struct Position {
+			/// Index into the order list, 0 = first order.
+			/**
+			 * On return, this is the order that was being processed when
+			 * handleEvent() returned false. If handleEvent() did not return false
+			 * and processing went to the end of the song, this will be 0 as a loop
+			 * just happened.  Use music.patternOrder.size() to count the number of
+			 * orders in a song.
+			 */
+			unsigned int orderIndex;
+
+			/// Index into the pattern list, 0 = first pattern.
+			/**
+			 * On return, this is the pattern index pointed to by orderIndex.
+			 */
+			unsigned int patternIndex;
+
+			/// Next value for orderIndex.
+			/**
+			 * This is the next order that should be played, after the current one
+			 * has finished.  This may not be orderIndex + 1, if a GotoEvent has been
+			 * encountered.
+			 */
+			unsigned int nextOrderIndex;
+
+			/// Next value for patternIndex.
+			/**
+			 * Pattern index for nextOrderIndex.
+			 */
+			unsigned int nextPatternIndex;
+
+			/// First row in the pattern to start processing.
+			/**
+			 * 0 will process the whole pattern.  Used after processing a GotoEvent
+			 * that lands in the middle of a pattern.
+			 *
+			 * Probably not useful after return from handleAllEvents().
+			 */
+			unsigned int startRow;
+
+			/// Current row, or last row processed.
+			/**
+			 * When a handleEvent() returns false, this is the row number of that
+			 * event.
+			 */
+			unsigned int row;
+
+			/// Number of iterations so far.
+			/**
+			 * This will typically be 1 on return from handleAllEvents() if no loops
+			 * were requested, indicating the whole song has been processed from
+			 * start to finish, once.
+			 */
+			unsigned int loop;
+
+			/// Number of microseconds since song start, to the current position.
+			unsigned long long us;
+		};
+
 		/// Callback when handleAllEvents() has reached the end of the track.
 		/**
 		 * Not called when EventOrder::Pattern_Row_Track is in use.
@@ -181,9 +241,54 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 
 		/// Process all the events in a given song.
 		/**
-		 * @see handleEvent(unsigned long, unsigned int, unsigned int, const TempoEvent *)
+		 * @param eventOrder
+		 *   The order in which to process the events.  This controls whether the
+		 *   order list is respected and patterns are processed multiple times (e.g.
+		 *   playing a song), or whether the order list is ignored and patterns are
+		 *   processed once each sequentially (e.g. drawing a song's patterns on the
+		 *   screen).
+		 *
+		 * @param music
+		 *   The song to process.
+		 *
+		 * @param targetLoopCount
+		 *   The number of times the song should play.  A value of 1 means play once
+		 *   without looping, 2 means loop once so the song plays twice.  A value of
+		 *   zero means loop forever, which means this function will not return
+		 *   unless one of the handleEvent() functions returns false.
+		 *
+		 * @return The position in the song at the time when the last event was
+		 *   processed.  This will usually be at the end of the song, unless a
+		 *   handleEvent() implementation returned false and ended the process
+		 *   early.  This is used by the seek code which has handleEvent() return
+		 *   false at the target seek position, causing this return value to contain
+		 *   the song position (row, order, etc.) at the seek point.
 		 */
-		void handleAllEvents(EventOrder eventOrder, const Music& music);
+		Position handleAllEvents(EventOrder eventOrder, const Music& music,
+			unsigned int targetLoopCount);
+
+		/// Action the given goto event.
+		/**
+		 * This will cause the next event to change, so that it becomes the
+		 * destination of the goto event.
+		 *
+		 * This function can only be called from within a handleEvent() function,
+		 * and typically only the handleEvent() for GotoEvent.
+		 *
+		 * If this function is used when a GotoEvent is received, then the
+		 * handleEvent() functions will be called in such a way as to respect
+		 * pattern jumps, just like when the song is being played.  If this function
+		 * is not used, then handleEvent() will not act on the GotoEvent instruction
+		 * and will keep processing the events following the GotoEvent, which would
+		 * not normally be heard.  This is useful when displaying events on a
+		 * screen, where you may want to see beyond a GotoEvent to the end of the
+		 * pattern.
+		 */
+		void performGoto(const GotoEvent *ev);
+
+		/// Update the tempo used in calculating the song length.  This should be
+		/// called for each tempo event.
+		void updateTempo(const Tempo& newTempo);
 
 	private:
 		/// Merge the given pattern into a single track and process that.
@@ -210,7 +315,17 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 			const Pattern& pattern, Position *pos);
 
 	protected:
-		std::shared_ptr<const Music> music;  ///< Song being converted
+		/// Song being converted
+		std::shared_ptr<const Music> music;
+
+		/// true if pendingGoto needs to be actioned
+		bool isGotoPending;
+
+		/// GotoEvent that needs to be actioned before the next row is processed
+		GotoEvent pendingGoto;
+
+		/// Current tempo
+		Tempo tempo;
 };
 
 /// Callback used for passing tempo-change events outside the EventHandler.

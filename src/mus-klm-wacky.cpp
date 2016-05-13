@@ -606,7 +606,7 @@ off klm
 10  C0
  */
 	EventConverter_KLM conv(content);
-	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
+	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music, 1);
 
 	content << u8(0xFF); // end of song
 

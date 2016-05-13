@@ -624,7 +624,7 @@ void MusicType_TBSA::write(stream::output& content, SuppData& suppData,
 	// Write out all the pattern segments
 	EventConverter_TBSA conv(content, music);
 	conv.offPatSeg.push_back(content.tellp());
-	conv.handleAllEvents(EventHandler::Pattern_Track_Row, music);
+	conv.handleAllEvents(EventHandler::Pattern_Track_Row, music, 1);
 	// Remove last element (it will point to EOF and we don't need to write it)
 	conv.offPatSeg.pop_back();
 

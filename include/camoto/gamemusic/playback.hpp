@@ -153,9 +153,6 @@ class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 		/// Switch all playing notes off.  Notes will still linger as they fade out.
 		void allNotesOff();
 
-		// TempoCallback
-		virtual void tempoChange(const Tempo& tempo);
-
 	protected:
 		unsigned long outputSampleRate; ///< in Hertz, e.g. 44100
 		unsigned int outputChannels;    ///< e.g. 2 for stereo
@@ -163,6 +160,9 @@ class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 
 		std::shared_ptr<const Music> music;
 		unsigned int loopCount; ///< 0=loop forever, 1=no loop, 2=loop once, etc.
+
+		// TempoCallback
+		virtual void tempoChange(const Tempo& tempo);
 
 	private:
 		// These are kept as indices rather than iterators so that the song can be

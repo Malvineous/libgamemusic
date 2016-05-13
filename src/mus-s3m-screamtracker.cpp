@@ -881,7 +881,7 @@ void MusicType_S3M::write(stream::output& content, SuppData& suppData,
 	// Write out the patterns
 	EventConverter_S3M conv(content, music);
 	conv.lastTempo = music.initialTempo;
-	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music);
+	conv.handleAllEvents(EventHandler::Pattern_Row_Track, music, 1);
 
 	// Set final filesize to this
 	content.truncate_here();
