@@ -356,7 +356,7 @@ int play(std::shared_ptr<gm::Music> music,
 	gm::Playback::Position lastPos;
 	gm::Playback::Position audiblePos, lastAudiblePos;
 	audiblePos.end = false;
-	PaTime lastTime;
+	PaTime lastTime = 0;
 	{
 		std::unique_lock<std::mutex> lock(pbcb.mut);
 		while (!audiblePos.end) {
