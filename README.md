@@ -36,6 +36,7 @@ File formats from the following games are supported:
   * Heretic (.mus)
   * Jill of the Jungle (.cmf)
   * Kiloblaster (.cmf)
+  * Magnetic (.bsa)
   * Major Stryker (.wlf)
   * Math Rescue (.cmf)
   * Monster Bash (.imf)
