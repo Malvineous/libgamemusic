@@ -1084,7 +1084,7 @@ int main(int iArgC, char *cArgV[])
 					std::cout << " #" << j << ": ";
 					auto oplNext = dynamic_cast<gm::OPLPatch*>(i.get());
 					if (oplNext) {
-						std::cout << "OPL " << oplNext;
+						std::cout << "OPL " << *oplNext;
 					} else {
 						auto midiNext = dynamic_cast<gm::MIDIPatch*>(i.get());
 						if (midiNext) {
