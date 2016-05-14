@@ -582,7 +582,7 @@ std::string getTrackChannelText(const gm::TrackInfo& ti)
 			text = "Any";
 			break;
 		case gm::TrackInfo::ChannelType::OPL:
-			text = createString("OPL " << ti.channelIndex);
+			text = createString("OPL " << ti.channelIndex << " [chan " << ti.channelIndex % 9 << " @ chip " << ti.channelIndex / 9 << "]");
 			break;
 		case gm::TrackInfo::ChannelType::OPLPerc:
 			text = "OPL percussive ";
