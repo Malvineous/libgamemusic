@@ -127,8 +127,8 @@ const unsigned int OPL_NUM_CHIPS = 2;
 /// Value returned by getOPLChannel() if there aren't enough channels available
 const unsigned int OPL_INVALID_CHIP = OPL_NUM_CHIPS;
 
-/// Maximum number of OPL channels that will ever be used
-const unsigned int OPL_MAX_CHANNELS = 18;
+/// Maximum number of OPL channels that will ever be used (6 mel + 5 perc + 9 mel)
+const unsigned int OPL_MAX_CHANNELS = 20;
 
 /// Maximum number of tracks (melodic + percussive mode)
 const unsigned int OPL_TRACK_COUNT = 9 * OPL_NUM_CHIPS + 5;

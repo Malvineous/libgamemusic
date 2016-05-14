@@ -97,6 +97,19 @@ class OPLDecoder
 			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
 };
 
+/// Convert a chip index and OPL channel into a track index
+constexpr unsigned int TRACK_INDEX_MELODIC(unsigned int chipIndex, unsigned int oplChannel)
+{
+	// 0..8 melodic, 0..5 perc, 0..8 chip1 melodic
+	return chipIndex * 14 + oplChannel;
+}
+
+/// Convert an OPL rhythm instrument number (0..4) into a track index
+constexpr unsigned int TRACK_INDEX_PERC(unsigned int rhythm)
+{
+	// 0..8 melodic, 0..5 perc, 0..8 chip1 melodic
+	return 9 + rhythm;
+}
 
 std::unique_ptr<Music> camoto::gamemusic::oplDecode(OPLReaderCallback *cb,
 	DelayType delayType, double fnumConversion, const Tempo& initialTempo)
@@ -139,7 +152,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 			t.channelIndex = c - 9;
 		} else {
 			t.channelType = TrackInfo::ChannelType::OPL;
-			t.channelIndex = c - (9+5);
+			t.channelIndex = c - 5;
 		}
 	}
 
@@ -230,10 +243,10 @@ std::unique_ptr<Music> OPLDecoder::decode()
 				}
 				if (rhythm == 99) {
 					unsigned int oplChannel = OPL2_OFF2CHANNEL(oplOpIndex); /// @todo: This only works for OPL2
-					track = oplChannel + OPL_TRACK_COUNT * oplev.chipIndex;
+					track = TRACK_INDEX_MELODIC(oplev.chipIndex, oplChannel);
 					noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
 				} else {
-					track = 9 + rhythm;
+					track = TRACK_INDEX_PERC(rhythm);
 					noteon = this->oplState[0][0xBD] & (1 << rhythm);
 				}
 
@@ -255,15 +268,16 @@ std::unique_ptr<Music> OPLDecoder::decode()
 				}
 
 				if ((OPL_IS_RHYTHM_ON) && (oplev.chipIndex == 0) && (oplChannel > 5)) {
-					// Rhythm mode instrument
+					// Melodic event on channels used by percussive mode
 					noteon = false;
 					track = -1;
 				} else {
 					// Normal channel (or rhythm mode bass drum)
-					track = oplChannel + OPL_TRACK_COUNT * oplev.chipIndex;
+					track = TRACK_INDEX_MELODIC(oplev.chipIndex, oplChannel);
 					noteon = oplState[oplev.chipIndex][0xB0 | oplChannel] & OPLBIT_KEYON;
 				}
 			}
+			assert((track == (unsigned int)-1) || (track < pattern.size()));
 
 			unsigned int regClass = oplev.reg & 0xF0;
 			if (oplev.reg == 0xBD) regClass = 0xBD;
