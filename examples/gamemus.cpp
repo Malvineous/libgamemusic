@@ -983,6 +983,25 @@ int main(int iArgC, char *cArgV[])
 				}
 				if (!bScript) std::cout << totalEvents << " events listed." << std::endl;
 
+				gm::Playback playback(48000, 2, 16);
+				playback.setSong(pMusic);
+				playback.setLoopCount(1);
+				auto msTotal = playback.getLength();
+				auto min = msTotal / 60000;
+				auto sec = (msTotal % 60000) / 1000;
+				auto ms = (msTotal % 1000) / 100;
+				if (bScript) {
+					std::cout << "len_min=" << min
+						<< "\nlen_sec=" << sec
+						<< "\nlen_ms=" << ms
+						<< "\nlen_total_ms=" << msTotal
+						<< std::endl;
+				} else {
+					std::cout << "Calculated song length: " << min << ":" << std::setw(2)
+						<< std::setfill('0') << sec << "." << ms << " (" << msTotal << " ms)"
+						<< std::endl;
+				}
+
 			} else if (i.string_key.compare("metadata") == 0) {
 				listAttributes(pMusic.get(), bScript);
 
