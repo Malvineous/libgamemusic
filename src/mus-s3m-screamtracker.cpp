@@ -635,7 +635,12 @@ C-4 note
 void MusicType_S3M::write(stream::output& content, SuppData& suppData,
 	const Music& music, WriteFlags flags) const
 {
-	content << nullPadded(music.attributes().at(0).textValue, S3M_TITLE_LEN);
+	if (music.attributes().size() > 0) {
+		content << nullPadded(music.attributes().at(0).textValue, S3M_TITLE_LEN);
+	} else {
+		// No title
+		content << nullPadded("", S3M_TITLE_LEN);
+	}
 
 	auto tempo = music.initialTempo.module_tempo();
 	if (tempo > 255) {
