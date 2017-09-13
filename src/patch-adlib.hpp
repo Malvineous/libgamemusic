@@ -257,8 +257,8 @@ struct CAMOTO_GAMEMUSIC_API adlib_patch_write
 	void write(stream::output& s) const
 	{
 		s
-			<< adlibOperator(this->r.m, this->r.feedback, this->r.connection)
-			<< adlibOperator(this->r.c, this->r.feedback, this->r.connection)
+			<< adlibOperator<T>(this->r.m, this->r.feedback, this->r.connection)
+			<< adlibOperator<T>(this->r.c, this->r.feedback, this->r.connection)
 		;
 		this->writeWaveSel(s, this->r.m);
 		this->writeWaveSel(s, this->r.c);
