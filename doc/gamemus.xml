@@ -245,6 +245,43 @@
 		</variablelist>
 	</refsect1>
 
+	<refsect1 id="errors">
+		<title id="errors-title">Errors</title>
+		<variablelist>
+
+			<varlistentry>
+				<term><computeroutput>decode-opl: Invalid OPL channel 15</computeroutput></term>
+				<listitem>
+					<para>
+						The OPL chip only has nine melodic channels per register set,
+						numbered from 0 to 8 inclusive.  However the channel is specified
+						in a 4-bit field, allowing values from 0 to 15.  There are no
+						registers for channels 9 through 15, but it's still possible for
+						a game to try to write to these registers.  Doing so has no effect,
+						and typically is a bug in the game's music player.  Since the OPL
+						chip ignores these events, the library also ignores them, but it
+						displays this warning message to inform you that some data has been
+						discarded.
+					</para>
+					<para>
+						Note that although the OPL3 has 18 channels, they are arranged in
+						two separate sets of nine channels, so this error can still appear
+						even for OPL3 songs.  It does not mean that there is OPL3 data
+						that is being discarded.  Since the OPL3 has two register sets, it
+						is possible to write to 32 different channels, even though only 18
+						of them are valid.  The only valid channels for an OPL3 chip are
+						0 to 8 inclusive in register set A, and 0 to 8 inclusive in register
+						set B (18 channels total).  Channels 9 through 15 can be written to
+						in both register sets, all of which are invalid and will generate
+						this warning.  This is why the error will always show a channel
+						number between 9 and 15, whether in OPL2 or OPL3 mode.
+					</para>
+				</listitem>
+			</varlistentry>
+
+		</variablelist>
+	</refsect1>
+
 	<refsect1 id="notes">
 		<title id="notes-title">Notes</title>
 		<para>
