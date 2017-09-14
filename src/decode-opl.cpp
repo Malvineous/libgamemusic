@@ -204,7 +204,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 			break;
 		}
 
-		if (oplev.valid & OPLEvent::Delay) {
+		if ((oplev.valid & OPLEvent::Delay) && (oplev.delay > 0)) {
 			totalDelay += oplev.delay;
 			if (this->delayType == DelayType::DelayIsPreData) {
 				for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
@@ -483,7 +483,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 		/// @todo If the instrument settings have changed, generate a patch change event?
 		// Will have to combine with previous patch change event if there has been no delay.
 
-		if (oplev.valid & OPLEvent::Delay) {
+		if ((oplev.valid & OPLEvent::Delay) && (oplev.delay > 0)) {
 			if (this->delayType == DelayType::DelayIsPostData) {
 				for (unsigned int t = 0; t < OPL_TRACK_COUNT; t++) {
 					this->lastDelay[t] += oplev.delay;
