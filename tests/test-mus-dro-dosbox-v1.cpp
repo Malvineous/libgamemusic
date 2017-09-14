@@ -2,7 +2,7 @@
  * @file   test-mus-dro-dosbox-v1.cpp
  * @brief  Test code for DOSBox raw OPL capture files.
  *
- * Copyright (C) 2010-2015 Adam Nielsen <malvineous@shikadi.net>
+ * Copyright (C) 2010-2017 Adam Nielsen <malvineous@shikadi.net>
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ class test_dro_dosbox_v1: public test_music
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_delay_combining);
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_inst_read);
 			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_perc_dupe);
+			ADD_MUSIC_TEST(&test_dro_dosbox_v1::test_sustain_release_to_volume);
 
 			// c00: Normal
 			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
@@ -391,6 +392,64 @@ class test_dro_dosbox_v1: public test_music
 			CHECK_OPL_PATCH(5, m.attackRate, 0x1);
 			CHECK_OPL_PATCH(5, c.attackRate, 0x1);
 			CHECK_OPL_PATCH(5, rhythm, OPLPatch::Rhythm::BassDrum);
+		}
+
+		/// Check that abrupt sustain changes translate to volume-off
+		void test_sustain_release_to_volume()
+		{
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
+			this->base << STRING_WITH_NULLS(
+				"DBRAWOPL" "\x00\x00\x01\x00"
+				"\x40\x00\x00\x00" "\x2e\x00\x00\x00" "\x00\x00\x00\x00"
+				"\x20\xae\x40\x7f\x60\xed\x80\xcb\xe0\x06"
+				"\x23\xa7\x43\x1f\x63\x65\x83\x43\xe3\x02\xc0\x04"
+				"\xa0\x44"
+				"\xb0\x32" // note on
+				"\x00\x0f" // delay
+				"\x80\xFF" // patch change (sustain + release -> minimum)
+				"\xb0\x12" // immediate note off, patch should be ignored but used later
+
+				"\x00\x0f" // delay
+				"\x80\xcb" // return sustain + release to normal for next note
+				"\xb0\x32" // note on
+				"\x00\x0f" // delay
+				"\x80\xFF" // patch change (sustain + release -> minimum)
+				"\x00\x0f" // delay
+				"\xb0\x12" // note off
+			);
+
+			// Read the above file
+			auto music = this->pType->read(this->base, this->suppData);
+
+			// Write it out again
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
+			this->pType->write(this->base, this->suppData, *music, this->writeFlags);
+
+			// Make sure it matches what we read
+			std::string target = STRING_WITH_NULLS(
+				"DBRAWOPL" "\x00\x00\x01\x00"
+				"\x40\x00\x00\x00" "\x2e\x00\x00\x00" "\x00\x00\x00\x00"
+				"\x20\xae\x40\x7f\x60\xed\x80\xcb\xe0\x06"
+				"\x23\xa7\x43\x1f\x63\x65\x83\x43\xe3\x02\xc0\x04"
+				"\xa0\x44"
+				"\xb0\x32" // note on
+				"\x00\x0f" // delay
+				"\x43\x3f" // silence output
+				"\xb0\x12" // note off
+
+				"\x00\x0f" // delay
+				"\x43\x1f" // volume returns to normal for next note
+				"\xb0\x32" // note on
+				"\x00\x0f" // delay
+				"\x43\x3f" // silence output
+				"\x00\x0f" // delay
+				"\xb0\x12" // note off
+			);
+			BOOST_REQUIRE(this->is_content_equal(target));
 		}
 };
 

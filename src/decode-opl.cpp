@@ -338,7 +338,39 @@ std::unique_ptr<Music> OPLDecoder::decode()
 				case 0x50:
 					if (noteon && bitsChanged(0x3F)) {
 						// Volume change
-/// @todo createOrUpdateVolume, plus replace volume if it is immediately followed by noteon
+						auto& trackEvents = pattern.at(track);
+
+						// Remove any volume events before this one, where there is no
+						// delay between them and us.
+						this->removePrecedingEffects(track, trackEvents, EffectEvent::Type::Volume);
+
+						trackEvents.emplace_back();
+						auto& te = trackEvents.back();
+						te.delay = this->lastDelay[track];
+						this->lastDelay[track] = 0;
+						auto ev = std::make_shared<EffectEvent>();
+						ev->type = EffectEvent::Type::Volume;
+						ev->data = log_volume_to_lin_velocity(0x3F - (oplev.val & 0x3F), 0x3F);
+						te.event = std::move(ev);
+					}
+					break;
+
+				case 0x80:
+				case 0x90:
+					if (noteon && bitsChanged(0xF0)) {
+						if ((oplev.val >> 4) == 0x0F) {
+							// Sustain rate changed to immediate off, note will now become
+							// silent immediately.
+							auto& trackEvents = pattern.at(track);
+							trackEvents.emplace_back();
+							auto& te = trackEvents.back();
+							te.delay = this->lastDelay[track];
+							this->lastDelay[track] = 0;
+							auto ev = std::make_shared<EffectEvent>();
+							ev->type = EffectEvent::Type::Volume;
+							ev->data = 0;
+							te.event = std::move(ev);
+						}
 					}
 					break;
 
