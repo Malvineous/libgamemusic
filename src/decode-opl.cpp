@@ -93,6 +93,14 @@ class OPLDecoder
 			unsigned long *lastDelay, unsigned int chipIndex, unsigned int oplChannel,
 			OPLPatch::Rhythm rhythm, unsigned int b0val);
 
+		/// Switch off the note currently playing on the channel.
+		/**
+		 * This also backtracks the most recent events on the channel, and if there
+		 * were any effects with zero delay before the note-off then those events
+		 * are removed, since they will never be heard.
+		 */
+		void createNoteOff(unsigned int track, Track& trackEvents);
+
 		void createOrUpdatePitchbend(Track& trackEvents,
 			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
 };
@@ -375,12 +383,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 										(OPLPatch::Rhythm)(rhythm + 1),
 										oplState[oplev.chipIndex][0xB0 | oplChannel]);
 								} else {
-									auto& trackEvents = pattern.at(track);
-									trackEvents.emplace_back();
-									auto& te = trackEvents.back();
-									te.delay = this->lastDelay[track];
-									this->lastDelay[track] = 0;
-									te.event = std::make_shared<NoteOffEvent>();
+									this->createNoteOff(track, pattern.at(track));
 								}
 							}
 						}
@@ -390,12 +393,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 							track = 9 + rhythm;
 							noteon = this->oplState[0][0xBD] & (1 << rhythm);
 							if (noteon) {
-								auto& trackEvents = pattern.at(track);
-								trackEvents.emplace_back();
-								auto& te = trackEvents.back();
-								te.delay = this->lastDelay[track];
-								this->lastDelay[track] = 0;
-								te.event = std::make_shared<NoteOffEvent>();
+								this->createNoteOff(track, pattern.at(track));
 							}
 						}
 						// Rhythm was on, now it's off
@@ -461,12 +459,7 @@ std::unique_ptr<Music> OPLDecoder::decode()
 									OPLPatch::Rhythm::Melodic, oplev.val);
 							} else {
 								// Note is now off
-								auto& trackEvents = pattern.at(track);
-								trackEvents.emplace_back();
-								auto& te = trackEvents.back();
-								te.delay = this->lastDelay[track];
-								this->lastDelay[track] = 0;
-								te.event = std::make_shared<NoteOffEvent>();
+								this->createNoteOff(track, pattern.at(track));
 							}
 						} else if (noteon && bitsChanged(0x1F)) {
 							// The note is already on and the pitch has changed.
@@ -593,6 +586,17 @@ void OPLDecoder::createNoteOn(Track& trackEvents, PatchBank& patches,
 	}
 
 	te.event = std::move(ev);
+	return;
+}
+
+void OPLDecoder::createNoteOff(unsigned int track, Track& trackEvents)
+{
+	// Create the note-off event
+	trackEvents.emplace_back();
+	auto& te = trackEvents.back();
+	te.delay = this->lastDelay[track];
+	this->lastDelay[track] = 0;
+	te.event = std::make_shared<NoteOffEvent>();
 	return;
 }
 
