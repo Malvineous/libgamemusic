@@ -354,7 +354,7 @@ bool EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 			if (car) {
 				const unsigned int& volume = ev->data;
 				unsigned int op = OPLOFFSET_CAR(oplChannel);
-				unsigned int outputLevel = 0x3F - 0x3F * log((float)volume) / log(256.0);
+				unsigned int outputLevel = 0x3F - lin_velocity_to_log_volume(volume, 0x3F);
 
 				uint8_t reg = BASE_SCAL_LEVL | op;
 				uint8_t val = this->oplState[chipIndex][reg] & ~0x3F;
