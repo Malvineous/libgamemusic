@@ -227,6 +227,47 @@ finishTesting:
 	return RET_OK;
 }
 
+// Event handler used to replace tempo events
+class ReplaceTempo: virtual public gm::EventHandler
+{
+	public:
+		ReplaceTempo(const gm::Tempo& newTempo)
+			: newTempo(newTempo)
+		{
+		}
+
+		virtual void endOfTrack(unsigned long delay) { };
+		virtual void endOfPattern(unsigned long delay) { };
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::TempoEvent *ev)
+		{
+			// Dodgy hack
+			gm::TempoEvent *ev2 = const_cast<gm::TempoEvent *>(ev);
+			ev2->tempo = this->newTempo;
+			std::cout << "Replaced tempo event" << std::endl;
+			return true;
+		}
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::NoteOnEvent *ev) { return true; };
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::NoteOffEvent *ev) { return true; };
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::EffectEvent *ev) { return true; };
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::GotoEvent *ev) { return true; };
+
+		virtual bool handleEvent(unsigned long delay, unsigned int trackIndex,
+			unsigned int patternIndex, const gm::ConfigurationEvent *ev) { return true; };
+
+	private:
+		gm::Tempo newTempo;
+};
+
 
 #ifdef USE_PORTAUDIO
 struct PositionHistory {
@@ -644,6 +685,9 @@ int main(int iArgC, char *cArgV[])
 
 		("play,p",
 			"play the song on the default audio device")
+
+		("tempo", po::value<std::string>(),
+			"change the speed of the song")
 
 		("wav,w", po::value<std::string>(),
 			"render the song to a .wav file with the given filename")
@@ -1335,6 +1379,45 @@ int main(int iArgC, char *cArgV[])
 						<< std::endl;
 					return RET_SHOWSTOPPER;
 				}
+
+			} else if (i.string_key.compare("tempo") == 0) {
+				bool error = false;
+				std::string strUsPerTick, strTime;
+				std::string strTicksPerBeat, strTime2;
+				std::string strFramesPerTick, strTimeSig;
+				std::string strTimeHigh, strTimeLow;
+				if (i.value[0].empty()) {
+					error = true;
+				} else if (!split(i.value[0], ':', &strUsPerTick, &strTime)) {
+					error = true;
+				} else if (!split(strTime, ',', &strTicksPerBeat, &strTime2)) {
+					error = true;
+				} else if (!split(strTime2, ',', &strFramesPerTick, &strTimeSig)) {
+					error = true;
+				} else if (!split(strTimeSig, '/', &strTimeHigh, &strTimeLow)) {
+					std::cerr << "--tempo time signature is invalid, expecting a value "
+						"of the form 3/4 or similar." << std::endl;
+					return RET_BADARGS;
+				}
+				if (error) {
+					std::cerr << "--tempo must be of the form us_per_tick:ticks_per_beat"
+						",frames_per_tick,time_signature.  Default is 250000:2,6,4/4 for "
+						"120 BPM, two ticks per beat, 6 frames per tick and 4/4 time."
+						<< std::endl;
+					return RET_BADARGS;
+				}
+
+				gm::Tempo newTempo;
+				newTempo.beatsPerBar = strtoul(strTimeHigh.c_str(), NULL, 10);
+				newTempo.beatLength = strtoul(strTimeLow.c_str(), NULL, 10);
+				newTempo.ticksPerBeat = strtoul(strTicksPerBeat.c_str(), NULL, 10);
+				newTempo.usPerTick = strtod(strUsPerTick.c_str(), NULL);
+				newTempo.framesPerTick = strtoul(strFramesPerTick.c_str(), NULL, 10);
+
+				ReplaceTempo r(newTempo);
+				r.handleAllEvents(gm::EventHandler::Pattern_Track_Row, *pMusic, 1);
+
+				pMusic->initialTempo = newTempo;
 
 			// Ignore --type/-t
 			} else if (i.string_key.compare("type") == 0) {
