@@ -334,6 +334,14 @@ std::unique_ptr<Music> OPLDecoder::decode()
 					}
 					break;
 
+				case 0x20:
+				case 0x30:
+					if (noteon) {
+#warning Changing the CHAR_MULT value during playback needs to be implemented
+						std::cout << "Warning: Changing the CHAR_MULT value during playback is not yet implemented, event discarded.\n";
+					}
+					break;
+
 				case 0x40:
 				case 0x50:
 					if (noteon && bitsChanged(0x3F)) {
@@ -509,6 +517,15 @@ std::unique_ptr<Music> OPLDecoder::decode()
 						}
 					}
 					break;
+
+				case 0xE0:
+				case 0xF0:
+					if (noteon) {
+#warning Changing the WAVE value during playback needs to be implemented
+						std::cout << "Warning: Changing the WAVE value during playback is not yet implemented, event discarded.\n";
+					}
+					break;
+
 			} // switch (OPL reg)
 		} // if (OPLEvent::Regs)
 
