@@ -103,6 +103,15 @@ class OPLDecoder
 
 		void createOrUpdatePitchbend(Track& trackEvents,
 			unsigned long *lastDelay, unsigned int a0val, unsigned int b0val);
+
+		/// Remove all the effects of the given type up until the last delay.
+		/**
+		 * This is used when generating a volume event, to remove any preceding
+		 * volume changes that wouldn't be heard because there are no delays
+		 * between those events and the one about to be produced.
+		 */
+		void removePrecedingEffects(unsigned int track, Track& trackEvents,
+			EffectEvent::Type type);
 };
 
 /// Convert a chip index and OPL channel into a track index
@@ -646,6 +655,26 @@ void OPLDecoder::createOrUpdatePitchbend(Track& trackEvents,
 		ev->type = EffectEvent::Type::PitchbendNote;
 		ev->data = freq;
 		te.event = std::move(ev);
+	}
+	return;
+}
+
+void OPLDecoder::removePrecedingEffects(unsigned int track, Track& trackEvents,
+	EffectEvent::Type type)
+{
+	while (this->lastDelay[track] == 0) {
+		// No delay since the last event, remove it if it's one that won't have
+		// affected the song.
+		auto& lastEvent = trackEvents.back();
+		auto effect = std::dynamic_pointer_cast<EffectEvent>(lastEvent.event);
+		if (effect && (effect->type == type)) {
+			// Remove this event
+			this->lastDelay[track] = lastEvent.delay;
+			trackEvents.pop_back();
+		} else {
+			// No more events to remove
+			break;
+		}
 	}
 	return;
 }
