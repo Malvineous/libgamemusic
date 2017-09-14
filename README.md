@@ -83,7 +83,7 @@ You will need the following prerequisites already installed:
 This distribution includes an example program `gamemus` which serves as both
 a command-line interface to the library as well as an example of how to use
 the library.  This program is installed as part of the `make install` process.
-See `man gamemus` for full details.
+See [`man gamemus`](http://www.shikadi.net/camoto/manpage/gamemus) for full details.
 
 All supported file formats are fully documented on the
 [ModdingWiki](http://www.shikadi.net/moddingwiki/Category:Music_formats).
