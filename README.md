@@ -1,6 +1,6 @@
 Camoto: Classic-game Modding Tools
 ==================================
-Copyright 2010-2016 Adam Nielsen <<malvineous@shikadi.net>>  
+Copyright 2010-2017 Adam Nielsen <<malvineous@shikadi.net>>  
 http://www.shikadi.net/camoto/  
 [![Build Status](https://travis-ci.org/Malvineous/libgamemusic.svg?branch=master)](https://travis-ci.org/Malvineous/libgamemusic)
 
