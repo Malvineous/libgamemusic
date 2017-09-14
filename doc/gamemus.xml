@@ -62,7 +62,7 @@
 				<term><option>-l</option></term>
 				<listitem>
 					<para>
-						list all the events in the song, in text form
+						list all the events in the song, in text form.
 					</para>
 				</listitem>
 			</varlistentry>
@@ -72,7 +72,17 @@
 				<term><option>-i</option></term>
 				<listitem>
 					<para>
-						list all the instruments used in the song, in text form
+						list all the instruments used in the song, in text form.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--metadata</option></term>
+				<term><option>-m</option></term>
+				<listitem>
+					<para>
+						list any metadata/tags in the file.
 					</para>
 				</listitem>
 			</varlistentry>
@@ -89,6 +99,115 @@
 			</varlistentry>
 
 			<varlistentry>
+				<term><option>--play</option></term>
+				<term><option>-p</option></term>
+				<listitem>
+					<para>
+						play the song.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--remap-tracks</option>=<replaceable>index</replaceable>=<replaceable>target</replaceable></term>
+				<term><option>-k </option><replaceable>index</replaceable>=<replaceable>target</replaceable></term>
+				<listitem>
+					<para>
+						change the channel assignment for a given track.  Use
+						<option>--list-instruments</option> to see the current channel
+						assignment for a song.
+					</para>
+					<para>
+						Generally speaking, only one note can be played on each channel
+						at a time.  MIDI is the only exception to this, but MIDI can
+						still only support one instrument on each channel at a time.
+					</para>
+					<para>
+						<replaceable>index</replaceable> is the zero-based track number
+						to modify, and <replaceable>target</replaceable> is the new type
+						and channel to assign.  A <replaceable>target</replaceable> of
+						<computeroutput>m0</computeroutput> means to use MIDI channel 0.
+						Channel types are:
+					</para>
+					<variablelist>
+
+						<varlistentry>
+							<term><option>m0</option>..<option>m15</option></term>
+							<listitem>
+								<para>
+									MIDI channels 0 to 15.  MIDI normally uses numbers 1..16 with
+									percussion on 10, but since this number is zero-based, the
+									channels are 0..15 with percussion on channel 9.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><option>p0</option>..<option>p255</option></term>
+							<listitem>
+								<para>
+									PCM channel.  Maximum value depends on the file format.  For
+									some file formats (e.g. .mod) this can affect the panning.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><option>o0</option>..<option>o8</option></term>
+							<listitem>
+								<para>
+									OPL/FM melodic channels 0 through 8.
+								</para>
+								<para>
+									Note that OPL percussion mode uses channels 6, 7 and 8, so it
+									is not valid for a song to have events on these channels while
+									percussive events are present.  This may happen temporarily
+									during a format conversion, but this state must be resolved by
+									the time the song is written out to a file.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><option>r0</option>..<option>r4</option></term>
+							<listitem>
+								<para>
+									OPL/FM percussive/rhythm. 0 = hi-hat, 1 = top cymbal, 2 = tom
+									tom, 3 = snare drum, 4 = bass drum.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><option>-</option></term>
+							<listitem>
+								<para>
+									Unused channel.  This will drop all events (including tempo
+									events!) from this channel.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><option>*0</option>..<option>*255</option></term>
+							<listitem>
+								<para>
+									Any device.  Only used internally.  Songs cannot be written
+									to a file if they contain an 'any' track type.  Only one note
+									at a time can be played on each 'any' track.
+								</para>
+							</listitem>
+						</varlistentry>
+
+					</variablelist>
+					<para>
+						This option can be specified multiple times and the change only
+						applies to actions specified after it on the command line.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
 				<term><option>--repeat-instruments</option>=<replaceable>count</replaceable></term>
 				<term><option>-r </option><replaceable>count</replaceable></term>
 				<listitem>
@@ -97,6 +216,144 @@
 						<replaceable>count</replaceable> instruments available.  This is
 						useful when replacing instruments, but there are not enough of them
 						in the newly loaded bank.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--tag-title</option>=<replaceable>text</replaceable></term>
+				<listitem>
+					<para>
+						Set the title to use for the next file written with
+						<option>--convert</option>.  The title is silently ignored for
+						formats that do not support metadata.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--tag-artist</option>=<replaceable>text</replaceable></term>
+				<listitem>
+					<para>
+						Set the artist to use for the next file written with
+						<option>--convert</option>.  The artist is silently ignored for
+						formats that do not support metadata, or have no place to store
+						the artist name.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--tag-comment</option>=<replaceable>text</replaceable></term>
+				<listitem>
+					<para>
+						Set a comment to use for the next file written with
+						<option>--convert</option>.  The comment is silently ignored for
+						formats that do not support metadata, or have no place to store a
+						comment.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--tempo</option>=<replaceable>us_per_tick</replaceable>:<replaceable>ticks_per_beat</replaceable>,<replaceable>frames_per_tick</replaceable>,<replaceable>time_signature</replaceable></term>
+				<listitem>
+					<para>
+						change the playback speed of the song.  Events occur after a number
+						of "ticks" on a clock, and the tempo controls how fast this clock
+						runs.  The faster this clock, the faster it ticks and so the
+						faster events play, even though they remain the same number of ticks
+						apart.
+					</para>
+					<para>
+						A tick is the finest grain of timing in a song.  It is not possible
+						to play events after half a tick, events can only be played after
+						a whole number of ticks.  For this reason there are usually many
+						ticks for each musical beat, to allow for notes to be played before
+						or after the beat, and to allow notes to be shorter in length than
+						a whole beat.
+					</para>
+					<variablelist>
+
+						<varlistentry>
+							<term><replaceable>us_per_tick</replaceable></term>
+							<listitem>
+								<para>
+									The number of microseconds per tick.  A value of 250000 is
+									the default and will result in four ticks every second, or
+									240 ticks per minute.
+								</para>
+								<para>
+									If there is one tick per beat then this will be 240 BPM (beats
+									per minute) and notes will only be able to be played at each
+									beat.  If instead there are two ticks per beat then this will
+									be 120 BPM, and notes will be able to be played both on the
+									beat and also exactly in the middle between beats.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><replaceable>ticks_per_beat</replaceable></term>
+							<listitem>
+								<para>
+									The number of ticks in each musical beat.  If this value is 1,
+									then only one note can be played per beat, and it will always
+									be at least one beat in length, making every note a semibreve
+									(whole note) or longer.  A value of 2 will allow up to two
+									notes to be played per beat, meaning the shortest note will be
+									a minim (half note).  4 will allow for crotchets (quarter
+									notes) and so on.
+								</para>
+								<para>
+									This value is typically only used to assist with placing notes
+									into a musical staff, so many formats do not make use of this
+									value as it does not affect the song speed.  MIDI is one
+									format that uses it.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><replaceable>frames_per_tick</replaceable></term>
+							<listitem>
+								<para>
+									The number of audio frames in each tick.  This is only
+									relevant for some tracker formats that offer retrigger
+									effects, where a sample is played from the beginning
+									repeatedly within the space of one tick to the next.  This
+									value indicates how many repeats will happen.  A value of 2
+									means the retriggered note will play twice - once at the tick
+									and again half way between ticks.  The default value used by
+									most trackers is 6, with the value usually being ignored by
+									other formats.
+								</para>
+							</listitem>
+						</varlistentry>
+
+						<varlistentry>
+							<term><replaceable>time_signature</replaceable></term>
+							<listitem>
+								<para>
+									Two numbers separated by a slash, such as
+									<option>3/4</option>.  This is only used to assist with
+									placing notes on a musical staff, so MIDI is currently the
+									only format that makes use of it.
+								</para>
+							</listitem>
+						</varlistentry>
+
+					</variablelist>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--wav</option>=<replaceable>filename</replaceable></term>
+				<term><option>-w </option><replaceable>filename</replaceable></term>
+				<listitem>
+					<para>
+						convert the song to PCM and save it as a .wav file with the given
+						name.  This uses the same rendering process as <option>--play</option>.
 					</para>
 				</listitem>
 			</varlistentry>
@@ -151,6 +408,28 @@
 						<option>--convert</option>.  This duplicates certain events so they
 						apply to both register sets, and drops events that disable OPL3
 						mode.  This may fail if the file format does not support OPL3 chips.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--midibank</option>=<replaceable>filename</replaceable></term>
+				<term><option>-b </option><replaceable>filename</replaceable></term>
+				<listitem>
+					<para>
+						instrument bank to use for playing MIDI events with
+						<option>--play</option> or rendering with <option>--wav</option>.
+						Without this option, MIDI notes will be silent.
+					</para>
+					<para>
+						Any file supported (see <option>--list-types</option>) can be used
+						as a MIDI bank.  The file should have 128 instruments or some notes
+						may be silent, if they are played with a MIDI patch that is not
+						supplied.
+					</para>
+					<para>
+						Both OPL and PCM instruments are supported (separately or at the
+						same time).
 					</para>
 				</listitem>
 			</varlistentry>
@@ -275,6 +554,21 @@
 						in both register sets, all of which are invalid and will generate
 						this warning.  This is why the error will always show a channel
 						number between 9 and 15, whether in OPL2 or OPL3 mode.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><computeroutput>decode-opl: Bad OPL note-on register/channel 0xF</computeroutput></term>
+				<listitem>
+					<para>
+						Like the <computeroutput>Invalid OPL channel</computeroutput>
+						error, this one indicates the song actually tried to play a note
+						on one of the non-existent channels.  If you see this error it
+						might be worth investigating, as there could be a hidden part to
+						the song that has never been heard.  This error appears for every
+						attempt to play a note on a channel that is not present, so the
+						more messages are seen, the more notes are going unheard.
 					</para>
 				</listitem>
 			</varlistentry>
