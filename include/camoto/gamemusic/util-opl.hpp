@@ -124,7 +124,11 @@ int CAMOTO_GAMEMUSIC_API fnumToMilliHertz(unsigned int fnum, unsigned int block,
  *
  * @param block
  *   Output block number for OPL chip.  This is a 3-bit number, so it will
- *   always be between 0 and 7 inclusive.
+ *   always be between 0 and 7 inclusive.  When calling this function, set this
+ *   value to the existing block number on the channel and the function will
+ *   try to keep the same block number, to avoid the block changing frequently.
+ *   If the current block number is not known, set it to an invalid value
+ *   (suggest -1.)
  *
  * @param conversionFactor
  *   Conversion factor to use.  Normally will be 49716 and occasionally 50000.

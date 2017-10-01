@@ -223,8 +223,9 @@ bool EventConverter_OPL::handleEvent(unsigned long delay,
 	}
 
 	unsigned int fnum, block;
+	// Get the current block in use, so we can avoid changing it if possible
+	block = (this->oplState[chipIndex][0xB0 | oplChannel] >> 2) & 7;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, this->fnumConversion);
-	assert(block <= 7);
 
 	// Write the rest of the (global) instrument settings.
 	if (ti.channelType != TrackInfo::ChannelType::OPLPerc) {
@@ -333,6 +334,8 @@ bool EventConverter_OPL::handleEvent(unsigned long delay, unsigned int trackInde
 			// playing anyway, and the bend will be reset on the next note.
 			const unsigned int& milliHertz = ev->data;
 			unsigned int fnum, block;
+			// Get the current block in use, so we can avoid changing it if possible
+			block = (this->oplState[chipIndex][0xB0 | oplChannel] >> 2) & 7;
 			milliHertzToFnum(milliHertz, &fnum, &block, this->fnumConversion);
 
 			// Write lower eight bits of note freq

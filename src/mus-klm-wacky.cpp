@@ -724,7 +724,7 @@ bool EventConverter_KLM::handleEvent(unsigned long delay,
 		this->volMap[trackIndex] = ev->velocity;
 	}
 
-	unsigned int fnum, block;
+	unsigned int fnum, block = (unsigned int)-1;
 	milliHertzToFnum(ev->milliHertz, &fnum, &block, KLM_FNUM_CONVERSION);
 
 	event = 0x10 | trackIndex;

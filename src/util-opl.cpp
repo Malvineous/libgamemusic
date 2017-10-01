@@ -59,6 +59,15 @@ void milliHertzToFnum(unsigned int milliHertz,
 		return;
 	}
 
+	if (*block <= 7) {
+		// We've already got a block, see if we can use that
+		*fnum = ((unsigned long long)milliHertz << (20 - *block)) / (conversionFactor * 1000.0) + 0.5;
+		if ((*fnum > 100) && (*fnum < 900)) {
+			// Fits in the middle of the existing block pretty well, so let's keep it
+			return;
+		}
+	}
+
 	/// This formula will provide a pretty good estimate as to the best block to
 	/// use for a given frequency.  It tries to use the lowest possible block
 	/// number that is capable of representing the given frequency.  This is
