@@ -1230,6 +1230,7 @@ int main(int iArgC, char *cArgV[])
 						}
 					}
 				}
+				pMusic->ticksPerTrack -= target;
 				if (bScript) {
 					std::cout << "start_at_erased_count=" << count << "\n";
 				} else {
