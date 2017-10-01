@@ -221,6 +221,34 @@
 			</varlistentry>
 
 			<varlistentry>
+				<term><option>--start-at</option>=<replaceable>tick</replaceable></term>
+				<listitem>
+					<para>
+						drop all notes from the start of the song until time
+						<replaceable>tick</replaceable> is reached.  Times can be seen
+						with the <option>--list-events</option> option.  Only note on and
+						off events are dropped.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
+				<term><option>--stop-at</option>=<replaceable>tick</replaceable></term>
+				<listitem>
+					<para>
+						drop all notes from time <replaceable>tick</replaceable> until the
+						end of the song is reached.  Times can be seen with the
+						<option>--list-events</option> option.  Only note on and off events
+						are dropped.  If using in conjuction with <option>--start-at</option>,
+						it is advisable to place <option>--stop-at</option> first, since
+						<option>--start-at</option> will remove events at the beginning of
+						the song, causing the song length to shrink and possibly affecting
+						the intended value for <option>--stop-at</option>.
+					</para>
+				</listitem>
+			</varlistentry>
+
+			<varlistentry>
 				<term><option>--tag-title</option>=<replaceable>text</replaceable></term>
 				<listitem>
 					<para>

@@ -677,6 +677,12 @@ int main(int iArgC, char *cArgV[])
 		("convert,c", po::value<std::string>(),
 			"convert the song to another file format")
 
+		("start-at", po::value<int>(),
+			"drop notes from the start until this number of ticks")
+
+		("stop-at", po::value<int>(),
+			"drop all events after this number of ticks")
+
 		("newinst,n", po::value<std::string>(),
 			"override the instrument bank used by subsequent conversions (-c)")
 
@@ -1011,12 +1017,15 @@ int main(int iArgC, char *cArgV[])
 								<< trackIndex << "\n";
 						}
 						unsigned int eventIndex = 0;
+						unsigned long ticks = 0;
 						for (auto ev = pt.begin(); ev != pt.end(); ev++, eventIndex++, totalEvents++) {
+							ticks += ev->delay;
 							if (bScript) {
 								std::cout << "pattern=" << patternIndex << ";track="
-									<< trackIndex << ";index=" << eventIndex << ";";
+									<< trackIndex << ";index=" << eventIndex << ";tick="
+									<< ticks << ";";
 							} else {
-								std::cout << eventIndex << ": ";
+								std::cout << eventIndex << "/" << ticks << ": ";
 							}
 							std::cout << "delay=" << ev->delay << ";"
 								<< ev->event->getContent() << "\n";
@@ -1176,6 +1185,85 @@ int main(int iArgC, char *cArgV[])
 					}
 					std::cout << "\n";
 					j++;
+				}
+
+			} else if (i.string_key.compare("start-at") == 0) {
+				if (i.value[0].empty()) {
+					std::cerr << "--start-at requires a positive numeric parameter" << std::endl;
+					return RET_BADARGS;
+				}
+				unsigned int target = strtod(i.value[0].c_str(), NULL);
+				if (!bScript) {
+					std::cout << "Dropping notes before t=" << target << "\n";
+				}
+				unsigned int count = 0;
+				for (auto& pp : pMusic->patterns) {
+					for (auto& pt : pp) {
+						unsigned long ticks = 0;
+						unsigned long ticksCut = 0;
+						for (auto ev = pt.begin(); ev != pt.end(); ) {
+							ticks += ev->delay;
+							if (ticks < target) {
+								// This event is in the timeframe we are looking to remove, but
+								// we only want to remove note events.
+								const gm::NoteOnEvent *ev2 = dynamic_cast<const gm::NoteOnEvent*>(ev->event.get());
+								if (!ev2) {
+									const gm::NoteOffEvent *ev3 = dynamic_cast<const gm::NoteOffEvent*>(ev->event.get());
+									if (!ev3) {
+										ev++;
+										continue;
+									}
+								}
+								// If we're here, it's either a NoteOnEvent or a NoteOffEvent
+								ticksCut += ev->delay;
+								ev = pt.erase(ev);
+								count++;
+							} else {
+								// We've removed the last event, set the delay for the next
+								// event to match the time we cut.  Without this, each track
+								// will begin at a slightly different time, depending on the
+								// number of events that were cut.
+								unsigned long ticksUncut = target - ticksCut;
+								ev->delay -= ticksUncut;
+								break;
+							}
+						}
+					}
+				}
+				if (bScript) {
+					std::cout << "start_at_erased_count=" << count << "\n";
+				} else {
+					std::cout << "Erased first " << count << " note events\n";
+				}
+
+			} else if (i.string_key.compare("stop-at") == 0) {
+				if (i.value[0].empty()) {
+					std::cerr << "--stop-at requires a positive numeric parameter" << std::endl;
+					return RET_BADARGS;
+				}
+				unsigned int target = strtod(i.value[0].c_str(), NULL);
+				if (!bScript) {
+					std::cout << "Dropping notes at and after t=" << target << "\n";
+				}
+				unsigned int count = 0;
+				for (auto& pp : pMusic->patterns) {
+					for (auto& pt : pp) {
+						unsigned long ticks = 0;
+						for (auto ev = pt.begin(); ev != pt.end(); ev++) {
+							ticks += ev->delay;
+							if (ticks >= target) {
+								count += pt.end() - ev;
+								ev = pt.erase(ev, pt.end());
+								break;
+							}
+						}
+					}
+				}
+				pMusic->ticksPerTrack = target;
+				if (bScript) {
+					std::cout << "stop_at_erased_count=" << count << "\n";
+				} else {
+					std::cout << "Erased final " << count << " note events\n";
 				}
 
 			} else if (i.string_key.compare("remap-tracks") == 0) {
