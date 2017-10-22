@@ -40,6 +40,7 @@ std::string MusicType_MID_Type0::friendlyName() const
 std::vector<std::string> MusicType_MID_Type0::fileExtensions() const
 {
 	return {
+		"mdi",
 		"mid",
 	};
 }
