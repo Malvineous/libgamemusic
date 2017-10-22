@@ -171,8 +171,8 @@ void Playback::seekByOrder(unsigned int destOrder)
 	this->nextOrder = 0; // incremented to 1 at end of pattern
 	if (this->music->patternOrder.size() <= this->order) {
 		// order points past end of patterns
+		this->pattern = 0;
 		this->end = true;
-		this->frame = 0;
 		return;
 	}
 	this->pattern = this->music->patternOrder[this->order];
@@ -194,10 +194,10 @@ unsigned long Playback::seekByTime(unsigned long ms)
 
 	this->frame = 0;
 	this->row = pos.row;
-	this->nextRow = pos.row + 1;
+	this->nextRow = pos.row + 1; // will be pulled within range later if needed
 	this->order = pos.orderIndex;
 	this->nextOrder = pos.nextOrderIndex - 1; // Gets incremented at end of pattern
-	this->pattern = this->music->patternOrder[pos.patternIndex];
+	this->pattern = pos.patternIndex;
 	this->end = this->music->patternOrder.size() <= this->order;
 	this->loop = pos.loop;
 	return pos.us / 1000;
