@@ -184,8 +184,13 @@ unsigned long Playback::seekByTime(unsigned long ms)
 {
 	this->allNotesOff();
 
+	Tempo newTempo;
 	EventHandler_Playback_Seek seek(this->music, this->loopCount);
-	auto pos = seek.seekTo(ms);
+	auto pos = seek.seekTo(ms, &newTempo);
+
+	if (this->tempo != newTempo) {
+		this->tempoChange(newTempo);
+	}
 
 	this->frame = 0;
 	this->row = pos.row;

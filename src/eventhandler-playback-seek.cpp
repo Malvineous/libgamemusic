@@ -58,8 +58,6 @@ bool EventHandler_Playback_Seek::handleEvent(unsigned long delay,
 	return this->usTotal < this->usTarget;
 }
 
-
-#include <iostream>
 bool EventHandler_Playback_Seek::handleEvent(unsigned long delay,
 	unsigned int trackIndex, unsigned int patternIndex, const NoteOnEvent *ev)
 {
@@ -106,11 +104,14 @@ unsigned long EventHandler_Playback_Seek::getTotalLength()
 	return this->usTotal / 1000;
 }
 
-EventHandler::Position EventHandler_Playback_Seek::seekTo(unsigned long msTarget)
+EventHandler::Position EventHandler_Playback_Seek::seekTo(
+	unsigned long msTarget, Tempo *destTempo)
 {
 	this->usTarget = msTarget * 1000;
 	this->usTotal = 0;
 	this->usPerTick = this->music->initialTempo.usPerTick;
-	return this->handleAllEvents(EventOrder::Order_Row_Track, *this->music,
+	auto pos = this->handleAllEvents(EventOrder::Order_Row_Track, *this->music,
 		this->loopCount);
+	*destTempo = this->tempo;
+	return pos;
 }

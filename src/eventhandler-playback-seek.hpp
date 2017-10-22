@@ -83,12 +83,15 @@ class CAMOTO_GAMEMUSIC_API EventHandler_Playback_Seek: virtual public EventHandl
 		 * @param msTarget
 		 *   The moment in time to reach.
 		 *
+		 * @param destTempo
+		 *   The tempo at the target seek point.
+		 *
 		 * @return The actual position reached.  The values are available in
 		 *   microseconds, order, row, etc.  This will be close to the desired time
 		 *   supplied in msTarget, except that seeking is only done to the row
 		 *   level, so it will differ from the target time by a few milliseconds.
 		 */
-		Position seekTo(unsigned long msTarget);
+		Position seekTo(unsigned long msTarget, Tempo *destTempo);
 
 	protected:
 		std::shared_ptr<const Music> music; ///< Song being examined
