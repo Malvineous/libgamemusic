@@ -56,6 +56,7 @@ class test_music: public test_main
 		void test_test_init();
 
 		void test_isinstance_others();
+		void test_isinstance_empty();
 		void test_read();
 		/// Write a completely normal file.
 		void test_write();

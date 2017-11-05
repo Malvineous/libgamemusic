@@ -193,6 +193,7 @@ void test_music::addTests()
 	ADD_MUSIC_TEST(&test_music::test_test_init);
 
 	ADD_MUSIC_TEST(&test_music::test_isinstance_others);
+	ADD_MUSIC_TEST(&test_music::test_isinstance_empty);
 	ADD_MUSIC_TEST(&test_music::test_read);
 
 	if (this->writingSupported) {
@@ -533,6 +534,21 @@ void test_music::test_isinstance_others()
 			"isInstance() for " << otherType << " incorrectly recognises content for "
 			<< this->type);
 	}
+	return;
+}
+
+void test_music::test_isinstance_empty()
+{
+	// Check all file formats except this one to avoid any false positives
+	BOOST_TEST_MESSAGE(this->basename << ": isInstance check against zero byte file");
+
+	this->base.truncate(0);
+
+	auto isInstanceResult = this->pType->isInstance(this->base);
+
+	BOOST_CHECK_MESSAGE(isInstanceResult < MusicType::Certainty::DefinitelyYes,
+		"isInstance() incorrectly recognises content for empty files");
+
 	return;
 }
 
