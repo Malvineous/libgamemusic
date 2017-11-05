@@ -139,7 +139,7 @@ void MusicType_IBK::write(stream::output& content, SuppData& suppData,
 	const Music& music, WriteFlags flags) const
 {
 	requirePatches<OPLPatch>(*music.patches);
-	if (music.patches->size() >= IBK_INST_COUNT) {
+	if (music.patches->size() > IBK_INST_COUNT) {
 		throw bad_patch("IBK files have a maximum of 128 instruments.");
 	}
 
