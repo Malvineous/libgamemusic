@@ -107,6 +107,32 @@ class test_cdfm_zone66_gus: public test_music
 				// PCM inst 1 sample data
 				"\x00\x10\x00\xF0\x00\x10\x00\xF0\x00\x10\x00\xF0\x00\x10\x00\xF0"
 			));
+
+			// c05: File too short (header)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"\x35\x00\x00\x00"
+			));
+
+			// c06: File too short (order list)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"\x35\x00\x00\x00"
+				"\xCC" "\x03" "\x02" "\x01" "\x01"
+				"\x00\x00"
+			));
+
+			// c07: File too short (pattern data)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"\x35\x00\x00\x00"
+				"\xCC" "\x03" "\x02" "\x01" "\x01"
+				"\x00\x00\x01"
+				"\x00\x00\x00\x00"
+				"\x0B\x00\x00\x00"
+				"\x02\x00\x21\x00\x00\x00\x00\x10\x00\x00\x00"
+				// Pattern 0
+				"\x40\x23\x0F\x00\x01\x01\x00\x01\x80\x00\x02"
+				// Pattern 1
+				"\x40\x23\x0F\x00\x01\x01\x00\x01\x80\x00"
+			));
 		}
 
 		virtual std::string standard()

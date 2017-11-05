@@ -67,6 +67,12 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input& content) cons
 	stream::len fileSize = content.size();
 	content.seekg(0, stream::start);
 
+	if (fileSize < 9) {
+		// File too short (header)
+		// TESTED BY: mus_cdfm_zone66_gus_isinstance_c05
+		return Certainty::DefinitelyNo;
+	}
+
 	uint8_t speed, orderCount, patternCount, numDigInst, loopDest;
 	uint32_t sampleOffset;
 	content
@@ -89,6 +95,12 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input& content) cons
 		return Certainty::DefinitelyNo;
 	}
 
+	if (fileSize < (unsigned int)(9 + orderCount)) {
+		// File too short (order list)
+		// TESTED BY: mus_cdfm_zone66_gus_isinstance_c06
+		return Certainty::DefinitelyNo;
+	}
+
 	uint8_t patternOrder[256];
 	content.read(patternOrder, orderCount);
 	for (int i = 0; i < orderCount; i++) {
@@ -106,6 +118,12 @@ MusicType::Certainty MusicType_CDFM_GUS::isInstance(stream::input& content) cons
 		+ 4 * patternCount      // one uint32le for each pattern's offset
 		+ 11 * numDigInst      // PCM instruments
 	;
+
+	if (fileSize < (unsigned int)(patternStart + 4 * patternCount)) {
+		// File too short (pattern data)
+		// TESTED BY: mus_cdfm_zone66_gus_isinstance_c07
+		return Certainty::DefinitelyNo;
+	}
 
 	for (int i = 0; i < patternCount; i++) {
 		uint32_t patternOffset;
