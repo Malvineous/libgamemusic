@@ -53,7 +53,7 @@ std::ostream& camoto::gamemusic::operator<< (std::ostream& s, const OPLPatch& p)
 	s << "[" << std::hex
 		<< (int)p.rhythm << ":"
 		<< (int)p.feedback << '.'
-		<< (p.connection ? 'C' : 'c')
+		<< (p.connection ? 'N' : 'n')
 		<< '/'
 	;
 	if (!oplModOnly(p.rhythm)) {
