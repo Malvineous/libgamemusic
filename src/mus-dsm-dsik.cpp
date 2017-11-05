@@ -130,7 +130,15 @@ MusicType::Caps MusicType_DSM::caps() const
 
 MusicType::Certainty MusicType_DSM::isInstance(stream::input& content) const
 {
+	stream::len fileSize = content.size();
 	content.seekg(0, stream::start);
+
+	if (fileSize < 12) {
+		// File too short (header)
+		// TESTED BY: mus_dsm_dsik_isinstance_c04
+		return Certainty::DefinitelyNo;
+	}
+
 	IFF::fourcc sig1, sig2;
 	uint32_t len1;
 	content

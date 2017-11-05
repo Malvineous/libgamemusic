@@ -138,6 +138,11 @@ class test_dsm_dsik: public test_music
 				"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 				"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
 			));
+
+			// c04: File too short (header)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"RIFF" "\x7A\x02\x00\x00" "DSM"
+			));
 		}
 
 		virtual std::string standard()
