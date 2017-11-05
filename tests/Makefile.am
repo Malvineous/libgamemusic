@@ -14,6 +14,7 @@ tests_SOURCES += test-mus-cdfm-zone66.cpp
 tests_SOURCES += test-mus-cdfm-zone66-gus.cpp
 tests_SOURCES += test-mus-dsm-dsik.cpp
 tests_SOURCES += test-mus-got.cpp
+tests_SOURCES += test-mus-ibk-instrumentbank.cpp
 tests_SOURCES += test-mus-klm-wacky.cpp
 tests_SOURCES += test-mus-mid-type0.cpp
 tests_SOURCES += test-mus-mus-dmx.cpp

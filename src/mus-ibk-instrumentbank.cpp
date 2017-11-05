@@ -66,16 +66,16 @@ MusicType::Caps MusicType_IBK::caps() const
 
 MusicType::Certainty MusicType_IBK::isInstance(stream::input& content) const
 {
+	// All files are the same size
+	// TESTED BY: mus_ibk_isinstance_c02
+	if (content.size() != IBK_LENGTH) return Certainty::DefinitelyNo;
+
 	// Make sure the signature matches
 	// TESTED BY: mus_ibk_isinstance_c01
 	char sig[4];
 	content.seekg(0, stream::start);
 	content.read(sig, 4);
 	if (strncmp(sig, "IBK\x1A", 4) != 0) return Certainty::DefinitelyNo;
-
-	// All files are the same size
-	// TESTED BY: mus_ibk_isinstance_c02
-	if (content.size() != IBK_LENGTH) return Certainty::DefinitelyNo;
 
 	// TESTED BY: mus_ibk_isinstance_c00
 	return Certainty::DefinitelyYes;
