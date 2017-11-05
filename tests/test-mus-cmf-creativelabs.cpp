@@ -63,6 +63,7 @@ class test_cmf_creativelabs: public test_music
 
 			ADD_MUSIC_TEST(&test_cmf_creativelabs::test_op_swap);
 			ADD_MUSIC_TEST(&test_cmf_creativelabs::test_inst_duped);
+			ADD_MUSIC_TEST(&test_cmf_creativelabs::test_default_instrument);
 
 			// c00: Normal
 			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
@@ -572,6 +573,67 @@ class test_cmf_creativelabs: public test_music
 			BOOST_CHECK_EQUAL(hat->c.attackRate, 14);
 			BOOST_CHECK_EQUAL(cym->m.attackRate, 14); // cym is swapped
 			BOOST_CHECK_EQUAL(cym->c.attackRate, 15);
+		}
+
+		/// Make sure the default instruments are used
+		void test_default_instrument()
+		{
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
+			this->base << STRING_WITH_NULLS(
+				"CTMF\x01\x01"
+				"\x28\x00"
+				"\x38\x00"
+				"\xc0\x00\xe8\x03"
+				"\x00\x00\x00\x00\x00\x00"
+				"\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+				"\x01\x00"
+				"\x39\x01"
+				"\xFF\x0E\xFF\xBE\xFF\xEE\xFF\xEE\x07\x06\x0F" "\x00\x00\x00\x00\x00"
+				"\x00" "\xc0\x01" // instrument past end of bank
+				"\x00" "\x90\x45\x7f"
+				"\x10" "\x45\x00"
+				"\x00" "\xff\x2f\x00"
+			);
+
+			// Read the above file
+			auto music = this->pType->read(this->base, this->suppData);
+
+			// Ensure patches + default are loaded
+			BOOST_REQUIRE_EQUAL(music->patches->size(), 2);
+			auto def = dynamic_cast<OPLPatch*>(music->patches->at(1).get());
+
+			BOOST_REQUIRE(def);
+			BOOST_CHECK_EQUAL(def->rhythm, OPLPatch::Rhythm::Melodic);
+			BOOST_CHECK_EQUAL(def->feedback, 4);
+			BOOST_CHECK_EQUAL(def->connection, false);
+
+			BOOST_CHECK_EQUAL(def->c.enableTremolo, false);
+			BOOST_CHECK_EQUAL(def->c.enableVibrato, false);
+			BOOST_CHECK_EQUAL(def->c.enableSustain, false);
+			BOOST_CHECK_EQUAL(def->c.enableKSR, true);
+			BOOST_CHECK_EQUAL(def->c.freqMult, 2);
+			BOOST_CHECK_EQUAL(def->c.scaleLevel, 0);
+			BOOST_CHECK_EQUAL(def->c.outputLevel, 0);
+			BOOST_CHECK_EQUAL(def->c.attackRate, 15);
+			BOOST_CHECK_EQUAL(def->c.decayRate, 2);
+			BOOST_CHECK_EQUAL(def->c.sustainRate, 7);
+			BOOST_CHECK_EQUAL(def->c.releaseRate, 2);
+			BOOST_CHECK_EQUAL(def->c.waveSelect, 0);
+
+			BOOST_CHECK_EQUAL(def->m.enableTremolo, false);
+			BOOST_CHECK_EQUAL(def->m.enableVibrato, false);
+			BOOST_CHECK_EQUAL(def->m.enableSustain, false);
+			BOOST_CHECK_EQUAL(def->m.enableKSR, false);
+			BOOST_CHECK_EQUAL(def->m.freqMult, 7);
+			BOOST_CHECK_EQUAL(def->m.scaleLevel, 1);
+			BOOST_CHECK_EQUAL(def->m.outputLevel, 15);
+			BOOST_CHECK_EQUAL(def->m.attackRate, 15);
+			BOOST_CHECK_EQUAL(def->m.decayRate, 2);
+			BOOST_CHECK_EQUAL(def->m.sustainRate, 6);
+			BOOST_CHECK_EQUAL(def->m.releaseRate, 0);
+			BOOST_CHECK_EQUAL(def->m.waveSelect, 0);
 		}
 };
 
