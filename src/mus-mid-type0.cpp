@@ -56,6 +56,13 @@ MusicType::Caps MusicType_MID_Type0::caps() const
 MusicType::Certainty MusicType_MID_Type0::isInstance(stream::input& content)
 	const
 {
+	stream::len fileSize = content.size();
+	if (fileSize < 10) {
+		// File too short (header)
+		// TESTED BY: mus_mid_type0_isinstance_c03
+		return Certainty::DefinitelyNo;
+	}
+
 	// Make sure the signature matches
 	// TESTED BY: mus_mid_type0_isinstance_c01
 	char sig[4];

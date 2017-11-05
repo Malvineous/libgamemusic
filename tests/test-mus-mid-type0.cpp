@@ -66,6 +66,12 @@ class test_mid_type0: public test_music
 				"\x10\x45\x00"
 				"\x00\xff\x2f\x00"
 			));
+
+			// c03: File too short (header)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"MThd\x00\x00\x00\x06"
+				"\x00"
+			));
 		}
 
 		virtual std::string standard()
