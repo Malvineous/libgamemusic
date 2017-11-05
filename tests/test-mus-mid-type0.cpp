@@ -36,6 +36,8 @@ class test_mid_type0: public test_music
 		{
 			this->test_music::addTests();
 
+			ADD_MUSIC_TEST(&test_mid_type0::test_empty_read);
+
 			// c00: Normal
 			this->isInstance(MusicType::Certainty::DefinitelyYes, this->standard());
 
@@ -90,6 +92,33 @@ class test_mid_type0: public test_music
 			);
 		}
 
+		/// A song with some events but no notes and zero duration
+		std::string empty()
+		{
+			return STRING_WITH_NULLS(
+				"MThd\x00\x00\x00\x06"
+				"\x00\x00"
+				"\x00\x01"
+				"\x00\xc0"
+				"MTrk\x00\x00\x00\x0b"
+				"\x00\xff\x51\x03\x07\xa1\x20"
+				"\x00\xff\x2f\x00"
+			);
+		}
+
+		/// Make sure an empty file has no tracks
+		void test_empty_read()
+		{
+			this->base.seekp(0, stream::start);
+			this->base.data.clear();
+
+			this->base << this->empty();
+
+			// Read the standard file
+			auto music = this->pType->read(this->base, this->suppData);
+
+			BOOST_CHECK_EQUAL(music->trackInfo.size(), 0);
+		}
 };
 
 IMPLEMENT_TESTS(mid_type0);

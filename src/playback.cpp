@@ -104,6 +104,7 @@ void Playback::setSong(std::shared_ptr<const Music> music)
 		this->pattern = music->patternOrder.at(this->order);
 	}
 	if (music->ticksPerTrack == 0) {
+		// e4l4null.mid - happens when no events are in a song
 		std::cerr << "Warning: Song's ticksPerTrack is zero!" << std::endl;
 	}
 	this->row = 0;
@@ -133,10 +134,12 @@ void Playback::setSong(std::shared_ptr<const Music> music)
 			break;
 		}
 	}
-	ConfigurationEvent rhythmEvent;
-	rhythmEvent.configType = ConfigurationEvent::Type::EnableRhythm;
-	rhythmEvent.value = rhythm ? 1 : 0;
-	this->oplConverter->handleEvent(0, 0, 0, &rhythmEvent);
+	if (music->trackInfo.size() > 0) {
+		ConfigurationEvent rhythmEvent;
+		rhythmEvent.configType = ConfigurationEvent::Type::EnableRhythm;
+		rhythmEvent.value = rhythm ? 1 : 0;
+		this->oplConverter->handleEvent(0, 0, 0, &rhythmEvent);
+	} // else no tracks so can't process any events
 
 	// Some safety checks to assist with debugging
 	for (auto& i : *music->patches) {
