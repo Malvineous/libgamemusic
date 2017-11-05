@@ -42,6 +42,7 @@ libgamemusic_la_SOURCES += synth-pcm.cpp
 libgamemusic_la_SOURCES += track-split.cpp
 libgamemusic_la_SOURCES += util-midi.cpp
 libgamemusic_la_SOURCES += util-opl.cpp
+libgamemusic_la_SOURCES += util-sbi.cpp
 
 EXTRA_libgamemusic_la_SOURCES = dbopl.hpp
 EXTRA_libgamemusic_la_SOURCES += decode-midi.hpp
@@ -70,6 +71,7 @@ EXTRA_libgamemusic_la_SOURCES += mus-s3m-screamtracker.hpp
 EXTRA_libgamemusic_la_SOURCES += mus-tbsa-doofus.hpp
 EXTRA_libgamemusic_la_SOURCES += patch-adlib.hpp
 EXTRA_libgamemusic_la_SOURCES += track-split.hpp
+EXTRA_libgamemusic_la_SOURCES += util-sbi.hpp
 
 WARNINGS = -Wall -Wextra -Wno-unused-parameter
 

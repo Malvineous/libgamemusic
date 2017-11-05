@@ -23,13 +23,11 @@
 
 #include <camoto/util.hpp> // make_unique
 #include <camoto/gamemusic/patch-opl.hpp>
+#include "util-sbi.hpp"
 #include "mus-ibk-instrumentbank.hpp"
 
 using namespace camoto;
 using namespace camoto::gamemusic;
-
-/// Length of whole .ibk file
-const unsigned int IBK_LENGTH = 4 + 128 * (16 + 9);
 
 /// Number of instruments in IBK
 const unsigned int IBK_INST_COUNT = 128;
@@ -39,6 +37,10 @@ const unsigned int IBK_INST_LEN = 16;
 
 /// Length of each instrument title, in bytes
 const unsigned int IBK_NAME_LEN = 9;
+
+/// Length of whole .ibk file
+const unsigned int IBK_LENGTH =
+	4 + IBK_INST_COUNT * (IBK_INST_LEN + IBK_NAME_LEN);
 
 std::string MusicType_IBK::code() const
 {
@@ -96,28 +98,7 @@ std::unique_ptr<Music> MusicType_IBK::read(stream::input& content,
 	content.seekg(4, stream::start);
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
 		auto patch = std::make_shared<OPLPatch>();
-		uint8_t inst[IBK_INST_LEN];
-		content.read((char *)inst, IBK_INST_LEN);
-
-		OPLOperator *o = &patch->m;
-		for (int op = 0; op < 2; op++) {
-			o->enableTremolo = (inst[0 + op] >> 7) & 1;
-			o->enableVibrato = (inst[0 + op] >> 6) & 1;
-			o->enableSustain = (inst[0 + op] >> 5) & 1;
-			o->enableKSR     = (inst[0 + op] >> 4) & 1;
-			o->freqMult      =  inst[0 + op] & 0x0F;
-			o->scaleLevel    =  inst[2 + op] >> 6;
-			o->outputLevel   =  inst[2 + op] & 0x3F;
-			o->attackRate    =  inst[4 + op] >> 4;
-			o->decayRate     =  inst[4 + op] & 0x0F;
-			o->sustainRate   =  inst[6 + op] >> 4;
-			o->releaseRate   =  inst[6 + op] & 0x0F;
-			o->waveSelect    =  inst[8 + op] & 0x07;
-			o = &patch->c;
-		}
-		patch->feedback    = (inst[10] >> 1) & 0x07;
-		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Rhythm::Melodic;
+		content >> instrumentSBI(*patch);
 
 		uint8_t *name = &names[i * IBK_NAME_LEN];
 		unsigned int namelen = 9;
@@ -149,34 +130,9 @@ void MusicType_IBK::write(stream::output& content, SuppData& suppData,
 	memset(names, 0, sizeof(names));
 
 	for (unsigned int i = 0; i < IBK_INST_COUNT; i++) {
-		uint8_t inst[16];
 		auto patch = dynamic_cast<OPLPatch*>(music.patches->at(i).get());
 		assert(patch);
-		auto *o = &patch->m;
-		for (int op = 0; op < 2; op++) {
-			inst[0 + op] =
-				((o->enableTremolo & 1) << 7) |
-				((o->enableVibrato & 1) << 6) |
-				((o->enableSustain & 1) << 5) |
-				((o->enableKSR     & 1) << 4) |
-				 (o->freqMult      & 0x0F)
-			;
-			inst[2 + op] = (o->scaleLevel << 6) | (o->outputLevel & 0x3F);
-			inst[4 + op] = (o->attackRate << 4) | (o->decayRate & 0x0F);
-			inst[6 + op] = (o->sustainRate << 4) | (o->releaseRate & 0x0F);
-			inst[8 + op] =  o->waveSelect & 7;
-
-			o = &patch->c;
-		}
-		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
-		inst[11] = inst[12] = inst[13] = inst[14] = inst[15] = 0;
-
-		/// @todo handle these
-		//patch->deepTremolo = false;
-		//patch->deepVibrato = false;
-
-		content.write((char *)inst, 16);
-
+		content << instrumentSBI(*patch);
 		strncpy((char *)&names[i * IBK_NAME_LEN], patch->name.c_str(), 9);
 	}
 

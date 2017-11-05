@@ -20,11 +20,13 @@
 
 #include <iostream>
 #include <camoto/iostream_helpers.hpp>
+#include <camoto/stream_string.hpp>
 #include <camoto/gamemusic/patch-opl.hpp>
 #include <camoto/gamemusic/patch-midi.hpp>
 #include <camoto/gamemusic/util-opl.hpp>
 #include "decode-midi.hpp"
 #include "encode-midi.hpp"
+#include "util-sbi.hpp"
 #include "mus-cmf-creativelabs.hpp"
 
 /// @todo Handle MIDI controller events for transpose up and down
@@ -41,23 +43,23 @@ const unsigned int CMF_ATTR_MAXLEN = 32767;
 /// Number of preset instruments (repeated from patch 0 to 128)
 #define CMF_NUM_DEFAULT_INSTRUMENTS 16
 
-static const char *CMF_DEFAULT_PATCHES =
-"\x01\x11\x4F\x00\xF1\xD2\x53\x74\x00\x00\x06"
-"\x07\x12\x4F\x00\xF2\xF2\x60\x72\x00\x00\x08"
-"\x31\xA1\x1C\x80\x51\x54\x03\x67\x00\x00\x0E"
-"\x31\xA1\x1C\x80\x41\x92\x0B\x3B\x00\x00\x0E"
-"\x31\x16\x87\x80\xA1\x7D\x11\x43\x00\x00\x08"
-"\x30\xB1\xC8\x80\xD5\x61\x19\x1B\x00\x00\x0C"
-"\xF1\x21\x01\x00\x97\xF1\x17\x18\x00\x00\x08"
-"\x32\x16\x87\x80\xA1\x7D\x10\x33\x00\x00\x08"
-"\x01\x12\x4F\x00\x71\x52\x53\x7C\x00\x00\x0A"
-"\x02\x03\x8D\x00\xD7\xF5\x37\x18\x00\x00\x04"
-"\x21\x21\xD1\x00\xA3\xA4\x46\x25\x00\x00\x0A"
-"\x22\x22\x0F\x00\xF6\xF6\x95\x36\x00\x00\x0A"
-"\xE1\xE1\x00\x00\x44\x54\x24\x34\x02\x02\x07"
-"\xA5\xB1\xD2\x80\x81\xF1\x03\x05\x00\x00\x02"
-"\x71\x22\xC5\x00\x6E\x8B\x17\x0E\x00\x00\x02"
-"\x32\x21\x16\x80\x73\x75\x24\x57\x00\x00\x0E";
+static const char CMF_DEFAULT_PATCHES[] =
+"\x01\x11\x4F\x00\xF1\xD2\x53\x74\x00\x00\x06" "\x00\x00\x00\x00\x00"
+"\x07\x12\x4F\x00\xF2\xF2\x60\x72\x00\x00\x08" "\x00\x00\x00\x00\x00"
+"\x31\xA1\x1C\x80\x51\x54\x03\x67\x00\x00\x0E" "\x00\x00\x00\x00\x00"
+"\x31\xA1\x1C\x80\x41\x92\x0B\x3B\x00\x00\x0E" "\x00\x00\x00\x00\x00"
+"\x31\x16\x87\x80\xA1\x7D\x11\x43\x00\x00\x08" "\x00\x00\x00\x00\x00"
+"\x30\xB1\xC8\x80\xD5\x61\x19\x1B\x00\x00\x0C" "\x00\x00\x00\x00\x00"
+"\xF1\x21\x01\x00\x97\xF1\x17\x18\x00\x00\x08" "\x00\x00\x00\x00\x00"
+"\x32\x16\x87\x80\xA1\x7D\x10\x33\x00\x00\x08" "\x00\x00\x00\x00\x00"
+"\x01\x12\x4F\x00\x71\x52\x53\x7C\x00\x00\x0A" "\x00\x00\x00\x00\x00"
+"\x02\x03\x8D\x00\xD7\xF5\x37\x18\x00\x00\x04" "\x00\x00\x00\x00\x00"
+"\x21\x21\xD1\x00\xA3\xA4\x46\x25\x00\x00\x0A" "\x00\x00\x00\x00\x00"
+"\x22\x22\x0F\x00\xF6\xF6\x95\x36\x00\x00\x0A" "\x00\x00\x00\x00\x00"
+"\xE1\xE1\x00\x00\x44\x54\x24\x34\x02\x02\x07" "\x00\x00\x00\x00\x00"
+"\xA5\xB1\xD2\x80\x81\xF1\x03\x05\x00\x00\x02" "\x00\x00\x00\x00\x00"
+"\x71\x22\xC5\x00\x6E\x8B\x17\x0E\x00\x00\x02" "\x00\x00\x00\x00\x00"
+"\x32\x21\x16\x80\x73\x75\x24\x57\x00\x00\x0E" "\x00\x00\x00\x00\x00";
 
 std::string MusicType_CMF::code() const
 {
@@ -164,6 +166,7 @@ std::unique_ptr<Music> MusicType_CMF::read(stream::input& content, SuppData& sup
 		default: // do this so you can force-open an unknown version
 			std::cerr << "Warning: Unknown CMF version " << (int)(ver >> 8) << '.'
 				<< (int)(ver & 0xFF) << ", proceeding as if v1.1" << std::endl;
+			// fall through
 		case 0x101:
 			content
 				>> u16le(numInstruments)
@@ -248,30 +251,7 @@ std::unique_ptr<Music> MusicType_CMF::read(stream::input& content, SuppData& sup
 	content.seekg(offInst, stream::start);
 	for (unsigned int i = 0; i < numInstruments; i++) {
 		auto patch = std::make_shared<OPLPatch>();
-		uint8_t inst[16];
-		content.read((char *)inst, 16);
-
-		OPLOperator *o = &patch->m;
-		for (int op = 0; op < 2; op++) {
-#warning TODO: Replace this with readSBI iostream handler, if the formats really are the same
-			o->enableTremolo = (inst[0 + op] >> 7) & 1;
-			o->enableVibrato = (inst[0 + op] >> 6) & 1;
-			o->enableSustain = (inst[0 + op] >> 5) & 1;
-			o->enableKSR     = (inst[0 + op] >> 4) & 1;
-			o->freqMult      =  inst[0 + op] & 0x0F;
-			o->scaleLevel    =  inst[2 + op] >> 6;
-			o->outputLevel   =  inst[2 + op] & 0x3F;
-			o->attackRate    =  inst[4 + op] >> 4;
-			o->decayRate     =  inst[4 + op] & 0x0F;
-			o->sustainRate   =  inst[6 + op] >> 4;
-			o->releaseRate   =  inst[6 + op] & 0x0F;
-			o->waveSelect    =  inst[8 + op] & 0x07;
-			o = &patch->c;
-		}
-		patch->feedback    = (inst[10] >> 1) & 0x07;
-		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Rhythm::Melodic;
-
+		content >> instrumentSBI(*patch);
 		oplBank->push_back(patch);
 	}
 
@@ -279,30 +259,10 @@ std::unique_ptr<Music> MusicType_CMF::read(stream::input& content, SuppData& sup
 	int genericMapping[CMF_NUM_DEFAULT_INSTRUMENTS];
 	auto oplBankDefault = std::make_shared<PatchBank>();
 	oplBankDefault->reserve(CMF_NUM_DEFAULT_INSTRUMENTS);
+	stream::string ss(std::string(CMF_DEFAULT_PATCHES, sizeof(CMF_DEFAULT_PATCHES) - 1));
 	for (unsigned int i = 0; i < CMF_NUM_DEFAULT_INSTRUMENTS; i++) {
 		auto patch = std::make_shared<OPLPatch>();
-		uint8_t *inst = (uint8_t *)(CMF_DEFAULT_PATCHES + i * 16);
-
-		OPLOperator *o = &patch->m;
-		for (int op = 0; op < 2; op++) {
-			o->enableTremolo = (inst[0 + op] >> 7) & 1;
-			o->enableVibrato = (inst[0 + op] >> 6) & 1;
-			o->enableSustain = (inst[0 + op] >> 5) & 1;
-			o->enableKSR     = (inst[0 + op] >> 4) & 1;
-			o->freqMult      =  inst[0 + op] & 0x0F;
-			o->scaleLevel    =  inst[2 + op] >> 6;
-			o->outputLevel   =  inst[2 + op] & 0x3F;
-			o->attackRate    =  inst[4 + op] >> 4;
-			o->decayRate     =  inst[4 + op] & 0x0F;
-			o->sustainRate   =  inst[6 + op] >> 4;
-			o->releaseRate   =  inst[6 + op] & 0x0F;
-			o->waveSelect    =  inst[8 + op] & 0x07;
-			o = &patch->c;
-		}
-		patch->feedback    = (inst[10] >> 1) & 0x07;
-		patch->connection  =  inst[10] & 1;
-		patch->rhythm      = OPLPatch::Rhythm::Melodic;
-
+		ss >> instrumentSBI(*patch);
 		oplBankDefault->push_back(patch);
 		genericMapping[i] = -1; // not yet assigned
 	}
@@ -512,31 +472,9 @@ void MusicType_CMF::write(stream::output& content, SuppData& suppData,
 	// for midiEncode to use to place percussive events on the right channels.
 
 	for (int i = 0; i < numInstruments; i++) {
-		uint8_t inst[16];
 		auto patch = dynamic_cast<const OPLPatch*>(patches->at(i).get());
 		assert(patch);
-
-		auto o = &patch->m;
-		for (int op = 0; op < 2; op++) {
-			inst[0 + op] =
-				((o->enableTremolo & 1) << 7) |
-				((o->enableVibrato & 1) << 6) |
-				((o->enableSustain & 1) << 5) |
-				((o->enableKSR     & 1) << 4) |
-				 (o->freqMult      & 0x0F)
-			;
-			inst[2 + op] = (o->scaleLevel << 6) | (o->outputLevel & 0x3F);
-			inst[4 + op] = (o->attackRate << 4) | (o->decayRate & 0x0F);
-			inst[6 + op] = (o->sustainRate << 4) | (o->releaseRate & 0x0F);
-			inst[8 + op] =  o->waveSelect & 7;
-
-			if (oplCarOnly(patch->rhythm)) break; // ignore other op
-			o = &patch->c;
-		}
-		inst[10] = ((patch->feedback & 7) << 1) | (patch->connection & 1);
-		inst[11] = inst[12] = inst[13] = inst[14] = inst[15] = 0;
-
-		content.write((char *)inst, 16);
+		content << instrumentSBI(*patch);
 	}
 
 	// Call the generic OPL writer.
