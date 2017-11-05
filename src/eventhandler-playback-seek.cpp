@@ -27,7 +27,7 @@ EventHandler_Playback_Seek::EventHandler_Playback_Seek(
 	: music(music),
 	  loopCount(loopCount)
 {
-	if (loopCount == 0) loopCount++;
+	if (this->loopCount == 0) this->loopCount++;
 }
 
 EventHandler_Playback_Seek::~EventHandler_Playback_Seek()
@@ -99,6 +99,7 @@ unsigned long EventHandler_Playback_Seek::getTotalLength()
 	this->usTarget = (unsigned long)-1;
 	this->usTotal = 0;
 	this->usPerTick = this->music->initialTempo.usPerTick;
+	assert(this->loopCount > 0); // don't want an infinte loop
 	this->handleAllEvents(EventOrder::Order_Row_Track, *this->music,
 		this->loopCount);
 	return this->usTotal / 1000;
@@ -110,6 +111,7 @@ EventHandler::Position EventHandler_Playback_Seek::seekTo(
 	this->usTarget = msTarget * 1000;
 	this->usTotal = 0;
 	this->usPerTick = this->music->initialTempo.usPerTick;
+	assert(this->loopCount > 0); // don't want an infinte loop
 	auto pos = this->handleAllEvents(EventOrder::Order_Row_Track, *this->music,
 		this->loopCount);
 	*destTempo = this->tempo;
