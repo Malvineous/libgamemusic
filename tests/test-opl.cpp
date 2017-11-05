@@ -55,11 +55,11 @@ BOOST_AUTO_TEST_CASE(freqToNote)
 
 	check_freq(  51680,  545, 1);
 
-	check_freq(  24275,  512, 0);
+	check_freq(  24275,  256, 1);
 	check_freq( 194203,  512, 3);
 
-	check_freq(  97006, 1023, 1);
-	check_freq( 194013, 1023, 2);
+	check_freq(  97006,  256, 3);
+	check_freq( 194013,  511, 3);
 	check_freq(6208431, 1023, 7);
 }
 
