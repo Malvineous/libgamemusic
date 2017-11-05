@@ -323,7 +323,7 @@ void Playback::nextFrame()
 								actualLoops = &ev->second;
 							}
 
-							auto wantedLoops = jump->loop + 1;
+							auto wantedLoops = jump->repeat + 1;
 							if (*actualLoops < wantedLoops) {
 								// Loop once more
 								(*actualLoops)++;

@@ -59,7 +59,7 @@ bool EventHandler::actionGoto(Position& pos, EventOrder eventOrder)
 			actualLoops = &ev->second;
 		}
 
-		auto wantedLoops = this->pendingGoto.loop + 1;
+		auto wantedLoops = this->pendingGoto.repeat + 1;
 		if (*actualLoops < wantedLoops) {
 			// Loop once more
 			(*actualLoops)++;

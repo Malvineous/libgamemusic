@@ -572,7 +572,7 @@ C-4 note
 						case 0x02: { // B: Jump to order
 							auto ev = std::make_shared<GotoEvent>();
 							ev->type = GotoEvent::Type::SpecificOrder;
-							ev->loop = 0;
+							ev->repeat = 0;
 							ev->targetOrder = info;
 							ev->targetRow = 0;
 
@@ -586,7 +586,7 @@ C-4 note
 						case 0x03: { // C: Jump to row
 							auto ev = std::make_shared<GotoEvent>();
 							ev->type = GotoEvent::Type::NextPattern;
-							ev->loop = 0;
+							ev->repeat = 0;
 							ev->targetOrder = 0;
 							ev->targetRow = ((info & 0xf0) >> 4) * 10 + (info & 0x0f);
 

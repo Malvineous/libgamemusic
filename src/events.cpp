@@ -108,7 +108,7 @@ std::string GotoEvent::getContent() const
 	ss
 		<< this->Event::getContent()
 		<< "event=goto;type=" << (int)this->type
-		<< ";loop=" << this->loop
+		<< ";repeat=" << this->repeat
 		<< ";targetOrder=" << this->targetOrder
 		<< ";targetRow=" << this->targetRow
 	;

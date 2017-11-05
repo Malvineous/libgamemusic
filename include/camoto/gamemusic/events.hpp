@@ -157,13 +157,13 @@ struct CAMOTO_GAMEMUSIC_API GotoEvent: virtual public Event
 	/// Type of jump.
 	Type type;
 
-	/// Number of times to jump, if jumping backwards so this event gets reached
-	/// again.
+	/// Number of times to repeat the jump (after the first encounter), if
+	/// jumping backwards so this event gets reached again.
 	/**
-	 * - 0=loop forever (default)
-	 * - 1=loop once
+	 * - 0=jump once, no repeat (do nothing the second time the event is reached)
+	 * - 1=jump twice (single repeat), ignore the event on and after the third hit
 	 */
-	unsigned int loop;
+	unsigned int repeat;
 
 	/// Target entry in the order list.
 	/**
