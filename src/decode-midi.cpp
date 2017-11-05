@@ -153,6 +153,7 @@ std::unique_ptr<Music> MIDIDecoder::decode(stream::input& content)
 	auto music = std::make_unique<Music>();
 	music->patches = std::make_shared<PatchBank>();
 	music->initialTempo = this->curTempo;
+	Tempo lastTempo = music->initialTempo;
 
 	music->patterns.emplace_back();
 	Pattern& pattern = music->patterns.back();
@@ -535,6 +536,7 @@ std::unique_ptr<Music> MIDIDecoder::decode(stream::input& content)
 									if (this->totalDelay == 0) {
 										// No events yet, update initial tempo
 										music->initialTempo.usPerQuarterNote(usPerQuarterNote);
+										lastTempo = music->initialTempo;
 									} else {
 										const unsigned int track = 0;
 										TrackEvent te;
@@ -542,7 +544,9 @@ std::unique_ptr<Music> MIDIDecoder::decode(stream::input& content)
 										this->lastDelay[track] = 0;
 										TempoEvent *ev = new TempoEvent();
 										te.event.reset(ev);
+										ev->tempo = lastTempo;
 										ev->tempo.usPerQuarterNote(usPerQuarterNote);
+										lastTempo = ev->tempo;
 										pattern[track].push_back(te);
 									}
 									break;
