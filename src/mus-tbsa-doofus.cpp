@@ -129,6 +129,13 @@ MusicType::Caps MusicType_TBSA::caps() const
 
 MusicType::Certainty MusicType_TBSA::isInstance(stream::input& content) const
 {
+	stream::len fileSize = content.size();
+	if (fileSize < 8) {
+		// File too short (header)
+		// TESTED BY: mus_tbsa_doofus_isinstance_c02
+		return Certainty::DefinitelyNo;
+	}
+
 	content.seekg(0, stream::start);
 	std::string sig;
 	content >> fixedLength(sig, 8);

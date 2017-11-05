@@ -102,6 +102,11 @@ class test_tbsa_doofus: public test_music
 				"\xFE" // cause 60 row jump
 				"\xFF"
 			));
+
+			// c02: File too short (header)
+			this->isInstance(MusicType::Certainty::DefinitelyNo, STRING_WITH_NULLS(
+				"TBSA0.0"
+			));
 		}
 
 		virtual std::string standard()
