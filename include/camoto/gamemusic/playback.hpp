@@ -167,6 +167,8 @@ class CAMOTO_GAMEMUSIC_API Playback: virtual public SynthPCMCallback
 		std::shared_ptr<const Music> music;
 		unsigned int loopCount; ///< 0=loop forever, 1=no loop, 2=loop once, etc.
 
+		std::map<const void *, unsigned int> loopEvents;
+
 		// TempoCallback
 		virtual void tempoChange(const Tempo& tempo);
 

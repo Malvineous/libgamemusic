@@ -312,22 +312,38 @@ void Playback::nextFrame()
 						// Check for any effects that affect playback progress
 						GotoEvent *jump = dynamic_cast<GotoEvent *>(te.event.get());
 						if (jump) {
-							switch (jump->type) {
-								case GotoEvent::Type::CurrentPattern:
-									this->nextRow = jump->targetRow;
-									break;
-								case GotoEvent::Type::NextPattern:
-									this->nextOrder++;
-									this->nextRow = jump->targetRow;
-									loadNextOrder = true;
-									break;
-								case GotoEvent::Type::SpecificOrder:
-									this->nextOrder = jump->targetOrder;
-									this->nextRow = jump->targetRow;
-									loadNextOrder = true;
-									break;
+
+							// See if we're processed this jump before
+							auto ev = this->loopEvents.find(jump);
+							unsigned int *actualLoops;
+							if (ev == this->loopEvents.end()) {
+								actualLoops = &this->loopEvents[jump];
+								*actualLoops = 0;
+							} else {
+								actualLoops = &ev->second;
 							}
-							if (jump->loop != 0) std::cout << "TODO: Handle looping jumps\n";
+
+							auto wantedLoops = jump->loop + 1;
+							if (*actualLoops < wantedLoops) {
+								// Loop once more
+								(*actualLoops)++;
+
+								switch (jump->type) {
+									case GotoEvent::Type::CurrentPattern:
+										this->nextRow = jump->targetRow;
+										break;
+									case GotoEvent::Type::NextPattern:
+										this->nextOrder++;
+										this->nextRow = jump->targetRow;
+										loadNextOrder = true;
+										break;
+									case GotoEvent::Type::SpecificOrder:
+										this->nextOrder = jump->targetOrder;
+										this->nextRow = jump->targetRow;
+										loadNextOrder = true;
+										break;
+								}
+							}
 						}
 					} else if (trackPos > this->row) {
 						// Not up to this event yet, don't keep looking
@@ -383,6 +399,9 @@ void Playback::nextFrame()
 						}
 						this->loop++;
 						this->nextOrder = this->order; // incremented at end of pattern
+
+						// Since we're looping, reset all the pattern loop counts
+						this->loopEvents.clear();
 					} else {
 						this->end = true;
 					}

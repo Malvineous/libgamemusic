@@ -314,6 +314,12 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 		bool processPattern_separateTracks(const Music& music,
 			const Pattern& pattern, Position *pos);
 
+		/// Action any pending GotoEvent.
+		/**
+		 * @return true if event was actioned, false if no pending event.
+		 */
+		bool actionGoto(Position& pos, EventOrder eventOrder);
+
 	protected:
 		/// Song being converted
 		std::shared_ptr<const Music> music;
@@ -322,10 +328,13 @@ class CAMOTO_GAMEMUSIC_API EventHandler
 		bool isGotoPending;
 
 		/// GotoEvent that needs to be actioned before the next row is processed
+		const void *pendingGotoPtr; // map key only
 		GotoEvent pendingGoto;
 
 		/// Current tempo
 		Tempo tempo;
+
+		std::map<const void *, unsigned int> loopEvents;
 };
 
 /// Callback used for passing tempo-change events outside the EventHandler.

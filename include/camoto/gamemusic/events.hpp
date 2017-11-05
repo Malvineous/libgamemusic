@@ -149,7 +149,7 @@ struct CAMOTO_GAMEMUSIC_API EffectEvent: virtual public Event
 struct CAMOTO_GAMEMUSIC_API GotoEvent: virtual public Event
 {
 	enum class Type {
-		CurrentPattern, ///< Stay on the current pattern
+		CurrentPattern, ///< Stay on the current pattern but change row
 		NextPattern,    ///< Jump to the next pattern specified in the order list
 		SpecificOrder,  ///< Jump to the given index in the order list
 	};

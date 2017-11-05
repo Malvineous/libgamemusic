@@ -47,6 +47,52 @@ bool trackMergeByTime(const MergedEvent& a, const MergedEvent& b)
 	return a.absTime < b.absTime;
 }
 
+bool EventHandler::actionGoto(Position& pos, EventOrder eventOrder)
+{
+	if (this->isGotoPending) {
+		auto ev = this->loopEvents.find(this->pendingGotoPtr);
+		unsigned int *actualLoops;
+		if (ev == this->loopEvents.end()) {
+			actualLoops = &this->loopEvents[this->pendingGotoPtr];
+			*actualLoops = 0;
+		} else {
+			actualLoops = &ev->second;
+		}
+
+		auto wantedLoops = this->pendingGoto.loop + 1;
+		if (*actualLoops < wantedLoops) {
+			// Loop once more
+			(*actualLoops)++;
+
+			pos.startRow = this->pendingGoto.targetRow;
+			switch (this->pendingGoto.type) {
+				case GotoEvent::Type::CurrentPattern:
+					// Play the same pattern again
+					pos.nextOrderIndex = pos.orderIndex;
+					pos.nextPatternIndex = pos.patternIndex;
+					break;
+				case GotoEvent::Type::NextPattern:
+					// Don't need to do anything, we will already be going to the next
+					// pattern.
+					pos.nextPatternIndex = pos.patternIndex + 1;
+					pos.nextOrderIndex = pos.orderIndex + 1;
+					break;
+				case GotoEvent::Type::SpecificOrder:
+					pos.nextOrderIndex = this->pendingGoto.targetOrder;
+
+					// Make sure we aren't trying to process a jump-to-order when we are
+					// ignoring orders and iterating through pattern by pattern.
+					assert((eventOrder != Pattern_Row_Track) && (eventOrder != Pattern_Track_Row));
+					pos.nextPatternIndex = 0;
+					break;
+			}
+		}
+		this->isGotoPending = false;
+		return true;
+	}
+	return false;
+}
+
 EventHandler::Position EventHandler::handleAllEvents(EventOrder eventOrder,
 	const Music& music, unsigned int targetLoopCount)
 {
@@ -84,31 +130,7 @@ EventHandler::Position EventHandler::handleAllEvents(EventOrder eventOrder,
 
 		// Figure out what the next pattern will be.  This might be overridden by
 		// a GotoEvent later.
-		if (this->isGotoPending) {
-			pos.startRow = this->pendingGoto.targetRow;
-			switch (this->pendingGoto.type) {
-				case GotoEvent::Type::CurrentPattern:
-					// Play the same pattern again
-					pos.nextOrderIndex = pos.orderIndex;
-					pos.nextPatternIndex = pos.patternIndex;
-					break;
-				case GotoEvent::Type::NextPattern:
-					// Don't need to do anything, we will already be going to the next
-					// pattern.
-					pos.nextPatternIndex = pos.patternIndex + 1;
-					pos.nextOrderIndex = pos.orderIndex + 1;
-					break;
-				case GotoEvent::Type::SpecificOrder:
-					pos.nextOrderIndex = this->pendingGoto.targetOrder;
-
-					// Make sure we aren't trying to process a jump-to-order when we are
-					// ignoring orders and iterating through pattern by pattern.
-					assert((eventOrder != Pattern_Row_Track) && (eventOrder != Pattern_Track_Row));
-					pos.nextPatternIndex = 0;
-					break;
-			}
-			this->isGotoPending = false;
-		} else {
+		if (!this->actionGoto(pos, eventOrder)) {
 			switch (eventOrder) {
 				case Pattern_Row_Track:
 				case Pattern_Track_Row:
@@ -143,29 +165,7 @@ EventHandler::Position EventHandler::handleAllEvents(EventOrder eventOrder,
 		// was encountered and the pattern processing was cut off early.  Either
 		// way we need to advance to a new pattern now, so update the "next" fields
 		// if a jump event has been processed.
-		if (this->isGotoPending) {
-			pos.startRow = this->pendingGoto.targetRow;
-			switch (this->pendingGoto.type) {
-				case GotoEvent::Type::CurrentPattern:
-					// Play the same pattern again
-					pos.nextOrderIndex = pos.orderIndex;
-					pos.nextPatternIndex = pos.patternIndex;
-					break;
-				case GotoEvent::Type::NextPattern:
-					// Don't need to do anything, we will already be going to the next
-					// pattern.
-					break;
-				case GotoEvent::Type::SpecificOrder:
-					pos.nextOrderIndex = this->pendingGoto.targetOrder;
-
-					// Make sure we aren't trying to process a jump-to-order when we are
-					// ignoring orders and iterating through pattern by pattern.
-					assert((eventOrder != Pattern_Row_Track) && (eventOrder != Pattern_Track_Row));
-					pos.nextPatternIndex = 0;
-					break;
-			}
-			this->isGotoPending = false;
-		}
+		this->actionGoto(pos, eventOrder);
 
 		// If we should stop processing then end now before we move to the next
 		// order/pattern.  This way the next order/pattern will be preserved in
@@ -200,6 +200,9 @@ EventHandler::Position EventHandler::handleAllEvents(EventOrder eventOrder,
 						pos.orderIndex = 0;
 					}
 					pos.loop++;
+
+					// Since we're looping, reset all the pattern loop counts
+					this->loopEvents.clear();
 				}
 				pos.patternIndex = music.patternOrder[pos.orderIndex];
 				break;
@@ -311,6 +314,7 @@ bool EventHandler::processPattern_separateTracks(const Music& music,
 
 void EventHandler::performGoto(const GotoEvent *ev)
 {
+	this->pendingGotoPtr = ev;
 	this->pendingGoto = *ev;
 	this->isGotoPending = true;
 	return;
