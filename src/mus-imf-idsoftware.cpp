@@ -33,9 +33,6 @@
 using namespace camoto;
 using namespace camoto::gamemusic;
 
-/// Value passed to OPLReaderCallback_IMF c'tor if the length is unused
-#define IMF_LEN_UNUSED ((unsigned int)-1)
-
 /// Decode data in an .imf file to provide register/value pairs.
 class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 {
@@ -62,7 +59,7 @@ class OPLReaderCallback_IMF: virtual public OPLReaderCallback
 				return false;
 			}
 
-			if (this->lenData != IMF_LEN_UNUSED) this->lenData -= 4;
+			this->lenData -= 4;
 			oplEvent->chipIndex = 0; // Only one OPL2 supported
 			oplEvent->valid |= OPLEvent::Delay | OPLEvent::Regs;
 			return true;
@@ -235,7 +232,7 @@ std::unique_ptr<Music> MusicType_IMF_Common::read(stream::input& content,
 	if (this->imfType == 1) {
 		content >> u16le(lenData);
 	} else {
-		lenData = IMF_LEN_UNUSED; // read until EOF
+		lenData = content.size(); // read until EOF
 	}
 
 	Tempo initialTempo;
