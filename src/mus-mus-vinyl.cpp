@@ -100,6 +100,8 @@ MusicType::Certainty MusicType_MUS_Vinyl::isInstance(stream::input& content)
 std::unique_ptr<Music> MusicType_MUS_Vinyl::read(stream::input& content,
 	SuppData& suppData) const
 {
+	assert(suppData.find(SuppItem::Instruments) != suppData.end());
+
 	uint8_t majorVersion, minorVersion, tickBeat, beatMeasure, soundMode;
 	uint8_t pitchBRange;
 	uint32_t tuneId, totalTick, dataSize, nrCommand;
@@ -288,7 +290,7 @@ std::unique_ptr<Music> MusicType_MUS_Vinyl::read(stream::input& content,
 
 			if (oplInstrument >= oplBank->size()) {
 				std::cerr << "[mus-vinyl] Warning: Song tried to set MIDI patch "
-					<< oplInstrument << " but there are only " << oplBank->size()
+					<< (int)oplInstrument << " but there are only " << oplBank->size()
 					<< " OPL patches" << std::endl;
 				continue;
 			}
