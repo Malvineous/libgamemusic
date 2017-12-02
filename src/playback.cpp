@@ -171,7 +171,7 @@ void Playback::seekByOrder(unsigned int destOrder)
 	this->nextRow = this->row + 1;
 	this->frame = 0;
 	this->order = destOrder;
-	this->nextOrder = 0; // incremented to 1 at end of pattern
+	this->nextOrder = this->order; // incremented to 1 at end of pattern
 	if (this->music->patternOrder.size() <= this->order) {
 		// order points past end of patterns
 		this->pattern = 0;
