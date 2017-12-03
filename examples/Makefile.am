@@ -1,3 +1,6 @@
+# Disabled with Emscripten until Boost is removed
+if !USING_EMSCRIPTEN
+
 bin_PROGRAMS = gamemus
 noinst_PROGRAMS = hello
 
@@ -20,3 +23,5 @@ AM_LDFLAGS += $(BOOST_SYSTEM_LIB)
 AM_LDFLAGS += $(BOOST_PROGRAM_OPTIONS_LIB)
 AM_LDFLAGS += $(portaudio_LIBS)
 AM_LDFLAGS += $(libgamecommon_LIBS)
+
+endif

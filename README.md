@@ -21,6 +21,10 @@ instrument used in the song.  Current instrument types are General MIDI (patch
 numbers), OPL register values (used by Adlib songs) and sampled instruments
 (as used by mod/tracker formats.)
 
+A [JavaScript player](http://camoto.shikadi.net/libgamemusic/) is also
+available that will play any supported file in a browser in real time on the
+client side.
+
 File formats from the following games are supported:
 
   * Bio Menace (.imf)
@@ -84,6 +88,19 @@ This distribution includes an example program `gamemus` which serves as both
 a command-line interface to the library as well as an example of how to use
 the library.  This program is installed as part of the `make install` process.
 See [`man gamemus`](http://www.shikadi.net/camoto/manpage/gamemus) for full details.
+
+To build the JavaScript player, which allows supported files to be played in a
+web browser, build with Emscripten instead:
+
+    ./autogen.sh
+    emconfigure ./configure
+    emmake make
+
+The output files are placed in the `js/` subdirectory.  Note that due to the
+way autotools works, the library files are placed in `js/.libs/`.
+
+See http://camoto.shikadi.net/libgamemusic/ for working examples and for how to
+use the web player without needing to compile anything yourself.
 
 All supported file formats are fully documented on the
 [ModdingWiki](http://www.shikadi.net/moddingwiki/Category:Music_formats).

@@ -1,5 +1,5 @@
 # "src" must go first so the library is available when the examples compile
-SUBDIRS = src doc examples include utils tests
+SUBDIRS = src js doc examples include utils tests
 
 EXTRA_DIST = @PACKAGE@.pc.in README
 

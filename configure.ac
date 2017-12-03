@@ -77,6 +77,18 @@ case "$host_os" in
 	;;
 esac
 
+AC_MSG_CHECKING([whether we are being compiled with Emscripten])
+AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+	[[
+		#ifndef __EMSCRIPTEN__
+			error: Emscripten is not in use
+		#endif
+	]])],
+[is_emscripten=yes],
+[is_emscripten=no])
+AC_MSG_RESULT([$is_emscripten])
+AM_CONDITIONAL([USING_EMSCRIPTEN], [test x$is_emscripten = xyes])
+
 AM_SILENT_RULES([yes])
 
-AC_OUTPUT(Makefile src/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile utils/Makefile $PACKAGE.pc)
+AC_OUTPUT(Makefile src/Makefile js/Makefile include/Makefile include/camoto/Makefile examples/Makefile tests/Makefile doc/Makefile utils/Makefile $PACKAGE.pc)

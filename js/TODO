@@ -1,0 +1,7 @@
+libgamemusic JS player to-do list
+---------------------------------
+ - Return the playback time after looping so the progress bar loops back to the
+   correct time.
+
+ - Set readfile() error messages as class instance vars so the JS can pull the
+   error reason.

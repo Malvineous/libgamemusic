@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8"/>
+		<script src="player.js"></script>
+		<style>
+			@import url("https://fonts.googleapis.com/css?family=Barlow+Semi+Condensed");
+			@import url("https://fonts.googleapis.com/css?family=Cousine");
+			body {
+				font-family: 'Barlow Semi Condensed', sans-serif;
+				font-size: 13pt;
+			}
+			.indent {
+				margin: 1em;
+			}
+			pre,
+			code.block {
+				display: block;
+				background-color: #eee;
+				padding: 1em;
+				margin: 1em;
+			}
+			code,
+			pre,
+			tt {
+				font-size: 14px;
+				font-family: 'Cousine', monospace, fixed;
+			}
+		</style>
+	</head>
+	<body>
+		<h2>libgamemusic JavaScript player</h2>
+		<p>
+			A JavaScript version of the libgamemusic player.  This runs in a browser
+			and will play songs that are supported by libgamemusic.
+		</p>
+
+		<h3>Demo</h3>
+
+		<table>
+			<tr>
+				<th>File format</th>
+				<th>Notes</th>
+				<th>Example</th>
+			</tr>
+			<tr>
+				<td>Doofus (TBSA)</td>
+				<td>OPL only</td>
+				<td><span class="lgmPlayer" data-src="songs/3-ep1.bsa"></span></td>
+			</tr>
+			<tr>
+				<td>Zone 66 (CDFM)</td>
+				<td>OPL + PCM</td>
+				<td><span class="lgmPlayer" data-src="songs/m01gmuz.670"></span></td>
+			</tr>
+			<tr>
+				<td>Jill of the Jungle (CMF)</td>
+				<td>OPL only</td>
+				<td><span class="lgmPlayer" data-src="songs/dan.cmf"></span></td>
+			</tr>
+			<tr>
+				<td>Monster Bash (IMF)</td>
+				<td>OPL only</td>
+				<td><span class="lgmPlayer" data-src="songs/main.imf"></span></td>
+			</tr>
+			<tr>
+				<td>Vinyl (Adlib MUS)</td>
+				<td>OPL only, loads instruments<br/>from separate file</td>
+				<td><span class="lgmPlayer" data-src="songs/intro.mus"></span></td>
+			</tr>
+			<tr>
+				<td>Trugg (DSMF)</td>
+				<td>PCM only</td>
+				<td><span class="lgmPlayer" data-src="songs/trugg_a.dsm"></span></td>
+			</tr>
+			<tr>
+				<td>Jazz Jackrabbit (S3M)</td>
+				<td>PCM only, incomplete effects</td>
+				<td><span class="lgmPlayer" data-src="songs/menusng.s3m"></span></td>
+			</tr>
+			<tr>
+				<td>The Incredible Machine (Rdos Raw)</td>
+				<td>OPL only</td>
+				<td><span class="lgmPlayer" data-src="songs/02-euro.raw"></span></td>
+			<tr/>
+			<tr>
+				<td colspan="2">
+					Load your own file:
+					<input type="file" id="idUserFile" />
+				</td>
+				<td>
+					<span id="idUserPlayer" class="lgmPlayer"></span>
+					<script>
+						function loadUserFile(ev) {
+							var files = ev.target.files;
+							var reader = new FileReader();
+							reader.onload = fileData => {
+								var content = fileData.target.result;
+								var filename = files[0].name;
+
+								var ctPlayer = document.getElementById('idUserPlayer');
+								ctPlayer.player.setSong(content, filename);
+							};
+							reader.readAsArrayBuffer(files[0]);
+						}
+						document.getElementById('idUserFile')
+							.addEventListener('change', loadUserFile, false);
+					</script>
+				</td>
+			</tr>
+		</table>
+
+		<h3>Embedding the player</h3>
+
+		<p>
+			To use the player in your own web page, you only need to include a single
+			JavaScript file.  You can then create HTML <code>&lt;span&gt;</code>
+			elements wherever you wish a player to appear.
+		</p>
+
+<pre>
+&lt;script src="http://camoto.shikadi.net/libgamemusic/player.js"&gt;&lt;/script&gt;
+
+&lt;span class="lgmPlayer" data-src="song.imf"&gt;&lt;/span&gt;
+</pre>
+
+		<p>
+			The <code>data-src</code> attribute is a standard URL (same as you might
+			use with an <code>&lt;img&gt;</code> element), so in the above example the
+			file will be retrieved from the same location as the HTML document,
+			however you can use a full <code>http://</code> URL as well.  The file is
+			actually retrieved with an XHR request.
+		</p>
+
+		<p>
+			You can use normal CSS attributes on the class or element to change the
+			player size.
+		</p>
+
+		<h3>Specifying the file type</h3>
+
+		<p>
+			The player will autodetect most file formats, however a couple cannot be
+			detected automatically.  If these formats should be played, you will need
+			to manually indicate what file format they are.
+		</p>
+		<p>
+			You can also do this if you know what file format you will be playing, as
+			it will speed up the loading time if the autodetection code does not have
+			to run.
+		</p>
+		<p>
+			One of the file formats that needs to be manually specified is the WLF
+			variant of the IMF format.  IMF files default to a speed of 560 Hz, but
+			WLF ones need to be played at 700 Hz.  By specifying the
+			<code>wlf-idsoftware-type1</code> file format, the autodetection will be
+			bypassed and the correct tempo will be used.  Of course this will only
+			allow type-1 IMF files to be played!
+		</p>
+
+		<p>
+			Autodetect: (wrong type/tempo, too slow)
+		</p>
+		<code class="block">
+			&lt;span class="lgmPlayer" data-src="getthem.wlf"&gt;&lt;/span&gt;
+		</code>
+		<div class="indent">
+			<span class="lgmPlayer" data-src="songs/getthem.wlf"></span>
+		</div>
+
+		<p>
+			Manually specified type: (correct tempo)
+		</p>
+		<code class="block">
+			&lt;span class="lgmPlayer" data-src="getthem.wlf" data-type="wlf-idsoftware-type1"&gt;&lt;/span&gt;
+		</code>
+		<div class="indent">
+			<span class="lgmPlayer" data-src="songs/getthem.wlf" data-type="wlf-idsoftware-type1"></span>
+		</div>
+
+
+		<h3>Loading files at runtime</h3>
+
+		<p>
+			Normally the song to play is loaded from the URL given in the HTML
+			element, however the <code>setSong()</code> function can be used to pass
+			raw file data to the player at runtime instead.  This would only need to
+			be used if you are obtaining the song from somewhere else, rather than a
+			direct URL download.
+		</p>
+		<p>
+			This example uses a HTML file input control to allow the user to select a
+			file on their local system, which is then played.  Here, no
+			<code>data-src</code> attribute is set as there is no file to play by
+			default.
+		</p>
+<pre>
+&lt;span id="idBrowsePlayer" class="lgmPlayer"&gt;&lt;/span&gt;
+&lt;input type="file" id="idFile" /&gt;
+&lt;script&gt;
+	function loadFile(ev) {
+		var files = ev.target.files;
+		var reader = new FileReader();
+		reader.onload = fileData =&gt; {
+			var content = fileData.target.result;
+			var filename = files[0].name;
+
+			var ctPlayer = document.getElementById('idBrowsePlayer');
+			ctPlayer.player.setSong(content, filename);
+		};
+		reader.readAsArrayBuffer(files[0]);
+	}
+	document.getElementById('idFile')
+		.addEventListener('change', loadFile, false);
+&lt;/script&gt;
+</pre>
+
+		<div class="indent">
+			<span id="idBrowsePlayer" class="lgmPlayer"></span>
+			<input type="file" id="idFile" />
+			<script>
+				function loadFile(ev) {
+					var files = ev.target.files;
+					var reader = new FileReader();
+					reader.onload = fileData => {
+						var content = fileData.target.result;
+						var filename = files[0].name;
+
+						var ctPlayer = document.getElementById('idBrowsePlayer');
+						ctPlayer.player.setSong(content, filename);
+					};
+					reader.readAsArrayBuffer(files[0]);
+				}
+				document.getElementById('idFile')
+					.addEventListener('change', loadFile, false);
+			</script>
+		</div>
+
+		<p>
+			Again, WLF files will play at the wrong tempo, so if a WLF file is loaded
+			dynamically the file format will have to be specified in the call to
+			<code>setSong()</code>.
+		</p>
+		<code class="block">
+			ctPlayer.player.setSong(content, filename, 'wlf-idsoftware-type1');
+		</code>
+		<div class="indent">
+			<span id="idBrowsePlayer700" class="lgmPlayer"></span>
+			<input type="file" id="idFile700" />
+			<script>
+				function loadFile700(ev) {
+					var files = ev.target.files;
+					var reader = new FileReader();
+					reader.onload = fileData => {
+						var content = fileData.target.result;
+						var filename = files[0].name;
+
+						var ctPlayer = document.getElementById('idBrowsePlayer700');
+						ctPlayer.player.setSong(content, filename, 'wlf-idsoftware-type1');
+					};
+					reader.readAsArrayBuffer(files[0]);
+				}
+				document.getElementById('idFile700')
+					.addEventListener('change', loadFile700, false);
+			</script>
+		</div>
+
+		<h3>Hiding the player</h3>
+
+		<p>
+			If you want to hide the player and control the music yourself, you can
+			do that too.  Just use normal CSS to hide the player, and access it via
+			JavaScript instead.
+		</p>
+<pre>
+&lt;span class="lgmPlayer" data-src="songs/menusng.s3m" id="idHiddenPlayer" style="display: none;"&gt;&lt;/span&gt;&lt;/td&gt;
+
+&lt;!-- Some example control buttons --&gt;
+&lt;button onclick="var p = document.getElementById('idHiddenPlayer'); p.playbackStart(); return false;"&gt;Play&lt;/button&gt;
+&lt;button onclick="var p = document.getElementById('idHiddenPlayer'); p.playbackStop(); return false;"&gt;Stop&lt;/button&gt;
+&lt;button onclick="var p = document.getElementById('idHiddenPlayer'); p.seekToMs(0); return false;"&gt;Rewind&lt;/button&gt;
+&lt;button onclick="var p = document.getElementById('idHiddenPlayer'); p.seekToMs(p.getSongLength() / 2); return false;"&gt;Seek to middle&lt;/button&gt;
+
+&lt;!-- An example to retrieve the playback time --&gt;
+&lt;span id="time"&gt;?&lt;/span&gt;
+&lt;script&gt;
+	// Call a function when the player is loaded and the song is ready
+	document.getElementById('idHiddenPlayer').onload = function(el) {
+		var ctTime = document.getElementById('time');
+		var p = el.player;
+
+		// Override one of the functions
+		p.updatePlayTime = function(msPlayback) {
+			ctTime.innerHTML = msPlayback;
+		};
+	};
+&lt;/script&gt;
+</pre>
+
+		<div class="indent">
+			<span class="lgmPlayer" data-src="songs/menusng.s3m" id="idHiddenPlayer" style="display: none;"></span></td>
+
+			<!-- Some example control buttons -->
+			<button onclick="var p = document.getElementById('idHiddenPlayer').player; p.playbackStart(); return false;">Play</button>
+			<button onclick="var p = document.getElementById('idHiddenPlayer').player; p.playbackStop(); return false;">Stop</button>
+			<button onclick="var p = document.getElementById('idHiddenPlayer').player; p.seekToMs(0); return false;">Rewind</button>
+			<button onclick="var p = document.getElementById('idHiddenPlayer').player; p.seekToMs(p.getSongLength() / 2); return false;">Seek to middle</button>
+
+			<!-- An example to retrieve the playback time -->
+			<span id="time">?</span>
+			<script>
+				// Call a function when the player is loaded and the song is ready
+				document.getElementById('idHiddenPlayer').onload = function(el) {
+					var ctTime = document.getElementById('time');
+					var p = el.player;
+
+					// Override one of the functions
+					p.updatePlayTime = function(msPlayback) {
+						ctTime.innerHTML = msPlayback;
+					};
+				};
+			</script>
+		</div>
+
+	</body>
+</html>

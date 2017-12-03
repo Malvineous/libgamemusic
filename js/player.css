@@ -1,0 +1,65 @@
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+@import url("https://fonts.googleapis.com/css?family=Unica+One");
+
+/* Main player area */
+.lgmPlayer {
+	display: inline-grid;
+	grid-template-columns: auto 1fr auto;
+	grid-template-rows: 100%;
+	background-color: #555;
+	color: white;
+	width: 20em;
+	height: 2em;
+	line-height: 2em;
+	padding-right: 1ex;
+	padding-left: 0.5ex;
+}
+
+/* Play/pause button */
+.lgmPlayer .lgmButton {
+	grid-column: 1;
+	justify-self: center;
+	align-self: center;
+	cursor: pointer;
+}
+
+/* Loading animation in place of play/pause */
+.lgmPlayer .lgmLoading {
+	animation: lgmPlayerLoading 1s linear infinite;
+}
+@keyframes lgmPlayerLoading {
+	100% {
+		transform: rotate(-360deg);
+	}
+}
+
+/* Progress bar */
+.lgmPlayer .lgmProgress {
+	grid-column: 2;
+	display: block;
+	xpadding: 1ex;
+	margin: 1ex;
+	cursor: pointer;
+}
+.lgmPlayer .lgmProgressBG {
+	display: block;
+	height: 100%;
+
+	background: #888;
+}
+.lgmPlayer .lgmProgressNeedle {
+	display: block;
+	height: 100%;
+
+	background: #fff;
+}
+
+/* Playback/total time display */
+.lgmPlayer .lgmTimes {
+	grid-column: 3;
+	xdisplay: block;
+	xpadding: 1ex;
+	xcursor: pointer;
+	font-family: 'Unica One', fixed;
+	font-size: 12px;
+}
